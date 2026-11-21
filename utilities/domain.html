@@ -3,18 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Domain availability — forwardslashdot</title>
-  <meta name="description" content="Domain availability for forwardslashdot — live REST and MCP at api.forwardslashdot.com." />
+  <title>Instant domain search — forwardslashdot</title>
+  <meta name="description" content="Instant domain availability for forwardslashdot — type a name, pick a TLD, see green or red live." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg-top: #f5f5f7;
-      --bg-bottom: #e8e8ed;
+      --bg-mid: #ececf1;
+      --bg-bottom: #e4e4ea;
       --ink: #1d1d1f;
       --ink-soft: #6e6e73;
+      --mark: #1d1d1f;
       --link: #0071e3;
       --hairline: rgba(29, 29, 31, 0.12);
-      --code-bg: rgba(29, 29, 31, 0.05);
-      --glow: rgba(255, 255, 255, 0.7);
+      --field: rgba(255, 255, 255, 0.72);
+      --field-border: rgba(29, 29, 31, 0.14);
+      --focus: rgba(0, 113, 227, 0.28);
+      --ok: #1f7a3f;
+      --ok-soft: rgba(31, 122, 63, 0.12);
+      --taken: #c41e3a;
+      --taken-soft: rgba(196, 30, 58, 0.1);
+      --idle: var(--ink-soft);
+      --glow: rgba(255, 255, 255, 0.55);
+      --font: "Outfit", "SF Pro Display", "Helvetica Neue", Helvetica, sans-serif;
     }
 
     * {
@@ -23,18 +36,21 @@
       padding: 0;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       min-height: 100vh;
-      font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
-        "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-family: var(--font);
       color: var(--ink);
       background:
-        radial-gradient(120% 80% at 50% -10%, var(--glow), transparent 55%),
-        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+        radial-gradient(90% 55% at 50% -8%, var(--glow), transparent 52%),
+        radial-gradient(40% 30% at 85% 70%, rgba(0, 113, 227, 0.05), transparent 70%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 48%, var(--bg-bottom) 100%);
       background-attachment: fixed;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
-      line-height: 1.5;
     }
 
     a {
@@ -47,147 +63,516 @@
       text-underline-offset: 0.15em;
     }
 
-    .wrap {
-      max-width: 36rem;
-      margin: 0 auto;
-      padding: 3rem 1.5rem 5rem;
+    .stage {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.25rem 1.35rem 3.5rem;
+    }
+
+    .hero {
+      width: min(34rem, 100%);
+      text-align: center;
     }
 
     .back {
+      display: inline-block;
       font-size: 0.85rem;
       color: var(--ink-soft);
-      margin-bottom: 2.5rem;
-      display: inline-block;
+      margin-bottom: 2rem;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
     }
 
     .back:hover {
       color: var(--link);
+      text-decoration: none;
     }
 
-    h1 {
-      font-size: clamp(1.75rem, 5vw, 2.25rem);
+    .mark {
+      display: block;
+      font-size: clamp(4.25rem, 16vw, 6.75rem);
       font-weight: 600;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.08em;
+      line-height: 0.9;
+      color: var(--mark);
+      opacity: 0;
+      transform: translateY(12px);
+      animation: rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+    }
+
+    .headline {
+      margin-top: 1.35rem;
+      font-size: clamp(1.45rem, 4.2vw, 1.85rem);
+      font-weight: 600;
+      letter-spacing: -0.035em;
       line-height: 1.15;
-      margin-bottom: 0.75rem;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.32s forwards;
     }
 
     .lede {
-      font-size: 1.05rem;
+      margin-top: 0.7rem;
+      font-size: 1.02rem;
+      font-weight: 400;
       color: var(--ink-soft);
-      margin-bottom: 2rem;
+      letter-spacing: -0.01em;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.48s forwards;
     }
 
-    .status {
-      display: inline-block;
-      font-size: 0.75rem;
+    .search {
+      margin-top: 2.35rem;
+      text-align: left;
+      opacity: 0;
+      transform: translateY(14px);
+      animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.64s forwards;
+    }
+
+    .tld-label,
+    .name-label {
+      display: block;
+      font-size: 0.72rem;
       font-weight: 600;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--ink-soft);
-      border-bottom: 1px solid var(--hairline);
-      padding-bottom: 0.35rem;
-      margin-bottom: 2.5rem;
+      margin-bottom: 0.55rem;
     }
 
-    h2 {
-      font-size: 1.05rem;
+    .tld-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1.35rem;
+    }
+
+    .tld-btn {
+      appearance: none;
+      border: 1px solid var(--hairline);
+      background: transparent;
+      color: var(--ink-soft);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      padding: 0.45rem 0.75rem;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      transition:
+        color 0.22s ease,
+        background 0.22s ease,
+        border-color 0.22s ease;
+    }
+
+    .tld-btn:hover {
+      color: var(--ink);
+      border-color: rgba(29, 29, 31, 0.28);
+    }
+
+    .tld-btn[aria-pressed="true"] {
+      color: var(--ink);
+      background: var(--field);
+      border-color: rgba(29, 29, 31, 0.22);
+    }
+
+    .tld-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus);
+    }
+
+    .compose {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: stretch;
+      gap: 0;
+      border: 1px solid var(--field-border);
+      border-radius: 0.75rem;
+      background: var(--field);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition:
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .compose:focus-within {
+      border-color: rgba(0, 113, 227, 0.45);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    .name-input {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      font-family: inherit;
+      font-size: clamp(1.15rem, 3.5vw, 1.35rem);
+      font-weight: 500;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      padding: 1rem 0.35rem 1rem 1.1rem;
+      outline: none;
+      min-width: 0;
+    }
+
+    .name-input::placeholder {
+      color: rgba(110, 110, 115, 0.7);
+      font-weight: 400;
+    }
+
+    .tld-suffix {
+      display: flex;
+      align-items: center;
+      padding: 0 1.1rem 0 0.35rem;
+      font-size: clamp(1.15rem, 3.5vw, 1.35rem);
+      font-weight: 500;
+      letter-spacing: -0.025em;
+      color: var(--ink-soft);
+      user-select: none;
+      transition: color 0.35s ease;
+    }
+
+    .result {
+      margin-top: 1.15rem;
+      min-height: 1.75rem;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .preview {
+      font-size: clamp(1.05rem, 3vw, 1.2rem);
       font-weight: 600;
-      letter-spacing: -0.015em;
-      margin: 2rem 0 0.65rem;
+      letter-spacing: -0.03em;
+      color: var(--idle);
+      transition: color 0.4s ease;
+      word-break: break-all;
     }
 
-    p, li {
-      font-size: 0.95rem;
+    .preview.is-available {
+      color: var(--ok);
+    }
+
+    .preview.is-taken,
+    .preview.is-invalid {
+      color: var(--taken);
+    }
+
+    .preview.is-checking {
       color: var(--ink-soft);
     }
 
-    ul {
-      margin: 0.5rem 0 0 1.15rem;
-    }
-
-    li + li {
-      margin-top: 0.35rem;
-    }
-
-    code, pre {
-      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    .status-text {
       font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: var(--ink-soft);
+      transition: color 0.35s ease;
+      white-space: nowrap;
     }
 
-    pre {
-      background: var(--code-bg);
-      border-radius: 0.65rem;
-      padding: 1rem 1.1rem;
-      overflow-x: auto;
-      margin: 0.75rem 0 0;
-      color: var(--ink);
-      line-height: 1.45;
+    .status-text.is-available {
+      color: var(--ok);
     }
 
-    code.inline {
-      background: var(--code-bg);
-      padding: 0.1em 0.35em;
+    .status-text.is-taken,
+    .status-text.is-invalid {
+      color: var(--taken);
+    }
+
+    .hint {
+      margin-top: 1.75rem;
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+
+    .dev {
+      width: min(34rem, 100%);
+      margin: 0 auto;
+      padding: 0 1.35rem 4.5rem;
+      border-top: 1px solid var(--hairline);
+      padding-top: 2.5rem;
+    }
+
+    .dev h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.55rem;
+    }
+
+    .dev p {
+      font-size: 0.92rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      margin-bottom: 0.85rem;
+    }
+
+    .dev code {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      background: rgba(29, 29, 31, 0.05);
+      padding: 0.08em 0.3em;
       border-radius: 0.3rem;
       color: var(--ink);
     }
 
-    .footnote {
-      margin-top: 2.75rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid var(--hairline);
-      font-size: 0.85rem;
-      color: var(--ink-soft);
+    .dev a.api {
+      font-size: 0.9rem;
+    }
+
+    @keyframes rise {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 420px) {
+      .tld-row {
+        gap: 0.3rem;
+      }
+
+      .tld-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.86rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .back, .mark, .headline, .lede, .search {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+
+      .preview,
+      .status-text,
+      .tld-btn,
+      .compose,
+      .tld-suffix {
+        transition: none;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <a class="back" href="/">← forwardslashdot</a>
+  <main class="stage">
+    <div class="hero">
+      <a class="back" href="/">← forwardslashdot</a>
+      <span class="mark" aria-label="forwardslashdot">/.</span>
+      <h1 class="headline">Instant domain search</h1>
+      <p class="lede">Pick an ending, type a name — green means free.</p>
 
-    <h1>Domain availability</h1>
-    <p class="lede">
-      REST and MCP domain checks for forwardslashdot. Public base:
-      <a href="https://api.forwardslashdot.com/health"><code class="inline">https://api.forwardslashdot.com</code></a>
-    </p>
-    <p class="status">API live</p>
+      <div class="search" role="search">
+        <span class="tld-label" id="tld-label">Ending</span>
+        <div class="tld-row" role="group" aria-labelledby="tld-label" id="tld-group">
+          <!-- filled by JS -->
+        </div>
 
-    <h2>What it is</h2>
-    <ul>
-      <li><code class="inline">GET /api/domain?q=</code> — comma-separated batch (capped)</li>
-      <li><code class="inline">/mcp</code> — FastMCP Streamable HTTP; tool <code class="inline">check_domains</code></li>
-      <li>Also <code class="inline">/health</code>, <code class="inline">/stats</code>, <code class="inline">/llms.txt</code>, <code class="inline">/.well-known/mcp.json</code>, <code class="inline">/openapi.json</code></li>
-    </ul>
+        <label class="name-label" for="name-input">Name</label>
+        <div class="compose">
+          <input
+            id="name-input"
+            class="name-input"
+            type="text"
+            name="domain"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="yourname"
+            maxlength="63"
+            inputmode="text"
+            aria-describedby="result-status"
+          />
+          <span class="tld-suffix" id="tld-suffix" aria-hidden="true">.com</span>
+        </div>
 
-    <h2>curl (live)</h2>
-    <pre>curl -s 'https://api.forwardslashdot.com/api/domain?q=example.com'
-curl -s 'https://api.forwardslashdot.com/health'
-curl -s 'https://api.forwardslashdot.com/stats'
-curl -s 'https://api.forwardslashdot.com/llms.txt'
-curl -s 'https://api.forwardslashdot.com/.well-known/mcp.json'</pre>
+        <div class="result" aria-live="polite">
+          <span class="preview" id="preview">—</span>
+          <span class="status-text" id="result-status"></span>
+        </div>
+      </div>
 
-    <h2>MCP</h2>
-    <p>Point an MCP client at Streamable HTTP:</p>
-    <pre>https://api.forwardslashdot.com/mcp</pre>
+      <p class="hint">Live via api.forwardslashdot.com · not a guarantee of registrability</p>
+    </div>
+  </main>
 
-    <h2>Run locally</h2>
-    <pre>cd services/domain-checker
-docker build -t forwardslashdot-domain-checker .
-docker run --rm -p 8000:8000 \
-  -e PUBLIC_BASE_URL=http://127.0.0.1:8000 \
-  forwardslashdot-domain-checker</pre>
-
-    <h2>Docs</h2>
+  <section class="dev" aria-labelledby="dev-heading">
+    <h2 id="dev-heading">API</h2>
     <p>
-      Full service README (layout, env vars, deploy notes, MCP config):
-      <a href="https://github.com/kevinslashdot/forwardslashdot-site/tree/main/services/domain-checker">
-        github.com/…/services/domain-checker
-      </a>
+      Same checker over REST and MCP:
+      <code>GET /api/domain?q=</code>,
+      <code>/mcp</code>,
+      <code>/health</code>,
+      <code>/stats</code>,
+      <code>/llms.txt</code>.
     </p>
+    <p>
+      <a class="api" href="https://api.forwardslashdot.com/llms.txt">api.forwardslashdot.com/llms.txt</a>
+    </p>
+  </section>
 
-    <p class="footnote">
-      Affiliate/referral links are off until <code class="inline">AFFILIATE_*</code> env vars are set on the host.
-    </p>
-  </div>
+  <script>
+    (function () {
+      var API = "https://api.forwardslashdot.com/api/domain";
+      var TLDS = [".com", ".net", ".org", ".io", ".dev", ".app", ".ai", ".co", ".xyz"];
+      var DEBOUNCE_MS = 320;
+
+      var tldGroup = document.getElementById("tld-group");
+      var tldSuffix = document.getElementById("tld-suffix");
+      var nameInput = document.getElementById("name-input");
+      var preview = document.getElementById("preview");
+      var statusEl = document.getElementById("result-status");
+
+      var selectedTld = ".com";
+      var timer = null;
+      var abortController = null;
+      var requestSeq = 0;
+
+      function normalizeLabel(raw) {
+        return String(raw || "")
+          .trim()
+          .toLowerCase()
+          .replace(/^https?:\/\//, "")
+          .replace(/\/.*$/, "")
+          .replace(/\.+$/, "")
+          .split(".")[0]
+          .replace(/[^a-z0-9-]/g, "")
+          .replace(/^-+|-+$/g, "");
+      }
+
+      function setState(state, domain, message) {
+        preview.className = "preview" + (state ? " is-" + state : "");
+        statusEl.className = "status-text" + (state ? " is-" + state : "");
+        preview.textContent = domain || "—";
+        statusEl.textContent = message || "";
+      }
+
+      function fullDomain(label) {
+        return label + selectedTld;
+      }
+
+      function selectTld(tld) {
+        selectedTld = tld;
+        tldSuffix.textContent = tld;
+        Array.prototype.forEach.call(tldGroup.querySelectorAll(".tld-btn"), function (btn) {
+          btn.setAttribute("aria-pressed", btn.dataset.tld === tld ? "true" : "false");
+        });
+        scheduleCheck();
+      }
+
+      function scheduleCheck() {
+        var label = normalizeLabel(nameInput.value);
+        if (nameInput.value !== label) {
+          var pos = nameInput.selectionStart;
+          nameInput.value = label;
+          if (typeof pos === "number") {
+            nameInput.setSelectionRange(Math.min(pos, label.length), Math.min(pos, label.length));
+          }
+        }
+
+        if (!label) {
+          if (abortController) abortController.abort();
+          clearTimeout(timer);
+          setState("", "", "");
+          return;
+        }
+
+        var domain = fullDomain(label);
+        setState("checking", domain, "Checking…");
+
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          runCheck(domain);
+        }, DEBOUNCE_MS);
+      }
+
+      function runCheck(domain) {
+        if (abortController) abortController.abort();
+        abortController = new AbortController();
+        var seq = ++requestSeq;
+
+        fetch(API + "?q=" + encodeURIComponent(domain), {
+          signal: abortController.signal,
+          headers: { Accept: "application/json" },
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            if (seq !== requestSeq) return;
+            var row = data && data.results && data.results[0];
+            if (!row) {
+              setState("invalid", domain, "No result");
+              return;
+            }
+            if (row.status === "available") {
+              setState("available", row.domain || domain, "Available");
+            } else if (row.status === "registered") {
+              setState("taken", row.domain || domain, "Taken");
+            } else {
+              setState("invalid", row.domain || domain, "Invalid");
+            }
+          })
+          .catch(function (err) {
+            if (err && err.name === "AbortError") return;
+            if (seq !== requestSeq) return;
+            setState("invalid", domain, "Try again");
+          });
+      }
+
+      TLDS.forEach(function (tld, i) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tld-btn";
+        btn.dataset.tld = tld;
+        btn.textContent = tld;
+        btn.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+        btn.addEventListener("click", function () {
+          selectTld(tld);
+          nameInput.focus();
+        });
+        tldGroup.appendChild(btn);
+      });
+
+      nameInput.addEventListener("input", scheduleCheck);
+      nameInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          clearTimeout(timer);
+          var label = normalizeLabel(nameInput.value);
+          if (label) runCheck(fullDomain(label));
+        }
+      });
+
+      // Deep-link: ?q=name or ?q=name.com
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var q = params.get("q") || params.get("domain") || "";
+        if (q) {
+          var cleaned = String(q).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+          var match = cleaned.match(/^([a-z0-9-]+)(\.[a-z0-9.-]+)?$/i);
+          if (match) {
+            if (match[2] && TLDS.indexOf(match[2]) !== -1) {
+              selectTld(match[2]);
+            }
+            nameInput.value = match[1];
+            scheduleCheck();
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
 </html>
