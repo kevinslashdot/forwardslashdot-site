@@ -9,6 +9,7 @@ Lives under `services/domain-checker/` so the Cloudflare Pages deploy of the rep
 | Surface | Path | Notes |
 |--------|------|--------|
 | Health | `GET /health` | Liveness |
+| Stats | `GET /stats` | Aggregate check counts (HTTP + MCP); no query logs |
 | REST | `GET /api/domain?q=` | Comma-separated batch, capped (~25) |
 | MCP | `/mcp` | FastMCP Streamable HTTP; tool `check_domains` |
 | OpenAPI | `/openapi.json` | FastAPI schema |
@@ -48,6 +49,7 @@ services/domain-checker/
 |----------|----------|-------------|
 | `PORT` | No | Listen port (default `8000`) |
 | `PUBLIC_BASE_URL` | No | Absolute public origin for `/llms.txt` and `/.well-known/mcp.json` links |
+| `METRICS_PATH` | No | JSON file for request counters (default `/data/metrics.json` in Docker, else `/tmp/…`) |
 | `AFFILIATE_BASE_URL` | No | Registrar search/register base URL |
 | `AFFILIATE_PARAM_NAME` | No | Query param name for the affiliate id |
 | `AFFILIATE_ID` | No | Affiliate / referral id |
