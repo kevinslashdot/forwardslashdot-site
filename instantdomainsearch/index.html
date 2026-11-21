@@ -218,17 +218,6 @@
       display: block;
     }
 
-    /* Honeypots: soak Chrome / password-manager autofill away from the real field. */
-    .autofill-trap {
-      position: absolute;
-      left: -10000px;
-      top: auto;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      opacity: 0;
-      pointer-events: none;
-    }
 
     .tld-suffix {
       display: flex;
@@ -384,27 +373,22 @@
         </div>
 
         <span class="name-label" id="label-hint">Name</span>
-        <form class="compose" id="compose-form" autocomplete="off" action="javascript:void(0)" onsubmit="return false;">
-          <!--
-            Kill Chrome contact / password-manager popups over the status row.
-            Prior autocomplete=off pass failed (label "Name" + plain input).
-            Closed shadow + contenteditable + decoys + non-name attrs.
-          -->
-          <div class="autofill-trap" aria-hidden="true">
-            <input type="text" name="username" tabindex="-1" autocomplete="username" value="" />
-            <input type="email" name="email" tabindex="-1" autocomplete="email" value="" />
-            <input type="password" name="password" tabindex="-1" autocomplete="new-password" value="" />
-          </div>
+        <!--
+          No <input>: Chrome contact autofill keyed off label "Name" + input.
+          Closed-shadow contenteditable only (no sink input — sinks steal focus).
+        -->
+        <div class="compose" id="compose-form" role="group" aria-labelledby="label-hint">
           <span
             id="q-host"
             class="name-host"
+            tabindex="0"
             role="textbox"
             aria-labelledby="label-hint"
             aria-describedby="result-status"
             aria-multiline="false"
           ></span>
           <span class="tld-suffix" id="tld-suffix" aria-hidden="true">.com</span>
-        </form>
+        </div>
 
         <div class="result" aria-live="polite">
           <span class="preview" id="preview">—</span>
@@ -447,21 +431,21 @@
       var statusEl = document.getElementById("result-status");
       var host = document.getElementById("q-host");
 
-      // Closed shadow field: Chromium contact autofill cannot target this.
+      // Closed shadow contenteditable — no <input>, so no contact/password autofill.
       var shadow = host.attachShadow({ mode: "closed" });
       var fieldStyle = document.createElement("style");
       fieldStyle.textContent =
-        ':host{display:block;width:100%;min-width:0;}' +
-        '.shell{position:relative;width:100%;}' +
+        ':host{display:block;width:100%;min-width:0;outline:none;}' +
+        '.shell{position:relative;width:100%;min-height:3.2rem;}' +
         '.ghost{position:absolute;inset:0;pointer-events:none;font:inherit;' +
         'font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:400;letter-spacing:-0.025em;' +
         'color:rgba(110,110,115,0.7);padding:1rem 0.35rem 1rem 1.1rem;white-space:nowrap;overflow:hidden;}' +
-        '.field{width:100%;border:0;background:transparent;outline:none;caret-color:var(--ink,#1d1d1f);' +
-        'font-family:inherit;font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:500;letter-spacing:-0.025em;' +
-        'color:inherit;padding:1rem 0.35rem 1rem 1.1rem;min-width:0;white-space:nowrap;overflow:hidden;}' +
-        '.field:empty{display:block;}' +
-        /* Hidden real input as secondary sink with new-password / non-name attrs. */ +
-        '.sink{position:absolute;opacity:0;width:1px;height:1px;border:0;padding:0;margin:0;pointer-events:none;}';
+        '.field{display:block;width:100%;border:0;background:transparent;outline:none;' +
+        'caret-color:#1d1d1f;font-family:inherit;font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:500;' +
+        'letter-spacing:-0.025em;color:inherit;padding:1rem 0.35rem 1rem 1.1rem;min-width:0;' +
+        'white-space:nowrap;overflow-x:auto;overflow-y:hidden;line-height:1.25;}' +
+        '.field:empty:before{content:"";}' +
+        '.field br{display:none;}';
       var shell = document.createElement("div");
       shell.className = "shell";
       var ghost = document.createElement("div");
@@ -469,52 +453,64 @@
       ghost.textContent = "yourname";
       var field = document.createElement("div");
       field.className = "field";
-      field.setAttribute("contenteditable", "plaintext-only");
+      field.setAttribute("contenteditable", "true");
       field.setAttribute("spellcheck", "false");
       field.setAttribute("autocorrect", "off");
       field.setAttribute("autocapitalize", "none");
       field.setAttribute("inputmode", "text");
       field.setAttribute("enterkeyhint", "done");
       field.setAttribute("role", "textbox");
+      field.setAttribute("aria-multiline", "false");
       field.setAttribute("data-1p-ignore", "true");
       field.setAttribute("data-lpignore", "true");
       field.setAttribute("data-bwignore", "true");
       field.setAttribute("data-form-type", "other");
-      // Fallback for browsers that do not support plaintext-only.
       try {
         field.contentEditable = "plaintext-only";
-      } catch (_) {
-        field.setAttribute("contenteditable", "true");
-      }
-      var sink = document.createElement("input");
-      sink.className = "sink";
-      sink.type = "text";
-      sink.name = "x7k9q2-label";
-      sink.id = "x7k9q2-label";
-      sink.setAttribute("autocomplete", "new-password");
-      sink.setAttribute("aria-hidden", "true");
-      sink.tabIndex = -1;
+      } catch (_) {}
       shell.appendChild(ghost);
       shell.appendChild(field);
-      shell.appendChild(sink);
       shadow.appendChild(fieldStyle);
       shadow.appendChild(shell);
 
+      function readField() {
+        return (field.innerText || field.textContent || "").replace(/\u00a0/g, " ").replace(/\n/g, "");
+      }
+
+      function placeCaretEnd() {
+        try {
+          field.focus();
+          var range = document.createRange();
+          range.selectNodeContents(field);
+          range.collapse(false);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch (_) {}
+      }
+
       var nameInput = {
         get value() {
-          return (field.innerText || field.textContent || "").replace(/\n/g, "");
+          return readField();
         },
         set value(v) {
           field.textContent = v || "";
           ghost.hidden = !!v;
-          sink.value = v || "";
         },
         focus: function () {
-          field.focus();
+          placeCaretEnd();
         },
-        selectionStart: 0,
-        setSelectionRange: function () {},
       };
+
+      host.addEventListener("focus", function () {
+        nameInput.focus();
+      });
+      host.addEventListener("mousedown", function (e) {
+        if (e.target === host) {
+          e.preventDefault();
+          nameInput.focus();
+        }
+      });
 
       var selectedTld = ".com";
       var timer = null;
@@ -591,15 +587,7 @@
         var label = normalizeLabel(nameInput.value);
         if (nameInput.value !== label) {
           nameInput.value = label;
-          // Keep caret at end after sanitize (contenteditable selection APIs vary).
-          try {
-            var range = document.createRange();
-            range.selectNodeContents(field);
-            range.collapse(false);
-            var sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
-          } catch (_) {}
+          placeCaretEnd();
         }
         ghost.hidden = !!label;
 
