@@ -10,6 +10,7 @@ passed into FastAPI so the session manager initializes correctly.
 from __future__ import annotations
 
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -71,6 +72,8 @@ async def lifespan(app: FastAPI):
     global checker
     checker = DomainChecker()
     app.state.checker = checker
+    # Warm IANA RDAP bootstrap in the background (seeded bases already cover .com etc.).
+    checker.kick_bootstrap_refresh()
     # Nested mount lifespans are not run by Starlette/FastAPI — drive MCP's
     # lifespan explicitly (required for Streamable HTTP session manager).
     async with mcp_app.lifespan(app):
@@ -123,8 +126,9 @@ async def api_domain(
         description="Comma-separated domain names (batch capped at ~25).",
         examples=["example.com,available-test-xyz123.com"],
     ),
-) -> dict[str, Any]:
+) -> JSONResponse:
     """Check one or more domains. Shares logic with the MCP `check_domains` tool."""
+    t0 = time.perf_counter()
     dc = getattr(request.app.state, "checker", None) or checker
     if dc is None:
         raise HTTPException(status_code=503, detail="service not ready")
@@ -132,8 +136,29 @@ async def api_domain(
     # Cap for counting matches DomainChecker.check_domains truncation.
     capped = raw_parts[: dc.batch_cap]
     metrics.record("http", domain_count=len(capped))
-    return await dc.check_domains(raw_parts)
+    payload = await dc.check_domains(raw_parts)
+    payload["timing_ms"] = int((time.perf_counter() - t0) * 1000)
 
+    # Short shared cache: speeds repeat keystrokes / edge hits without lying for long.
+    all_cached = bool(payload.get("results")) and all(
+        r.get("cached") for r in payload["results"]
+    )
+    definitive = all(
+        r.get("status") in ("available", "registered") for r in payload.get("results", [])
+    )
+    if definitive:
+        # s-maxage for Cloudflare; browser max-age short for freshness.
+        cache_header = "public, max-age=15, s-maxage=45" if not all_cached else "public, max-age=30, s-maxage=60"
+    else:
+        cache_header = "no-store"
+
+    return JSONResponse(
+        payload,
+        headers={
+            "Cache-Control": cache_header,
+            "X-Response-Time-Ms": str(payload["timing_ms"]),
+        },
+    )
 
 @app.get("/llms.txt", response_class=PlainTextResponse, tags=["discovery"])
 async def llms_txt(request: Request) -> PlainTextResponse:

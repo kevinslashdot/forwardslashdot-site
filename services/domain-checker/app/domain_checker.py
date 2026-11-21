@@ -44,11 +44,25 @@ Status = Literal["available", "registered", "unknown", "invalid", "error"]
 IANA_DNS_BOOTSTRAP = "https://data.iana.org/rdap/dns.json"
 RDAP_ORG_FALLBACK = "https://rdap.org/domain/{domain}"
 
+# Seed common TLDs so the first browser keystroke does not wait on IANA dns.json.
+# Values match https://data.iana.org/rdap/dns.json (trailing slashes stripped at use).
+KNOWN_RDAP_BASES: dict[str, list[str]] = {
+    "com": ["https://rdap.verisign.com/com/v1"],
+    "net": ["https://rdap.verisign.com/net/v1"],
+    "org": ["https://rdap.publicinterestregistry.org/rdap"],
+    "app": ["https://pubapi.registry.google/rdap"],
+    "dev": ["https://pubapi.registry.google/rdap"],
+    "ai": ["https://rdap.identitydigital.services/rdap"],
+    "xyz": ["https://rdap.centralnic.com/xyz"],
+    # io / co often absent from IANA bootstrap → rdap.org only until refreshed.
+}
+
 DEFAULT_CACHE_TTL_SECONDS = 600  # ~10 minutes
 DEFAULT_CACHE_MAX_ENTRIES = 2048
 DEFAULT_CONCURRENCY = 10
 DEFAULT_BATCH_CAP = 25
-HTTP_TIMEOUT = 8.0
+HTTP_TIMEOUT = 4.0
+DNS_LIFETIME = 2.0
 
 # Basic FQDN shape: labels of alnum/hyphen, at least one dot, TLD letters.
 _DOMAIN_RE = re.compile(
@@ -143,6 +157,7 @@ class DomainChecker:
         concurrency: int = DEFAULT_CONCURRENCY,
         batch_cap: int = DEFAULT_BATCH_CAP,
         owns_client: bool | None = None,
+        race_dns: bool = True,
     ) -> None:
         self._client = http_client or httpx.AsyncClient(
             timeout=HTTP_TIMEOUT,
@@ -153,9 +168,15 @@ class DomainChecker:
         self.cache = cache or BoundedTTLCache()
         self.affiliate = affiliate if affiliate is not None else AffiliateConfig.from_env()
         self.batch_cap = batch_cap
+        self.race_dns = race_dns
         self._sem = asyncio.Semaphore(concurrency)
-        self._bootstrap: dict[str, list[str]] | None = None
+        # Start with known TLD bases; IANA bootstrap merges in the background.
+        self._bootstrap: dict[str, list[str]] = {
+            k: list(v) for k, v in KNOWN_RDAP_BASES.items()
+        }
+        self._bootstrap_ready = False
         self._bootstrap_lock = asyncio.Lock()
+        self._bootstrap_task: asyncio.Task[None] | None = None
 
     async def aclose(self) -> None:
         if self._owns_client:
@@ -223,19 +244,56 @@ class DomainChecker:
         return out
 
     async def _lookup(self, domain: str) -> dict[str, Any]:
-        rdap = await self._rdap_lookup(domain)
-        if rdap["status"] in ("available", "registered"):
-            return self._with_affiliate(rdap)
+        """RDAP-first, optionally racing DNS for the first definitive answer."""
+        if not self.race_dns:
+            rdap = await self._rdap_lookup(domain)
+            if rdap["status"] in ("available", "registered"):
+                return self._with_affiliate(rdap)
+            dns_result = await self._dns_fallback(domain)
+            if dns_result["status"] in ("available", "registered"):
+                return self._with_affiliate(dns_result)
+            merged = dict(rdap)
+            if dns_result.get("detail"):
+                merged["detail"] = (
+                    f"{merged.get('detail') or ''}; dns: {dns_result['detail']}"
+                ).strip("; ")
+            merged["source"] = merged.get("source") or "dns"
+            return self._with_affiliate(merged)
 
-        dns_result = await self._dns_fallback(domain)
-        if dns_result["status"] in ("available", "registered"):
-            return self._with_affiliate(dns_result)
+        rdap_task = asyncio.create_task(self._rdap_lookup(domain))
+        dns_task = asyncio.create_task(self._dns_fallback(domain))
+        pending: set[asyncio.Task[dict[str, Any]]] = {rdap_task, dns_task}
+        rdap: dict[str, Any] | None = None
+        dns_result: dict[str, Any] | None = None
+        try:
+            while pending:
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done:
+                    result = task.result()
+                    if task is rdap_task:
+                        rdap = result
+                    else:
+                        dns_result = result
+                    if result.get("status") in ("available", "registered"):
+                        for other in pending:
+                            other.cancel()
+                        return self._with_affiliate(result)
+        finally:
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
 
-        # Prefer RDAP's unknown/error detail if DNS also inconclusive.
-        merged = dict(rdap)
-        if dns_result.get("detail"):
-            merged["detail"] = f"{merged.get('detail') or ''}; dns: {dns_result['detail']}".strip("; ")
-        merged["source"] = merged.get("source") or "dns"
+        # Both inconclusive — prefer RDAP detail, fall back to DNS.
+        merged = dict(rdap or dns_result or {"domain": domain, "status": "unknown", "source": None})
+        if rdap and dns_result and dns_result.get("detail"):
+            merged["detail"] = (
+                f"{merged.get('detail') or ''}; dns: {dns_result['detail']}"
+            ).strip("; ")
+        if not merged.get("source"):
+            merged["source"] = (dns_result or {}).get("source") or "rdap"
         return self._with_affiliate(merged)
 
     def _with_affiliate(self, result: dict[str, Any]) -> dict[str, Any]:
@@ -246,17 +304,23 @@ class DomainChecker:
             out["disclosure"] = self.affiliate.disclosure
         return out
 
-    async def _ensure_bootstrap(self) -> dict[str, list[str]]:
-        if self._bootstrap is not None:
-            return self._bootstrap
+    def kick_bootstrap_refresh(self) -> None:
+        """Schedule a non-blocking IANA bootstrap refresh (call from lifespan)."""
+        if self._bootstrap_ready or (
+            self._bootstrap_task is not None and not self._bootstrap_task.done()
+        ):
+            return
+        self._bootstrap_task = asyncio.create_task(self._refresh_bootstrap())
+
+    async def _refresh_bootstrap(self) -> None:
         async with self._bootstrap_lock:
-            if self._bootstrap is not None:
-                return self._bootstrap
             try:
                 resp = await self._client.get(IANA_DNS_BOOTSTRAP)
                 resp.raise_for_status()
                 data = resp.json()
-                mapping: dict[str, list[str]] = {}
+                mapping: dict[str, list[str]] = {
+                    k: list(v) for k, v in KNOWN_RDAP_BASES.items()
+                }
                 for tld, urls in data.get("services", []):
                     # IANA format: services is list of [ [tld,...], [url,...] ]
                     if not isinstance(tld, list) or not isinstance(urls, list):
@@ -264,10 +328,16 @@ class DomainChecker:
                     for label in tld:
                         mapping[str(label).lower()] = [str(u).rstrip("/") for u in urls]
                 self._bootstrap = mapping
+                self._bootstrap_ready = True
             except Exception:
-                # Empty map → callers fall back to rdap.org.
-                self._bootstrap = {}
-            return self._bootstrap
+                # Keep seeded map; callers still have rdap.org fallback.
+                self._bootstrap_ready = False
+
+    async def _ensure_bootstrap(self) -> dict[str, list[str]]:
+        # Fast path: seeded bases are enough for common TLDs; refresh in background.
+        if not self._bootstrap_ready:
+            self.kick_bootstrap_refresh()
+        return self._bootstrap
 
     def _tld(self, domain: str) -> str:
         return domain.rsplit(".", 1)[-1].lower()
@@ -322,7 +392,7 @@ class DomainChecker:
     async def _dns_fallback(self, domain: str) -> dict[str, Any]:
         """NS or SOA presence ⇒ registered; NXDOMAIN ⇒ available."""
         resolver = dns.asyncresolver.Resolver()
-        resolver.lifetime = 5.0
+        resolver.lifetime = DNS_LIFETIME
         try:
             await resolver.resolve(domain, dns.rdatatype.NS)
             return {"domain": domain, "status": "registered", "source": "dns"}
