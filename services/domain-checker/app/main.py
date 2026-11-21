@@ -22,19 +22,34 @@ from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
 from app.llms import MCP_DISCOVERY, build_llms_txt
-from app.metrics import metrics
+from app.metrics import metrics, normalize_area
 
 
-def _record_metrics_async(source: str, domain_count: int) -> None:
+def _record_metrics_async(
+    source: str,
+    domain_count: int,
+    *,
+    area: str | None = None,
+) -> None:
     """Postgres metrics writes must not block the domain-check hot path (~100ms+)."""
 
     def _run() -> None:
         try:
-            metrics.record(source, domain_count=domain_count)  # type: ignore[arg-type]
+            metrics.record(source, domain_count=domain_count, area=area)  # type: ignore[arg-type]
         except Exception:
             pass
 
     threading.Thread(target=_run, daemon=True, name="domain-metrics").start()
+
+
+def _record_hit_async(area: str | None) -> None:
+    def _run() -> None:
+        try:
+            metrics.record_hit(area)
+        except Exception:
+            pass
+
+    threading.Thread(target=_run, daemon=True, name="area-hit").start()
 
 SERVICE_TITLE = "forwardslashdot domain checker"
 SERVICE_DESCRIPTION = (
@@ -71,7 +86,7 @@ async def check_domains(domains: list[str] | str) -> dict[str, Any]:
         domain_list = checker.parse_batch(domains)
     else:
         domain_list = list(domains)[: checker.batch_cap]
-    _record_metrics_async("mcp", len(domain_list))
+    _record_metrics_async("mcp", len(domain_list), area="other")
     return await checker.check_domains(domain_list)
 
 
@@ -126,8 +141,37 @@ async def health() -> dict[str, str]:
 
 @app.get("/stats", tags=["ops"])
 async def stats() -> dict[str, Any]:
-    """Aggregate domain-check request counts (HTTP + MCP). No query logs."""
+    """Aggregate domain-check and utility hit counts. No query logs / PII."""
     return metrics.snapshot()
+
+
+@app.get("/api/hit", tags=["ops"])
+async def api_hit(
+    request: Request,
+    area: str | None = Query(
+        None,
+        description="Site area label (instant_domain_search, world_time_converter).",
+    ),
+    source: str | None = Query(
+        None,
+        description="Alias for area (accepted for older clients).",
+    ),
+) -> JSONResponse:
+    """Record a non-PII utility hit attributed to a site area."""
+    # Prefer explicit query; fall back to Referer path heuristics (no raw URL stored).
+    label = area or source
+    if not label:
+        referer = request.headers.get("referer") or request.headers.get("referrer") or ""
+        low = referer.lower()
+        if "instantdomainsearch" in low or "/utilities/domain" in low:
+            label = "instant_domain_search"
+        elif "worldtimeconverter" in low or "/utilities/time" in low:
+            label = "world_time_converter"
+    _record_hit_async(normalize_area(label))
+    return JSONResponse(
+        {"ok": True, "area": normalize_area(label)},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/api/domain", tags=["domains"])
@@ -139,6 +183,14 @@ async def api_domain(
         description="Comma-separated domain names (batch capped at ~25).",
         examples=["example.com,available-test-xyz123.com"],
     ),
+    area: str | None = Query(
+        None,
+        description="Site area for stats attribution (instant_domain_search, …).",
+    ),
+    source: str | None = Query(
+        None,
+        description="Alias for area when clients already send source=.",
+    ),
 ) -> JSONResponse:
     """Check one or more domains. Shares logic with the MCP `check_domains` tool."""
     t0 = time.perf_counter()
@@ -148,7 +200,8 @@ async def api_domain(
     raw_parts = [p.strip() for p in q.split(",") if p.strip()]
     # Cap for counting matches DomainChecker.check_domains truncation.
     capped = raw_parts[: dc.batch_cap]
-    _record_metrics_async("http", len(capped))
+    area_label = normalize_area(area or source or "instant_domain_search")
+    _record_metrics_async("http", len(capped), area=area_label)
     payload = await dc.check_domains(raw_parts)
     payload["timing_ms"] = int((time.perf_counter() - t0) * 1000)
 

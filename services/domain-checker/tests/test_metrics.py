@@ -24,14 +24,19 @@ BOOTSTRAP_BODY = {
 def test_metrics_record_and_persist(tmp_path: Path):
     path = tmp_path / "metrics.json"
     m = RequestMetrics(path=path, database_url=None)
-    m.record("http", domain_count=2)
-    m.record("mcp", domain_count=1)
+    m.record("http", domain_count=2, area="instant_domain_search")
+    m.record("mcp", domain_count=1, area="other")
+    m.record_hit("world_time_converter")
     snap = m.snapshot()
     assert snap["total_checks"] == 2
     assert snap["by_source"]["http"] == 1
     assert snap["by_source"]["mcp"] == 1
     assert snap["domains_checked"] == 3
+    assert snap["by_area"]["instant_domain_search"]["checks"] == 1
+    assert snap["by_area"]["instant_domain_search"]["domains_checked"] == 2
+    assert snap["by_area"]["world_time_converter"]["hits"] == 1
     assert snap["last_24h"]["checks"] == 2
+    assert snap["last_24h"]["by_area"]["world_time_converter"]["hits"] == 1
     assert snap["persistence"] == "file"
     assert path.is_file()
 
@@ -41,6 +46,15 @@ def test_metrics_record_and_persist(tmp_path: Path):
     assert snap2["total_checks"] == 2
     assert snap2["by_source"]["http"] == 1
     assert snap2["domains_checked"] == 3
+    assert snap2["by_area"]["world_time_converter"]["hits"] == 1
+
+
+def test_normalize_area_aliases():
+    from app.metrics import normalize_area
+
+    assert normalize_area("InstantDomainSearch") == "instant_domain_search"
+    assert normalize_area("world-time-converter") == "world_time_converter"
+    assert normalize_area("nope") == "other"
 
 
 def test_metrics_snapshot_has_no_domain_names(tmp_path: Path):
@@ -97,8 +111,17 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
     before = (await api_client_metrics.get("/stats")).json()
     assert before["total_checks"] == 0
 
-    resp = await api_client_metrics.get("/api/domain", params={"q": "a.com,b.com"})
+    resp = await api_client_metrics.get(
+        "/api/domain",
+        params={"q": "a.com,b.com", "area": "instant_domain_search"},
+    )
     assert resp.status_code == 200
+
+    hit = await api_client_metrics.get(
+        "/api/hit", params={"area": "world_time_converter"}
+    )
+    assert hit.status_code == 200
+    assert hit.json()["area"] == "world_time_converter"
 
     stats = (await api_client_metrics.get("/stats")).json()
     assert stats["total_checks"] == 1
@@ -106,7 +129,11 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
     assert stats["by_source"]["mcp"] == 0
     assert stats["domains_checked"] == 2
     assert stats["last_24h"]["http"] == 1
-    assert "/stats" in (await api_client_metrics.get("/openapi.json")).json()["paths"]
+    assert stats["by_area"]["instant_domain_search"]["checks"] == 1
+    assert stats["by_area"]["world_time_converter"]["hits"] == 1
+    paths = (await api_client_metrics.get("/openapi.json")).json()["paths"]
+    assert "/stats" in paths
+    assert "/api/hit" in paths
 
 
 @pytest.mark.asyncio

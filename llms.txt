@@ -1,10 +1,10 @@
 # forwardslashdot
 
-> Utilities on https://www.forwardslashdot.com. Time comparison is a page on this origin. Domain availability is a separate API.
+> Utilities on https://www.forwardslashdot.com. World Time Converter is a page on this origin. Domain availability is a separate API. Public aggregates live at /stats/.
 
-## Time
+## World Time Converter
 
-- [Time](https://www.forwardslashdot.com/utilities/time.html): Compare cities on one shared day. The page uses the IANA time zone database in the browser, including daylight saving. Drag the day or open a link.
+- [World Time Converter](https://www.forwardslashdot.com/worldtimeconverter): Compare cities on one shared day. The page uses the IANA time zone database in the browser, including daylight saving. Drag the day or open a link.
 
 Build a link with these query parameters:
 
@@ -16,13 +16,18 @@ Build a link with these query parameters:
 
 Example: 9:00 AM in Los Angeles on 15 January 2026 is 5:00 PM in London the same day and 2:00 AM in Tokyo the next day.
 
-https://www.forwardslashdot.com/utilities/time.html?cities=Los%20Angeles~America/Los_Angeles,London~Europe/London,Tokyo~Asia/Tokyo&anchor=Los%20Angeles~America/Los_Angeles&at=2026-01-15T09:00
+https://www.forwardslashdot.com/worldtimeconverter?cities=Los%20Angeles~America/Los_Angeles,London~Europe/London,Tokyo~Asia/Tokyo&anchor=Los%20Angeles~America/Los_Angeles&at=2026-01-15T09:00
 
 Blue on the page is the workday in that city. Gold is the two hours on either side. Gray is night. A suggested meeting is only "everyone" when every city stays inside the workday for the whole duration. Otherwise the page shows the closest windows and says who is outside.
 
 City names and IANA zones are both accepted in the search box. `sf` is San Francisco, `nyc` is New York.
 
-## Domain availability
+## Instant Domain Search
 
-- [Domain page](https://www.forwardslashdot.com/utilities/domain.html): Instant search on this site.
+- [Instant Domain Search](https://www.forwardslashdot.com/instantdomainsearch/): Instant search on this site.
 - [Domain API](https://api.forwardslashdot.com/llms.txt): REST, OpenAPI, and MCP for availability checks.
+
+## Stats
+
+- [Stats page](https://www.forwardslashdot.com/stats/): Apple-clean presentation of public aggregates by site area.
+- [Stats API](https://api.forwardslashdot.com/stats): JSON totals by transport (`http`/`mcp`) and area (`instant_domain_search`, `world_time_converter`). No query logs or PII.
