@@ -156,12 +156,13 @@
     <ul>
       <li><code class="inline">GET /api/domain?q=</code> — comma-separated batch (capped)</li>
       <li><code class="inline">/mcp</code> — FastMCP Streamable HTTP; tool <code class="inline">check_domains</code></li>
-      <li>Also <code class="inline">/health</code>, <code class="inline">/llms.txt</code>, <code class="inline">/.well-known/mcp.json</code>, <code class="inline">/openapi.json</code></li>
+      <li>Also <code class="inline">/health</code>, <code class="inline">/stats</code>, <code class="inline">/llms.txt</code>, <code class="inline">/.well-known/mcp.json</code>, <code class="inline">/openapi.json</code></li>
     </ul>
 
     <h2>curl (live)</h2>
     <pre>curl -s 'https://api.forwardslashdot.com/api/domain?q=example.com'
 curl -s 'https://api.forwardslashdot.com/health'
+curl -s 'https://api.forwardslashdot.com/stats'
 curl -s 'https://api.forwardslashdot.com/llms.txt'
 curl -s 'https://api.forwardslashdot.com/.well-known/mcp.json'</pre>
 

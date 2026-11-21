@@ -17,9 +17,13 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY app ./app
 COPY pyproject.toml README.md ./
 
-# Non-root
-RUN useradd --create-home --uid 10001 appuser
+# Non-root; metrics JSON lives under /data (mount a volume to persist across restarts).
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p /data \
+    && chown appuser:appuser /data
 USER appuser
+
+ENV METRICS_PATH=/data/metrics.json
 
 EXPOSE 8000
 

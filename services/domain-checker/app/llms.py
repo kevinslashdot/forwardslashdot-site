@@ -30,6 +30,7 @@ This service is part of the forwardslashdot.com project. The marketing site rema
 ## Endpoints
 
 - [Health]({u("/health")}): Liveness probe — JSON `{{"status":"ok"}}`.
+- [Stats]({u("/stats")}): Aggregate domain-check request counts (HTTP + MCP); no query logs.
 - [Domain API]({u("/api/domain")}): `GET /api/domain?q=` — comma-separated domains, batch capped (~25). Shared logic with the MCP tool.
 - [OpenAPI]({u("/openapi.json")}): Machine-readable HTTP API schema.
 - [MCP]({u("/mcp")}): FastMCP Streamable HTTP endpoint. Tool: `check_domains`.

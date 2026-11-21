@@ -19,6 +19,7 @@ from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
 from app.llms import MCP_DISCOVERY, build_llms_txt
+from app.metrics import metrics
 
 SERVICE_TITLE = "forwardslashdot domain checker"
 SERVICE_DESCRIPTION = (
@@ -55,6 +56,7 @@ async def check_domains(domains: list[str] | str) -> dict[str, Any]:
         domain_list = checker.parse_batch(domains)
     else:
         domain_list = list(domains)[: checker.batch_cap]
+    metrics.record("mcp", domain_count=len(domain_list))
     return await checker.check_domains(domain_list)
 
 
@@ -91,6 +93,12 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "domain-checker"}
 
 
+@app.get("/stats", tags=["ops"])
+async def stats() -> dict[str, Any]:
+    """Aggregate domain-check request counts (HTTP + MCP). No query logs."""
+    return metrics.snapshot()
+
+
 @app.get("/api/domain", tags=["domains"])
 async def api_domain(
     request: Request,
@@ -106,6 +114,9 @@ async def api_domain(
     if dc is None:
         raise HTTPException(status_code=503, detail="service not ready")
     raw_parts = [p.strip() for p in q.split(",") if p.strip()]
+    # Cap for counting matches DomainChecker.check_domains truncation.
+    capped = raw_parts[: dc.batch_cap]
+    metrics.record("http", domain_count=len(capped))
     return await dc.check_domains(raw_parts)
 
 
