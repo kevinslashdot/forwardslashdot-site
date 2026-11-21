@@ -1,0 +1,6 @@
+# Neon CLI / local secrets — never commit
+.neon
+.env
+.env.local
+.env.*.local
+*.pem

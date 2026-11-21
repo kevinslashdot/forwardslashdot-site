@@ -1,0 +1,23 @@
+# Self-hosted Umami analytics for forwardslashdot.com
+# Image: official Postgres build. Secrets: DATABASE_URL, APP_SECRET.
+
+app = "forwardslashdot-umami"
+primary_region = "ord"
+
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[build]
+  image = "ghcr.io/umami-software/umami:postgresql-latest"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
