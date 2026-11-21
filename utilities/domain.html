@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Domain availability — forwardslashdot</title>
+  <meta name="description" content="Domain availability utility for forwardslashdot — REST and MCP. Run locally until the public API is hosted." />
+  <style>
+    :root {
+      --bg-top: #f5f5f7;
+      --bg-bottom: #e8e8ed;
+      --ink: #1d1d1f;
+      --ink-soft: #6e6e73;
+      --link: #0071e3;
+      --hairline: rgba(29, 29, 31, 0.12);
+      --code-bg: rgba(29, 29, 31, 0.05);
+      --glow: rgba(255, 255, 255, 0.7);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+        "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(120% 80% at 50% -10%, var(--glow), transparent 55%),
+        linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
+    }
+
+    .wrap {
+      max-width: 36rem;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    .back {
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+      margin-bottom: 2.5rem;
+      display: inline-block;
+    }
+
+    .back:hover {
+      color: var(--link);
+    }
+
+    h1 {
+      font-size: clamp(1.75rem, 5vw, 2.25rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+    }
+
+    .lede {
+      font-size: 1.05rem;
+      color: var(--ink-soft);
+      margin-bottom: 2rem;
+    }
+
+    .status {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      border-bottom: 1px solid var(--hairline);
+      padding-bottom: 0.35rem;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      margin: 2rem 0 0.65rem;
+    }
+
+    p, li {
+      font-size: 0.95rem;
+      color: var(--ink-soft);
+    }
+
+    ul {
+      margin: 0.5rem 0 0 1.15rem;
+    }
+
+    li + li {
+      margin-top: 0.35rem;
+    }
+
+    code, pre {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border-radius: 0.65rem;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0 0;
+      color: var(--ink);
+      line-height: 1.45;
+    }
+
+    code.inline {
+      background: var(--code-bg);
+      padding: 0.1em 0.35em;
+      border-radius: 0.3rem;
+      color: var(--ink);
+    }
+
+    .footnote {
+      margin-top: 2.75rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--hairline);
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="/">← forwardslashdot</a>
+
+    <h1>Domain availability</h1>
+    <p class="lede">
+      REST and MCP domain checks for forwardslashdot. The code is in the repo;
+      a public API host is the next deploy step (Docker / Coolify — separate from this static site).
+    </p>
+    <p class="status">API not live on www yet</p>
+
+    <h2>What it is</h2>
+    <ul>
+      <li><code class="inline">GET /api/domain?q=</code> — comma-separated batch (capped)</li>
+      <li><code class="inline">/mcp</code> — FastMCP Streamable HTTP; tool <code class="inline">check_domains</code></li>
+      <li>Also <code class="inline">/health</code>, <code class="inline">/llms.txt</code>, <code class="inline">/.well-known/mcp.json</code></li>
+    </ul>
+    <p style="margin-top: 0.85rem;">
+      Cloudflare Pages hosts only this static site. The FastAPI service needs its own Docker host.
+    </p>
+
+    <h2>Run locally with Docker</h2>
+    <pre>cd services/domain-checker
+docker build -t forwardslashdot-domain-checker .
+docker run --rm -p 8000:8000 \
+  -e PUBLIC_BASE_URL=http://127.0.0.1:8000 \
+  forwardslashdot-domain-checker</pre>
+
+    <h2>Or with uvicorn</h2>
+    <pre>cd services/domain-checker
+python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</pre>
+
+    <h2>curl (local today)</h2>
+    <pre>curl -s 'http://127.0.0.1:8000/api/domain?q=example.com'
+curl -s 'http://127.0.0.1:8000/health'</pre>
+
+    <h2>curl (future public host)</h2>
+    <p>
+      After Coolify (or similar) is up, point these at that HTTPS origin —
+      not at <code class="inline">www.forwardslashdot.com</code> (Pages is static-only).
+    </p>
+    <pre>curl -s 'https://YOUR-API-HOST/api/domain?q=example.com'
+curl -s 'https://YOUR-API-HOST/health'</pre>
+
+    <h2>Docs</h2>
+    <p>
+      Full service README (layout, env vars, Coolify notes, MCP config):
+      <a href="https://github.com/kevinslashdot/forwardslashdot-site/tree/main/services/domain-checker">
+        github.com/…/services/domain-checker
+      </a>
+    </p>
+
+    <p class="footnote">
+      Next step: deploy <code class="inline">services/domain-checker</code> with Docker on Coolify (or another host),
+      set <code class="inline">PUBLIC_BASE_URL</code>, then link this page to the live <code class="inline">/api/domain</code> URL.
+    </p>
+  </div>
+</body>
+</html>
