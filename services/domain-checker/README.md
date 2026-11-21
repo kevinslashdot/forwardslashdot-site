@@ -9,7 +9,9 @@ Lives under `services/domain-checker/` so the Cloudflare Pages deploy of the rep
 | Surface | Path | Notes |
 |--------|------|--------|
 | Health | `GET /health` | Liveness |
-| Stats | `GET /stats` | Aggregate check counts (HTTP + MCP); no query logs |
+| Stats | `GET /stats` | Aggregate check/hit counts by transport + site area; no query logs |
+| Hit | `GET /api/hit?area=` | Attribute a non-PII utility hit (e.g. `world_time_converter`) |
+| Domain | `GET /api/domain?q=&area=` | Optional `area` for stats attribution |
 | REST | `GET /api/domain?q=` | Comma-separated batch, capped (~25) |
 | MCP | `/mcp` | FastMCP Streamable HTTP; tool `check_domains` |
 | OpenAPI | `/openapi.json` | FastAPI schema |

@@ -1,0 +1,7 @@
+# Legacy utility paths → canonical pretty URLs
+/utilities/domain           /instantdomainsearch/   301
+/utilities/domain.html      /instantdomainsearch/   301
+/utilities/domain/          /instantdomainsearch/   301
+/utilities/time             /worldtimeconverter     301
+/utilities/time.html        /worldtimeconverter     301
+/utilities/time/            /worldtimeconverter     301
