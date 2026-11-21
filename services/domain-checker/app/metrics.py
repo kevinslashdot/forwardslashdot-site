@@ -1,7 +1,8 @@
 """Lightweight request metrics for domain checks and utility hits.
 
 Counts HTTP `/api/domain`, MCP `check_domains`, and `/api/hit` (site areas).
-Aggregate totals only — no per-domain query logs, no PII.
+Aggregate totals only — no per-domain query logs, no PII, no raw IPs.
+Coarse geo is ISO 3166-1 alpha-2 country codes from edge headers only.
 
 Persistence order:
 1. Postgres when ``DATABASE_URL`` or ``NEON_DATABASE_URL`` is set (schema
@@ -14,11 +15,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 from urllib.parse import urlparse
 
 Source = Literal["http", "mcp"]
@@ -30,6 +32,21 @@ ALLOWED_AREAS = frozenset(
         "other",
     }
 )
+
+# Cloudflare / edge country headers only — never X-Forwarded-For or client IPs.
+_COUNTRY_HEADER_NAMES = (
+    "cf-ipcountry",
+    "cloudflare-ipcountry",
+    "cf-ip-country",
+    "x-country-code",
+    "x-appengine-country",
+    "x-vercel-ip-country",
+    "cloudfront-viewer-country",
+)
+
+# ISO 3166-1 alpha-2, plus Cloudflare specials XX (unknown) and T1 (Tor).
+_COUNTRY_RE = re.compile(r"^[A-Z]{2}$|^T1$")
+UNKNOWN_COUNTRY = "XX"
 
 DEFAULT_METRICS_PATH = os.getenv(
     "METRICS_PATH",
@@ -56,6 +73,33 @@ def normalize_area(raw: str | None) -> str:
     }
     key = aliases.get(key, key)
     return key if key in ALLOWED_AREAS else "other"
+
+
+def normalize_country(raw: str | None) -> str:
+    """Return a safe 2-letter (or CF T1) country code; never an IP or free text."""
+    if not raw:
+        return UNKNOWN_COUNTRY
+    code = str(raw).strip().upper()
+    # Reject anything that looks like an IP or longer token.
+    if len(code) > 3 or "." in code or ":" in code:
+        return UNKNOWN_COUNTRY
+    if code in ("XX", "T1"):
+        return code
+    if _COUNTRY_RE.match(code) and code.isalpha():
+        return code
+    return UNKNOWN_COUNTRY
+
+
+def country_from_headers(headers: Mapping[str, str] | None) -> str:
+    """Prefer Cloudflare CF-IPCountry (and similar edge headers). Never use IP headers."""
+    if not headers:
+        return UNKNOWN_COUNTRY
+    # Case-insensitive lookup without copying IPs into metrics.
+    lowered = {str(k).lower(): str(v) for k, v in headers.items()}
+    for name in _COUNTRY_HEADER_NAMES:
+        if name in lowered:
+            return normalize_country(lowered[name])
+    return UNKNOWN_COUNTRY
 
 
 def _pg_schema() -> str:
@@ -87,6 +131,10 @@ def _empty_area() -> dict[str, int]:
     return {"checks": 0, "domains_checked": 0, "hits": 0}
 
 
+def _empty_country() -> dict[str, int]:
+    return {"checks": 0, "domains_checked": 0, "hits": 0}
+
+
 def _area_payload(areas: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
     out: dict[str, dict[str, int]] = {}
     for name in sorted(ALLOWED_AREAS):
@@ -97,6 +145,38 @@ def _area_payload(areas: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]
             "hits": int(slot.get("hits") or 0),
         }
     return out
+
+
+def _country_payload(
+    countries: dict[str, dict[str, int]],
+) -> dict[str, dict[str, int]]:
+    """Public country aggregates — codes only, sorted by activity then code."""
+    items: list[tuple[str, dict[str, int]]] = []
+    for code, slot in (countries or {}).items():
+        safe = normalize_country(code)
+        checks = int(slot.get("checks") or 0)
+        domains = int(slot.get("domains_checked") or 0)
+        hits = int(slot.get("hits") or 0)
+        if checks == 0 and domains == 0 and hits == 0:
+            continue
+        items.append(
+            (
+                safe,
+                {
+                    "checks": checks,
+                    "domains_checked": domains,
+                    "hits": hits,
+                },
+            )
+        )
+    items.sort(
+        key=lambda pair: (
+            -(pair[1]["checks"] + pair[1]["hits"]),
+            -(pair[1]["domains_checked"]),
+            pair[0],
+        )
+    )
+    return {code: vals for code, vals in items}
 
 
 @dataclass
@@ -116,6 +196,10 @@ class RequestMetrics:
     areas: dict[str, dict[str, int]] = field(default_factory=dict)
     # hour_epoch -> area -> {checks, domains, hits}
     areas_hourly: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
+    # country_code -> {checks, domains_checked, hits}
+    countries: dict[str, dict[str, int]] = field(default_factory=dict)
+    # hour_epoch -> country -> {checks, domains, hits}
+    countries_hourly: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
     started_at: float = field(default_factory=time.time)
     persistence: str = "file"
     _pg_ready: bool = field(default=False, repr=False)
@@ -191,6 +275,28 @@ class RequestMetrics:
                     )
                     """
                 )
+                conn.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS "{_pg_schema()}".metrics_countries (
+                      country TEXT PRIMARY KEY,
+                      checks BIGINT NOT NULL DEFAULT 0,
+                      domains_checked BIGINT NOT NULL DEFAULT 0,
+                      hits BIGINT NOT NULL DEFAULT 0
+                    )
+                    """
+                )
+                conn.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS "{_pg_schema()}".metrics_countries_hourly (
+                      hour_epoch BIGINT NOT NULL,
+                      country TEXT NOT NULL,
+                      checks BIGINT NOT NULL DEFAULT 0,
+                      domains BIGINT NOT NULL DEFAULT 0,
+                      hits BIGINT NOT NULL DEFAULT 0,
+                      PRIMARY KEY (hour_epoch, country)
+                    )
+                    """
+                )
                 for area in ALLOWED_AREAS:
                     conn.execute(
                         f"""
@@ -216,6 +322,7 @@ class RequestMetrics:
                     if row[4] is not None:
                         self.started_at = float(row[4])
                 self._refresh_areas_cache(conn)
+                self._refresh_countries_cache(conn)
             self.persistence = "postgres"
             self._pg_ready = True
             return True
@@ -239,6 +346,22 @@ class RequestMetrics:
             }
         self.areas = areas
 
+    def _refresh_countries_cache(self, conn: Any) -> None:
+        rows = conn.execute(
+            f"""
+            SELECT country, checks, domains_checked, hits
+            FROM "{_pg_schema()}".metrics_countries
+            """
+        ).fetchall()
+        countries: dict[str, dict[str, int]] = {}
+        for row in rows or []:
+            code = normalize_country(str(row[0]))
+            slot = countries.setdefault(code, _empty_country())
+            slot["checks"] += int(row[1] or 0)
+            slot["domains_checked"] += int(row[2] or 0)
+            slot["hits"] += int(row[3] or 0)
+        self.countries = countries
+
     def _prune_hourly(self, now: float | None = None) -> None:
         cutoff = _hour_bucket(now) - 24 * 3600
         stale = [k for k in self.hourly if int(k) < cutoff]
@@ -247,6 +370,9 @@ class RequestMetrics:
         stale_areas = [k for k in self.areas_hourly if int(k) < cutoff]
         for k in stale_areas:
             del self.areas_hourly[k]
+        stale_countries = [k for k in self.countries_hourly if int(k) < cutoff]
+        for k in stale_countries:
+            del self.countries_hourly[k]
 
     def _load_file(self) -> None:
         try:
@@ -300,6 +426,35 @@ class RequestMetrics:
                     slot["hits"] += int(vals.get("hits") or 0)
                 cleaned_ah[str(hour)] = hour_slot
             self.areas_hourly = cleaned_ah
+        countries_raw = raw.get("countries") or {}
+        if isinstance(countries_raw, dict):
+            cleaned_countries: dict[str, dict[str, int]] = {}
+            for k, v in countries_raw.items():
+                if not isinstance(v, dict):
+                    continue
+                code = normalize_country(str(k))
+                slot = cleaned_countries.setdefault(code, _empty_country())
+                slot["checks"] += int(v.get("checks") or 0)
+                slot["domains_checked"] += int(v.get("domains_checked") or 0)
+                slot["hits"] += int(v.get("hits") or 0)
+            self.countries = cleaned_countries
+        countries_hourly = raw.get("countries_hourly") or {}
+        if isinstance(countries_hourly, dict):
+            cleaned_ch: dict[str, dict[str, dict[str, int]]] = {}
+            for hour, by_country in countries_hourly.items():
+                if not isinstance(by_country, dict):
+                    continue
+                hour_slot: dict[str, dict[str, int]] = {}
+                for country_name, vals in by_country.items():
+                    if not isinstance(vals, dict):
+                        continue
+                    code = normalize_country(str(country_name))
+                    slot = hour_slot.setdefault(code, {"checks": 0, "domains": 0, "hits": 0})
+                    slot["checks"] += int(vals.get("checks") or 0)
+                    slot["domains"] += int(vals.get("domains") or 0)
+                    slot["hits"] += int(vals.get("hits") or 0)
+                cleaned_ch[str(hour)] = hour_slot
+            self.countries_hourly = cleaned_ch
         if raw.get("started_at"):
             try:
                 self.started_at = float(raw["started_at"])
@@ -317,6 +472,8 @@ class RequestMetrics:
             "hourly": self.hourly,
             "areas": self.areas,
             "areas_hourly": self.areas_hourly,
+            "countries": self.countries,
+            "countries_hourly": self.countries_hourly,
             "started_at": self.started_at,
         }
         try:
@@ -347,12 +504,33 @@ class RequestMetrics:
         hour_slot["domains"] = int(hour_slot.get("domains") or 0) + domains
         hour_slot["hits"] = int(hour_slot.get("hits") or 0) + hits
 
+    def _bump_country_memory(
+        self,
+        country: str,
+        *,
+        checks: int = 0,
+        domains: int = 0,
+        hits: int = 0,
+    ) -> None:
+        code = normalize_country(country)
+        slot = self.countries.setdefault(code, _empty_country())
+        slot["checks"] = int(slot.get("checks") or 0) + checks
+        slot["domains_checked"] = int(slot.get("domains_checked") or 0) + domains
+        slot["hits"] = int(slot.get("hits") or 0) + hits
+        bucket = str(_hour_bucket())
+        hour_map = self.countries_hourly.setdefault(bucket, {})
+        hour_slot = hour_map.setdefault(code, {"checks": 0, "domains": 0, "hits": 0})
+        hour_slot["checks"] = int(hour_slot.get("checks") or 0) + checks
+        hour_slot["domains"] = int(hour_slot.get("domains") or 0) + domains
+        hour_slot["hits"] = int(hour_slot.get("hits") or 0) + hits
+
     def _record_postgres(
         self,
         source: Source | None,
         domain_count: int,
         *,
         area: str,
+        country: str = UNKNOWN_COUNTRY,
         hits: int = 0,
         checks: int = 0,
     ) -> bool:
@@ -368,6 +546,7 @@ class RequestMetrics:
         check_inc = max(0, int(checks))
         hit_inc = max(0, int(hits))
         domain_inc = max(0, int(domain_count))
+        country_code = normalize_country(country)
         try:
             with psycopg.connect(self.database_url, connect_timeout=10) as conn:
                 if source is not None:
@@ -423,6 +602,35 @@ class RequestMetrics:
                     """,
                     (bucket, area, check_inc, domain_inc, hit_inc),
                 )
+                conn.execute(
+                    f"""
+                    INSERT INTO "{_pg_schema()}".metrics_countries
+                      (country, checks, domains_checked, hits)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (country) DO UPDATE SET
+                      checks = "{_pg_schema()}".metrics_countries.checks
+                               + EXCLUDED.checks,
+                      domains_checked = "{_pg_schema()}".metrics_countries.domains_checked
+                                        + EXCLUDED.domains_checked,
+                      hits = "{_pg_schema()}".metrics_countries.hits + EXCLUDED.hits
+                    """,
+                    (country_code, check_inc, domain_inc, hit_inc),
+                )
+                conn.execute(
+                    f"""
+                    INSERT INTO "{_pg_schema()}".metrics_countries_hourly
+                      (hour_epoch, country, checks, domains, hits)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (hour_epoch, country) DO UPDATE SET
+                      checks = "{_pg_schema()}".metrics_countries_hourly.checks
+                               + EXCLUDED.checks,
+                      domains = "{_pg_schema()}".metrics_countries_hourly.domains
+                                + EXCLUDED.domains,
+                      hits = "{_pg_schema()}".metrics_countries_hourly.hits
+                             + EXCLUDED.hits
+                    """,
+                    (bucket, country_code, check_inc, domain_inc, hit_inc),
+                )
                 cutoff = bucket - 24 * 3600
                 conn.execute(
                     f'DELETE FROM "{_pg_schema()}".metrics_hourly WHERE hour_epoch < %s',
@@ -430,6 +638,10 @@ class RequestMetrics:
                 )
                 conn.execute(
                     f'DELETE FROM "{_pg_schema()}".metrics_areas_hourly WHERE hour_epoch < %s',
+                    (cutoff,),
+                )
+                conn.execute(
+                    f'DELETE FROM "{_pg_schema()}".metrics_countries_hourly WHERE hour_epoch < %s',
                     (cutoff,),
                 )
                 conn.commit()
@@ -446,6 +658,7 @@ class RequestMetrics:
                         self.mcp_checks = int(row[2] or 0)
                         self.domains_checked = int(row[3] or 0)
                 self._refresh_areas_cache(conn)
+                self._refresh_countries_cache(conn)
             self.persistence = "postgres"
             return True
         except Exception:
@@ -496,6 +709,24 @@ class RequestMetrics:
                     """,
                     (cutoff,),
                 ).fetchall()
+                country_rows = conn.execute(
+                    f"""
+                    SELECT country, checks, domains_checked, hits
+                    FROM "{_pg_schema()}".metrics_countries
+                    """
+                ).fetchall()
+                country_hourly_rows = conn.execute(
+                    f"""
+                    SELECT country,
+                           COALESCE(SUM(checks),0),
+                           COALESCE(SUM(domains),0),
+                           COALESCE(SUM(hits),0)
+                    FROM "{_pg_schema()}".metrics_countries_hourly
+                    WHERE hour_epoch >= %s
+                    GROUP BY country
+                    """,
+                    (cutoff,),
+                ).fetchall()
             if not totals:
                 return None
             last_http = int(hourly[0] or 0) if hourly else 0
@@ -516,6 +747,20 @@ class RequestMetrics:
                     "domains_checked": int(row[2] or 0),
                     "hits": int(row[3] or 0),
                 }
+            countries: dict[str, dict[str, int]] = {}
+            for row in country_rows or []:
+                code = normalize_country(str(row[0]))
+                slot = countries.setdefault(code, _empty_country())
+                slot["checks"] += int(row[1] or 0)
+                slot["domains_checked"] += int(row[2] or 0)
+                slot["hits"] += int(row[3] or 0)
+            last_countries: dict[str, dict[str, int]] = {}
+            for row in country_hourly_rows or []:
+                code = normalize_country(str(row[0]))
+                slot = last_countries.setdefault(code, _empty_country())
+                slot["checks"] += int(row[1] or 0)
+                slot["domains_checked"] += int(row[2] or 0)
+                slot["hits"] += int(row[3] or 0)
             self.persistence = "postgres"
             return {
                 "service": "domain-checker",
@@ -525,6 +770,7 @@ class RequestMetrics:
                     "mcp": int(totals[2] or 0),
                 },
                 "by_area": _area_payload(areas),
+                "by_country": _country_payload(countries),
                 "domains_checked": int(totals[3] or 0),
                 "last_24h": {
                     "checks": last_http + last_mcp,
@@ -532,6 +778,7 @@ class RequestMetrics:
                     "mcp": last_mcp,
                     "domains_checked": last_domains,
                     "by_area": _area_payload(last_areas),
+                    "by_country": _country_payload(last_countries),
                 },
                 "persistence": "postgres",
                 "started_at": time.strftime(
@@ -548,13 +795,15 @@ class RequestMetrics:
         domain_count: int = 0,
         *,
         area: str | None = None,
+        country: str | None = None,
     ) -> None:
         """Record one check request from HTTP or MCP."""
         n = max(0, int(domain_count))
         area_key = normalize_area(area if area is not None else ("other" if source == "mcp" else "other"))
+        country_key = normalize_country(country)
         with self._lock:
             if self._pg_ready and self._record_postgres(
-                source, n, area=area_key, checks=1
+                source, n, area=area_key, country=country_key, checks=1
             ):
                 return
             self.total_checks += 1
@@ -570,21 +819,29 @@ class RequestMetrics:
             slot[source] = int(slot.get(source) or 0) + 1
             slot["domains"] = int(slot.get("domains") or 0) + n
             self._bump_area_memory(area_key, checks=1, domains=n)
+            self._bump_country_memory(country_key, checks=1, domains=n)
             self._save_file_unlocked()
 
-    def record_hit(self, area: str | None = None) -> None:
+    def record_hit(
+        self,
+        area: str | None = None,
+        *,
+        country: str | None = None,
+    ) -> None:
         """Record one utility / page hit (no domain check)."""
         area_key = normalize_area(area)
+        country_key = normalize_country(country)
         with self._lock:
             if self._pg_ready and self._record_postgres(
-                None, 0, area=area_key, hits=1
+                None, 0, area=area_key, country=country_key, hits=1
             ):
                 return
             self._bump_area_memory(area_key, hits=1)
+            self._bump_country_memory(country_key, hits=1)
             self._save_file_unlocked()
 
     def snapshot(self) -> dict[str, Any]:
-        """Public aggregate JSON (no domain names / query logs)."""
+        """Public aggregate JSON (no domain names / query logs / IPs)."""
         with self._lock:
             if self._pg_ready:
                 snap = self._snapshot_postgres()
@@ -607,6 +864,14 @@ class RequestMetrics:
                     slot["checks"] += int(vals.get("checks") or 0)
                     slot["domains_checked"] += int(vals.get("domains") or 0)
                     slot["hits"] += int(vals.get("hits") or 0)
+            last_countries: dict[str, dict[str, int]] = {}
+            for hour_map in self.countries_hourly.values():
+                for country_name, vals in hour_map.items():
+                    code = normalize_country(country_name)
+                    slot = last_countries.setdefault(code, _empty_country())
+                    slot["checks"] += int(vals.get("checks") or 0)
+                    slot["domains_checked"] += int(vals.get("domains") or 0)
+                    slot["hits"] += int(vals.get("hits") or 0)
             return {
                 "service": "domain-checker",
                 "total_checks": self.total_checks,
@@ -615,6 +880,7 @@ class RequestMetrics:
                     "mcp": self.mcp_checks,
                 },
                 "by_area": _area_payload(self.areas),
+                "by_country": _country_payload(self.countries),
                 "domains_checked": self.domains_checked,
                 "last_24h": {
                     "checks": last_24h_checks,
@@ -622,6 +888,7 @@ class RequestMetrics:
                     "mcp": last_24h_mcp,
                     "domains_checked": last_24h_domains,
                     "by_area": _area_payload(last_areas),
+                    "by_country": _country_payload(last_countries),
                 },
                 "persistence": self.persistence,
                 "started_at": time.strftime(

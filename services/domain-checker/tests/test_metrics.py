@@ -24,9 +24,9 @@ BOOTSTRAP_BODY = {
 def test_metrics_record_and_persist(tmp_path: Path):
     path = tmp_path / "metrics.json"
     m = RequestMetrics(path=path, database_url=None)
-    m.record("http", domain_count=2, area="instant_domain_search")
-    m.record("mcp", domain_count=1, area="other")
-    m.record_hit("world_time_converter")
+    m.record("http", domain_count=2, area="instant_domain_search", country="US")
+    m.record("mcp", domain_count=1, area="other", country="XX")
+    m.record_hit("world_time_converter", country="DE")
     snap = m.snapshot()
     assert snap["total_checks"] == 2
     assert snap["by_source"]["http"] == 1
@@ -35,8 +35,12 @@ def test_metrics_record_and_persist(tmp_path: Path):
     assert snap["by_area"]["instant_domain_search"]["checks"] == 1
     assert snap["by_area"]["instant_domain_search"]["domains_checked"] == 2
     assert snap["by_area"]["world_time_converter"]["hits"] == 1
+    assert snap["by_country"]["US"]["checks"] == 1
+    assert snap["by_country"]["US"]["domains_checked"] == 2
+    assert snap["by_country"]["DE"]["hits"] == 1
     assert snap["last_24h"]["checks"] == 2
     assert snap["last_24h"]["by_area"]["world_time_converter"]["hits"] == 1
+    assert snap["last_24h"]["by_country"]["DE"]["hits"] == 1
     assert snap["persistence"] == "file"
     assert path.is_file()
 
@@ -47,6 +51,7 @@ def test_metrics_record_and_persist(tmp_path: Path):
     assert snap2["by_source"]["http"] == 1
     assert snap2["domains_checked"] == 3
     assert snap2["by_area"]["world_time_converter"]["hits"] == 1
+    assert snap2["by_country"]["US"]["checks"] == 1
 
 
 def test_normalize_area_aliases():
@@ -57,13 +62,31 @@ def test_normalize_area_aliases():
     assert normalize_area("nope") == "other"
 
 
+def test_normalize_country_and_headers():
+    from app.metrics import country_from_headers, normalize_country
+
+    assert normalize_country("us") == "US"
+    assert normalize_country("T1") == "T1"
+    assert normalize_country("xx") == "XX"
+    assert normalize_country("1.2.3.4") == "XX"
+    assert normalize_country("United States") == "XX"
+    assert normalize_country(None) == "XX"
+    assert country_from_headers({"CF-IPCountry": "CA"}) == "CA"
+    assert country_from_headers({"cf-ipcountry": "gb"}) == "GB"
+    assert country_from_headers({"X-Forwarded-For": "1.2.3.4"}) == "XX"
+    assert country_from_headers({"CF-Connecting-IP": "8.8.8.8"}) == "XX"
+    assert country_from_headers({}) == "XX"
+
+
 def test_metrics_snapshot_has_no_domain_names(tmp_path: Path):
     path = tmp_path / "m.json"
     m = RequestMetrics(path=path, database_url=None)
-    m.record("http", domain_count=1)
+    m.record("http", domain_count=1, country="US")
     blob = json.dumps(m.snapshot())
     assert "example.com" not in blob
     assert "q=" not in blob
+    assert "1.2.3.4" not in blob
+    assert '"US"' in blob
 
 
 @pytest.fixture
@@ -114,14 +137,27 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
     resp = await api_client_metrics.get(
         "/api/domain",
         params={"q": "a.com,b.com", "area": "instant_domain_search"},
+        headers={"CF-IPCountry": "US"},
     )
     assert resp.status_code == 200
 
     hit = await api_client_metrics.get(
-        "/api/hit", params={"area": "world_time_converter"}
+        "/api/hit",
+        params={"area": "world_time_converter"},
+        headers={"CF-IPCountry": "JP"},
     )
     assert hit.status_code == 200
     assert hit.json()["area"] == "world_time_converter"
+    assert hit.json()["country"] == "JP"
+
+    # Give daemon metric threads a moment (non-blocking writes).
+    import time as _time
+
+    for _ in range(40):
+        stats = (await api_client_metrics.get("/stats")).json()
+        if stats.get("total_checks", 0) >= 1 and stats.get("by_country", {}).get("JP"):
+            break
+        _time.sleep(0.05)
 
     stats = (await api_client_metrics.get("/stats")).json()
     assert stats["total_checks"] == 1
@@ -131,6 +167,9 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
     assert stats["last_24h"]["http"] == 1
     assert stats["by_area"]["instant_domain_search"]["checks"] == 1
     assert stats["by_area"]["world_time_converter"]["hits"] == 1
+    assert stats["by_country"]["US"]["checks"] == 1
+    assert stats["by_country"]["JP"]["hits"] == 1
+    assert stats["last_24h"]["by_country"]["US"]["checks"] == 1
     paths = (await api_client_metrics.get("/openapi.json")).json()["paths"]
     assert "/stats" in paths
     assert "/api/hit" in paths
