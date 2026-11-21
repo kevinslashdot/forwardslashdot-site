@@ -10,6 +10,7 @@ passed into FastAPI so the session manager initializes correctly.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -22,6 +23,18 @@ from fastmcp import FastMCP
 from app.domain_checker import DomainChecker
 from app.llms import MCP_DISCOVERY, build_llms_txt
 from app.metrics import metrics
+
+
+def _record_metrics_async(source: str, domain_count: int) -> None:
+    """Postgres metrics writes must not block the domain-check hot path (~100ms+)."""
+
+    def _run() -> None:
+        try:
+            metrics.record(source, domain_count=domain_count)  # type: ignore[arg-type]
+        except Exception:
+            pass
+
+    threading.Thread(target=_run, daemon=True, name="domain-metrics").start()
 
 SERVICE_TITLE = "forwardslashdot domain checker"
 SERVICE_DESCRIPTION = (
@@ -58,7 +71,7 @@ async def check_domains(domains: list[str] | str) -> dict[str, Any]:
         domain_list = checker.parse_batch(domains)
     else:
         domain_list = list(domains)[: checker.batch_cap]
-    metrics.record("mcp", domain_count=len(domain_list))
+    _record_metrics_async("mcp", len(domain_list))
     return await checker.check_domains(domain_list)
 
 
@@ -135,7 +148,7 @@ async def api_domain(
     raw_parts = [p.strip() for p in q.split(",") if p.strip()]
     # Cap for counting matches DomainChecker.check_domains truncation.
     capped = raw_parts[: dc.batch_cap]
-    metrics.record("http", domain_count=len(capped))
+    _record_metrics_async("http", len(capped))
     payload = await dc.check_domains(raw_parts)
     payload["timing_ms"] = int((time.perf_counter() - t0) * 1000)
 
