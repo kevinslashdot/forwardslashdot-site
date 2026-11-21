@@ -426,7 +426,11 @@
     (function () {
       var API = "https://api.forwardslashdot.com/api/domain";
       var TLDS = [".com", ".net", ".org", ".io", ".dev", ".app", ".ai", ".co", ".xyz"];
-      var DEBOUNCE_MS = 320;
+      // Adaptive debounce: short once the label looks intentional; longer while still short.
+      var DEBOUNCE_SHORT_MS = 120;
+      var DEBOUNCE_LONG_MS = 200;
+      var CACHE_TTL_MS = 10 * 60 * 1000;
+      var CACHE_MAX = 200;
 
       var tldGroup = document.getElementById("tld-group");
       var tldSuffix = document.getElementById("tld-suffix");
@@ -438,6 +442,8 @@
       var timer = null;
       var abortController = null;
       var requestSeq = 0;
+      var lastTypedAt = 0;
+      var cache = new Map(); // domain -> { status, at, domain }
 
       function normalizeLabel(raw) {
         return String(raw || "")
@@ -458,8 +464,38 @@
         statusEl.textContent = message || "";
       }
 
+      function applyRow(domain, status) {
+        if (status === "available") setState("available", domain, "Available");
+        else if (status === "registered") setState("taken", domain, "Taken");
+        else setState("invalid", domain, status === "invalid" ? "Invalid" : "Unknown");
+      }
+
       function fullDomain(label) {
         return label + selectedTld;
+      }
+
+      function cacheGet(domain) {
+        var hit = cache.get(domain);
+        if (!hit) return null;
+        if (Date.now() - hit.at > CACHE_TTL_MS) {
+          cache.delete(domain);
+          return null;
+        }
+        return hit;
+      }
+
+      function cacheSet(domain, status, resolved) {
+        if (cache.size >= CACHE_MAX) {
+          var oldest = cache.keys().next().value;
+          cache.delete(oldest);
+        }
+        cache.set(domain, { status: status, at: Date.now(), domain: resolved || domain });
+      }
+
+      function debounceMs(label) {
+        // Longer pause for 1–2 chars (still deciding); snappy once typing a real name.
+        if (label.length >= 3) return DEBOUNCE_SHORT_MS;
+        return DEBOUNCE_LONG_MS;
       }
 
       function selectTld(tld) {
@@ -472,6 +508,7 @@
       }
 
       function scheduleCheck() {
+        lastTypedAt = Date.now();
         var label = normalizeLabel(nameInput.value);
         if (nameInput.value !== label) {
           var pos = nameInput.selectionStart;
@@ -489,22 +526,41 @@
         }
 
         var domain = fullDomain(label);
-        setState("checking", domain, "Checking…");
+        // Optimistic: show the composed name immediately; status fills in when ready.
+        var cached = cacheGet(domain);
+        if (cached) {
+          applyRow(cached.domain || domain, cached.status);
+          clearTimeout(timer);
+          if (abortController) abortController.abort();
+          return;
+        }
 
+        setState("checking", domain, "");
         clearTimeout(timer);
+        var wait = debounceMs(label);
         timer = setTimeout(function () {
+          // If another key landed during the wait, scheduleCheck already reset the timer.
           runCheck(domain);
-        }, DEBOUNCE_MS);
+        }, wait);
       }
 
       function runCheck(domain) {
+        var cached = cacheGet(domain);
+        if (cached) {
+          applyRow(cached.domain || domain, cached.status);
+          return;
+        }
+
         if (abortController) abortController.abort();
         abortController = new AbortController();
         var seq = ++requestSeq;
+        var started = performance.now();
 
+        // No custom headers → avoid CORS preflight (Accept: application/json can force OPTIONS).
         fetch(API + "?q=" + encodeURIComponent(domain), {
           signal: abortController.signal,
-          headers: { Accept: "application/json" },
+          credentials: "omit",
+          cache: "default",
         })
           .then(function (res) {
             if (!res.ok) throw new Error("HTTP " + res.status);
@@ -517,12 +573,19 @@
               setState("invalid", domain, "No result");
               return;
             }
-            if (row.status === "available") {
-              setState("available", row.domain || domain, "Available");
-            } else if (row.status === "registered") {
-              setState("taken", row.domain || domain, "Taken");
-            } else {
-              setState("invalid", row.domain || domain, "Invalid");
+            var status = row.status;
+            if (status === "available" || status === "registered" || status === "invalid") {
+              cacheSet(domain, status, row.domain);
+            }
+            applyRow(row.domain || domain, status);
+            if (window.__domainSearchPerf) {
+              window.__domainSearchPerf.last = {
+                domain: domain,
+                ms: Math.round(performance.now() - started),
+                timing_ms: data.timing_ms,
+                cached: row.cached,
+                source: row.source,
+              };
             }
           })
           .catch(function (err) {
@@ -531,6 +594,8 @@
             setState("invalid", domain, "Try again");
           });
       }
+
+      window.__domainSearchPerf = { last: null };
 
       TLDS.forEach(function (tld, i) {
         var btn = document.createElement("button");

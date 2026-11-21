@@ -46,6 +46,7 @@ async def checker():
             affiliate=_affiliate(),
             batch_cap=25,
             concurrency=5,
+            race_dns=False,  # keep RDAP-only path for mocked HTTP tests
         )
         yield dc
 
@@ -97,7 +98,7 @@ async def test_affiliate_omitted_when_unset():
         return_value=httpx.Response(404)
     )
     async with httpx.AsyncClient() as http:
-        dc = DomainChecker(http_client=http, owns_client=False, affiliate=None)
+        dc = DomainChecker(http_client=http, owns_client=False, affiliate=None, race_dns=False)
         result = await dc.check_one("free2.com")
     assert result["status"] == "available"
     assert "affiliate_url" not in result
@@ -214,7 +215,7 @@ async def api_client(monkeypatch):
             return_value=httpx.Response(404)
         )
 
-        async with DomainChecker(affiliate=_affiliate()) as dc:
+        async with DomainChecker(affiliate=_affiliate(), race_dns=False) as dc:
             main_mod.checker = dc
             main_mod.app.state.checker = dc
             try:
@@ -307,6 +308,7 @@ async def test_mcp_tool_check_domains(monkeypatch):
         http_client=httpx.AsyncClient(),
         affiliate=_affiliate(),
         owns_client=True,
+        race_dns=False,
     ) as dc:
         main_mod.checker = dc
         try:

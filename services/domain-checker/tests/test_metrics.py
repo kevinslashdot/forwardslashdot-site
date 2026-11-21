@@ -72,7 +72,7 @@ async def api_client_metrics(tmp_path: Path, monkeypatch):
             return_value=httpx.Response(404)
         )
 
-        async with DomainChecker(affiliate=None) as dc:
+        async with DomainChecker(affiliate=None, race_dns=False) as dc:
             main_mod.checker = dc
             main_mod.app.state.checker = dc
             # Keep main.metrics in sync with module singleton after reset.
@@ -125,7 +125,7 @@ async def test_mcp_tool_increments_mcp_count(tmp_path: Path, monkeypatch):
             return_value=httpx.Response(404)
         )
 
-        async with DomainChecker(affiliate=None) as dc:
+        async with DomainChecker(affiliate=None, race_dns=False) as dc:
             main_mod.checker = dc
             try:
                 tool_fn = main_mod.check_domains
