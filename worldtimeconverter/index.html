@@ -5,27 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>World Time Converter — forwardslashdot</title>
   <meta name="description" content="World Time Converter by forwardslashdot — compare cities on one day, drag to a time, and see who is in their workday." />
-  <meta name="theme-color" content="#f5f5f7" />
+  <meta name="theme-color" content="#f6f1e8" />
   <link rel="canonical" href="https://www.forwardslashdot.com/worldtimeconverter" />
+  <meta property="og:url" content="https://www.forwardslashdot.com/worldtimeconverter" />
   <meta property="og:title" content="World Time Converter — forwardslashdot" />
   <meta property="og:description" content="Compare cities on one day and find a meeting that lands in everyone's workday." />
-  <meta property="og:url" content="https://www.forwardslashdot.com/worldtimeconverter" />
+  <meta property="og:image" content="https://www.forwardslashdot.com/time.svg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="World Time Converter — forwardslashdot" />
+  <meta name="twitter:description" content="Compare cities on one day and find a meeting that lands in everyone's workday." />
+  <meta name="twitter:image" content="https://www.forwardslashdot.com/time.svg" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-size='26' font-weight='600' fill='white'%3E/.%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
-      --bg-top: #f5f5f7;
-      --bg-bottom: #e8e8ed;
-      --ink: #1d1d1f;
-      --ink-soft: #6e6e73;
-      --link: #0071e3;
-      --hairline: rgba(29, 29, 31, 0.12);
-      --field: rgba(255, 255, 255, 0.78);
-      --focus: rgba(0, 113, 227, 0.28);
-      --work: #0071e3;
-      --edge: #e2a325;
-      --track: #e4e4ea;
-      --card: rgba(255, 255, 255, 0.78);
+      --bg-top: #f7f1e8;
+      --bg-bottom: #efe4d6;
+      --ink: #1c1917;
+      --ink-soft: #7c736a;
+      --link: #6f4e37;
+      --hairline: rgba(28, 25, 23, 0.1);
+      --field: rgba(255, 252, 247, 0.78);
+      --focus: rgba(111, 78, 55, 0.28);
+      --work: #8d6a3e;
+      --edge: #c47b62;
+      --track: #e6dccf;
+      --card: rgba(255, 252, 247, 0.82);
+      --brass: #8d6a3e;
+      --night: #2a3142;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 18px 50px rgba(0, 0, 0, 0.06);
       --font: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
@@ -39,7 +48,7 @@
       font-family: var(--font);
       color: var(--ink);
       background:
-        radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.9), transparent 55%),
+        radial-gradient(90% 55% at 50% -12%, #fffaf3, transparent 58%),
         linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
       background-attachment: fixed;
       -webkit-font-smoothing: antialiased;
@@ -48,7 +57,7 @@
 
     button, input, select { font: inherit; color: inherit; }
 
-    button { cursor: pointer; }
+    button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
     a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; text-underline-offset: 0.15em; }
@@ -113,11 +122,19 @@
       border-radius: 999px;
     }
 
+    .header-actions { display: flex; align-items: center; gap: 0.4rem; }
+
     .share, .text-btn {
       padding: 0.38rem 0.85rem;
       font-size: 0.84rem;
       font-weight: 560;
       letter-spacing: -0.01em;
+    }
+
+    #add-city[aria-expanded="true"] {
+      color: var(--link);
+      border-color: rgba(111, 78, 55, 0.35);
+      background: rgba(111, 78, 55, 0.06);
     }
 
     .share:hover, .text-btn:hover, .icon-btn:hover { border-color: rgba(29, 29, 31, 0.28); }
@@ -166,18 +183,11 @@
 
     .text-btn[aria-pressed="true"] {
       color: var(--link);
-      border-color: rgba(0, 113, 227, 0.35);
-      background: rgba(0, 113, 227, 0.06);
+      border-color: rgba(111, 78, 55, 0.35);
+      background: rgba(111, 78, 55, 0.06);
     }
 
-    .clock {
-      margin-top: 0.85rem;
-      font-size: clamp(4.4rem, 12vw, 6.75rem);
-      font-weight: 600;
-      letter-spacing: -0.055em;
-      line-height: 0.9;
-      font-variant-numeric: tabular-nums;
-    }
+    .clock { display: none; }
 
     .ampm {
       font-size: 0.28em;
@@ -189,14 +199,78 @@
       top: -0.85em;
     }
 
-    .where {
+    .where-wrap {
+      position: relative;
       margin-top: 0.55rem;
-      font-size: 1.2rem;
+    }
+
+    .where {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.28rem;
+      border: 0;
+      background: none;
+      padding: 0.1rem 0.15rem 0.1rem 0;
+      border-radius: 0.55rem;
+      font-size: 1.02rem;
       font-weight: 560;
       letter-spacing: -0.03em;
     }
 
     .where span { color: var(--ink-soft); font-weight: 500; }
+
+    .where::after {
+      content: "";
+      width: 0.42rem;
+      height: 0.42rem;
+      margin-left: 0.2rem;
+      border-right: 1.6px solid currentColor;
+      border-bottom: 1.6px solid currentColor;
+      transform: translateY(-0.12em) rotate(45deg);
+      opacity: 0.45;
+    }
+
+    .where:hover,
+    .where[aria-expanded="true"] { color: var(--link); }
+
+    .home-menu {
+      position: absolute;
+      z-index: 6;
+      top: calc(100% + 0.4rem);
+      left: 0;
+      min-width: 16.5rem;
+      margin: 0;
+      padding: 0.35rem;
+      list-style: none;
+      background: rgba(255, 255, 255, 0.92);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid var(--hairline);
+      border-radius: 0.95rem;
+      box-shadow: var(--shadow);
+    }
+
+    .home-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: none;
+      border-radius: 0.65rem;
+      padding: 0.5rem 0.7rem;
+    }
+
+    .home-menu button[aria-selected="true"],
+    .home-menu button:hover { background: rgba(111, 78, 55, 0.08); }
+
+    .home-menu .hint {
+      display: block;
+      margin-top: 0.1rem;
+      color: var(--ink-soft);
+      font-size: 0.8rem;
+      font-weight: 450;
+      letter-spacing: -0.01em;
+    }
 
     .summary {
       margin-top: 0.45rem;
@@ -210,14 +284,45 @@
 
     .summary.is-good { color: var(--link); }
 
+    .best {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+      max-width: 100%;
+      padding: 0.42rem 0.9rem 0.42rem 0.72rem;
+      border-radius: 999px;
+      border: 1px solid rgba(141, 106, 62, 0.28);
+      background: rgba(141, 106, 62, 0.1);
+      color: var(--ink);
+      font-size: 0.9rem;
+      font-weight: 560;
+      letter-spacing: -0.02em;
+      text-align: left;
+    }
+
+    .best[hidden] { display: none; }
+
+    .best::before {
+      content: "";
+      flex: 0 0 auto;
+      width: 0.48rem;
+      height: 0.48rem;
+      border-radius: 50%;
+      background: var(--work);
+    }
+
+    .best[aria-pressed="true"] {
+      background: rgba(141, 106, 62, 0.18);
+      border-color: rgba(111, 78, 55, 0.45);
+    }
+
     .board {
       --x: 0%;
       background: var(--card);
       border: 1px solid rgba(255, 255, 255, 0.85);
       border-radius: 1.4rem;
       box-shadow: var(--shadow);
-      backdrop-filter: saturate(180%) blur(18px);
-      -webkit-backdrop-filter: saturate(180%) blur(18px);
       padding: 0.85rem 1rem 0.35rem;
     }
 
@@ -398,8 +503,23 @@
     .when[data-shift="yesterday"] { color: var(--link); }
 
     .adder {
-      border-top: 1px solid rgba(29, 29, 31, 0.06);
-      padding: 0.85rem 0.15rem 0.8rem;
+      display: none;
+      margin: 0.15rem 0.15rem 0.35rem;
+      padding: 0.85rem 0.9rem 0.7rem;
+      border-radius: 1.15rem;
+      background: rgba(255, 252, 247, 0.96);
+      border: 1px solid var(--hairline);
+      box-shadow: var(--shadow);
+    }
+
+    .adder.is-open { display: block; }
+
+    .adder-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink-soft);
+      margin-bottom: 0.35rem;
     }
 
     .search { position: relative; }
@@ -407,11 +527,12 @@
     .search input {
       width: 100%;
       border: 0;
-      background: transparent;
+      background: rgba(28, 25, 23, 0.04);
+      border-radius: 0.75rem;
       font-size: 1.02rem;
       font-weight: 500;
       letter-spacing: -0.02em;
-      padding: 0.35rem 0.1rem 0.5rem;
+      padding: 0.65rem 0.8rem;
       outline: none;
     }
 
@@ -442,7 +563,7 @@
       cursor: pointer;
     }
 
-    .option[aria-selected="true"] { background: rgba(0, 113, 227, 0.08); }
+    .option[aria-selected="true"] { background: rgba(111, 78, 55, 0.08); }
 
     .opt-city { font-weight: 590; letter-spacing: -0.02em; }
     .opt-meta { color: var(--ink-soft); font-size: 0.82rem; }
@@ -490,7 +611,7 @@
 
     .swatch.work { background: var(--work); }
     .swatch.edge { background: var(--edge); }
-    .swatch.night { background: #d4d4db; }
+    .swatch.night { background: #d1d1d6; }
 
     .legend select {
       appearance: none;
@@ -558,8 +679,8 @@
     }
 
     .slot[aria-pressed="true"] {
-      border-color: rgba(0, 113, 227, 0.45);
-      background: rgba(0, 113, 227, 0.06);
+      border-color: rgba(111, 78, 55, 0.45);
+      background: rgba(111, 78, 55, 0.06);
     }
 
     .slot-when {
@@ -623,8 +744,541 @@
       .remove { opacity: 0.65; }
     }
 
+    .ask {
+      margin-top: 0.85rem;
+      font-size: clamp(1.55rem, 4.4vw, 2.15rem);
+      font-weight: 600;
+      letter-spacing: -0.045em;
+      line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .answer {
+      margin-top: 0.4rem;
+      font-size: 1.05rem;
+      font-weight: 560;
+      letter-spacing: -0.03em;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .chat-line {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .chat-bit { white-space: nowrap; }
+
+    .workday { margin-top: 0.8rem; }
+
+    .workday summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      list-style: none;
+      color: var(--ink-soft);
+      font-size: 0.88rem;
+      font-weight: 560;
+      letter-spacing: -0.015em;
+    }
+
+    .workday summary::-webkit-details-marker { display: none; }
+    .workday summary::marker { content: ""; }
+
+    .workday summary::before {
+      content: "";
+      width: 0.38rem;
+      height: 0.38rem;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(-45deg);
+    }
+
+    .workday[open] summary::before { transform: rotate(45deg) translateY(-0.08rem); }
+
+    .workday-body {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.75rem;
+      margin-top: 0.65rem;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+
+    .workday select {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      font-weight: 620;
+      color: var(--ink);
+      padding: 0.1rem 0.15rem;
+      cursor: pointer;
+    }
+
+    .meet-note {
+      margin-top: 0.55rem;
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+      letter-spacing: -0.01em;
+    }
+
+    .meet-note[hidden] { display: none; }
+
+    .dials {
+      display: grid;
+      grid-template-columns: minmax(12rem, 17rem) minmax(0, 1fr);
+      gap: 0.65rem;
+      align-items: start;
+      padding: 0.15rem 0 0.45rem;
+    }
+
+    .dial-card {
+      min-width: 0;
+      position: relative;
+      padding: 0.8rem 0.55rem 0.75rem;
+      border-radius: 1.35rem;
+      background: var(--card);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 10px 30px rgba(70, 48, 24, 0.05);
+      text-align: center;
+      cursor: grab;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .dial-card.is-home {
+      grid-column: 1;
+      grid-row: 1 / span 12;
+      background: #fffdf9;
+      box-shadow: 0 16px 40px rgba(70, 48, 24, 0.08);
+      cursor: default;
+    }
+
+    .dial-card.is-home .globe { width: min(10.5rem, 78%); }
+    .dial-card.is-home .who-time { font-size: 1.65rem; }
+
+    .dial-card.is-chip {
+      grid-column: 2;
+      text-align: left;
+      padding: 0.8rem 0.95rem 0.75rem;
+      cursor: grab;
+    }
+
+    .dial-card.is-chip .globe { display: none; }
+    .dial-card.is-chip .who-time { margin-top: 0; font-size: 1.2rem; }
+    .dial-card.is-chip .dayband { margin: 0.55rem 0 0; }
+    .dial-card.is-chip .city-name,
+    .dial-card.is-chip .who-time,
+    .dial-card.is-chip .who-meta,
+    .dial-card.is-chip .when { text-align: left; }
+
+    .add-chip {
+      grid-column: 2;
+      min-height: 4.4rem;
+      border: 0;
+      border-radius: 1.15rem;
+      background: rgba(255, 252, 247, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.08);
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      font-size: 0.95rem;
+      font-weight: 560;
+      letter-spacing: -0.02em;
+    }
+
+    .add-chip .round-add {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #fffdf9;
+      color: var(--ink);
+      font-size: 1.4rem;
+      font-weight: 300;
+      line-height: 1;
+    }
+
+    @media (max-width: 720px) {
+      .dials { grid-template-columns: 1fr 1fr; }
+      .dial-card.is-home { grid-column: 1 / -1; grid-row: auto; }
+      .dial-card.is-chip { grid-column: auto; }
+      .add-chip { grid-column: 1 / -1; }
+      body:not(.embed) { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
+      #city-search, .chip, .option, #adder { scroll-margin-bottom: 6.5rem; }
+      body:not(.embed) .scrub {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 8;
+        margin: 0;
+        height: auto;
+        min-height: 3.4rem;
+        padding: 0.7rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom));
+        background: rgba(247, 241, 232, 0.94);
+        box-shadow: 0 -1px 0 rgba(28, 25, 23, 0.06);
+      }
+    }
+
+    .dial-card.is-dragging {
+      z-index: 6;
+      cursor: grabbing;
+      touch-action: none;
+      box-shadow: 0 22px 48px rgba(70, 48, 24, 0.16);
+    }
+
+    .dials.is-reordering { overflow: visible; }
+
+    .dayband {
+      position: relative;
+      height: 0.38rem;
+      margin: 0.15rem 0.45rem 0.7rem;
+      border-radius: 99px;
+      background: rgba(42, 49, 66, 0.16);
+    }
+
+    .dayband i { position: absolute; top: 0; bottom: 0; }
+    .band-early, .band-late { background: rgba(196, 123, 98, 0.55); }
+    .band-work { background: var(--work); }
+
+    .band-now {
+      width: 2px;
+      top: -0.18rem;
+      bottom: -0.18rem;
+      margin-left: -1px;
+      background: var(--ink);
+      border-radius: 1px;
+      box-shadow: 0 0 0 1.5px #fffdf9;
+      z-index: 1;
+    }
+
+    .wday {
+      margin-left: 0.28rem;
+      font-size: 0.68em;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      color: var(--edge);
+      position: relative;
+      top: -0.12em;
+    }
+
+    .globe {
+      position: relative;
+      width: min(8.2rem, 78%);
+      aspect-ratio: 1;
+      height: auto;
+      margin: 0.15rem auto 0.7rem;
+      border-radius: 50%;
+      overflow: hidden;
+      background: radial-gradient(circle at 40% 38%, #c5e4f0, #5c97b4 46%, #2f6d8a 78%);
+      box-shadow:
+        inset -16px -14px 24px rgba(12, 32, 48, 0.28),
+        inset 7px 7px 14px rgba(255, 255, 255, 0.32),
+        0 14px 28px rgba(50, 36, 22, 0.08);
+    }
+
+    .map {
+      position: absolute;
+      top: var(--map-y, -40%);
+      left: var(--map-x, -50%);
+      width: 960%;
+      height: 240%;
+    }
+
+    .map svg { display: block; width: 100%; height: 100%; }
+
+    .night {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at var(--sx) var(--sy), rgba(255, 244, 214, 0.7), transparent 38%),
+        linear-gradient(var(--term), rgba(255, 246, 226, 0.2), rgba(8, 14, 28, var(--dark)) 70%),
+        rgba(8, 14, 28, var(--veil));
+    }
+
+    .globe::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), transparent 24%);
+      pointer-events: none;
+    }
+
+    .pin {
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      width: 0.48rem;
+      height: 0.48rem;
+      margin: -0.24rem 0 0 -0.24rem;
+      border-radius: 50%;
+      background: var(--brass);
+      box-shadow: 0 0 0 3px rgba(255, 253, 249, 0.9);
+      z-index: 2;
+    }
+
+    .dial-card .city-name,
+    .dial-card .who-time,
+    .dial-card .who-meta,
+    .dial-card .when { text-align: center; }
+
+    .dial-card .city-name { font-size: 1rem; }
+    .dial-card .who-time {
+      margin-top: 0.15rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .dial-card .who-meta, .dial-card .when {
+      color: var(--ink-soft);
+      font-size: 0.78rem;
+      letter-spacing: -0.01em;
+    }
+    .more {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 1.65rem;
+      height: 1.65rem;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 252, 247, 0.92);
+      color: var(--ink-soft);
+      font-size: 1.05rem;
+      line-height: 1;
+      letter-spacing: 0.08em;
+      box-shadow: 0 1px 2px rgba(28, 25, 23, 0.06);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .dial-card:hover .more,
+    .dial-card:focus-within .more,
+    .dial-card.is-menu .more,
+    .more[aria-expanded="true"] {
+      opacity: 1;
+      pointer-events: auto;
+      color: var(--ink);
+    }
+
+    @media (hover: none) {
+      .dial-card:hover .more { opacity: 0; pointer-events: none; }
+      .dial-card.is-menu .more,
+      .more[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
+    }
+
+    .card-menu {
+      position: absolute;
+      z-index: 5;
+      top: 2.35rem;
+      right: 0.45rem;
+      min-width: 10.5rem;
+      margin: 0;
+      padding: 0.3rem;
+      list-style: none;
+      text-align: left;
+      background: rgba(255, 252, 247, 0.96);
+      -webkit-backdrop-filter: saturate(180%) blur(18px);
+      backdrop-filter: saturate(180%) blur(18px);
+      border: 1px solid var(--hairline);
+      border-radius: 0.95rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: none;
+      border-radius: 0.6rem;
+      padding: 0.48rem 0.7rem;
+      font-size: 0.92rem;
+      font-weight: 520;
+    }
+
+    .card-menu button:hover:not(:disabled) { background: rgba(111, 78, 55, 0.08); }
+    .card-menu button:disabled { opacity: 0.38; }
+    .card-menu button.danger { color: #b42318; }
+
+    .add-tile {
+      flex: 0 0 11.6rem;
+      min-height: 16.2rem;
+      scroll-snap-align: center;
+      border: 0;
+      border-radius: 1.35rem;
+      background: rgba(255, 252, 247, 0.45);
+      box-shadow: inset 0 0 0 1px rgba(28, 25, 23, 0.08);
+      color: var(--ink-soft);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+    }
+
+    .add-tile .plus {
+      width: 2.6rem;
+      height: 2.6rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #fffdf9;
+      color: var(--ink);
+      font-size: 1.7rem;
+      font-weight: 300;
+      line-height: 1;
+      box-shadow: 0 8px 20px rgba(70, 48, 24, 0.06);
+    }
+
+    .add-tile span:last-child { font-size: 0.92rem; font-weight: 560; letter-spacing: -0.02em; }
+    .add-tile:hover { color: var(--ink); }
+
+    .scrub {
+      position: relative;
+      height: 2.75rem;
+      margin: 0.05rem 0.35rem 0.15rem;
+      touch-action: none;
+      cursor: ew-resize;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body.is-scrubbing { overflow: hidden; }
+
+    body.is-scrubbing .scrub-pearl { transform: scale(1.32); }
+
+    body.is-scrubbing header,
+    body.is-scrubbing .moment,
+    body.is-scrubbing .dial-card,
+    body.is-scrubbing .adder,
+    body.is-scrubbing footer { pointer-events: none; }
+
+    .scrub-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 2px;
+      margin-top: -1px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--night) 0%, #e7b39a 22%, #f4efe6 50%, #e7b39a 78%, var(--night) 100%);
+    }
+
+    .scrub-pearl {
+      position: absolute;
+      top: 50%;
+      left: var(--x);
+      width: 1.05rem;
+      height: 1.05rem;
+      margin: -0.525rem 0 0 -0.525rem;
+      border-radius: 50%;
+      background: #fffdf9;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(28, 25, 23, 0.08);
+      transition: transform 160ms ease;
+    }
+
+    .scrub:focus-visible { outline: none; }
+    .scrub:focus-visible .scrub-pearl { box-shadow: 0 0 0 4px var(--focus); }
+
+    .legend { color: var(--ink-soft); }
+
+    body.embed header,
+    body.embed footer,
+    body.embed .moment-bar,
+    body.embed .where-wrap,
+    body.embed .summary,
+    body.embed .workday,
+    body.embed .meet-note,
+    body.embed .scrub,
+    body.embed .adder,
+    body.embed .more,
+    body.embed .card-menu,
+    body.embed .ask,
+    body.embed .answer,
+    body.embed .add-chip { display: none; }
+
+    body.embed .wrap { padding: 0.9rem 1rem 1.15rem; }
+
+    body.embed main { display: flex; flex-direction: column; }
+
+    body.embed .moment { display: contents; }
+
+    body.embed .chat-line {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0 0 0.85rem;
+      overflow: visible;
+      clip: auto;
+      white-space: normal;
+      order: 1;
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+
+    body.embed .dials { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+    body.embed .dial-card,
+    body.embed .dial-card.is-home,
+    body.embed .dial-card.is-chip {
+      grid-column: auto;
+      grid-row: auto;
+      flex: 1 1 9.4rem;
+      max-width: 15rem;
+      cursor: default;
+      text-align: center;
+    }
+    body.embed .dial-card.is-chip .globe { display: block; }
+    body.embed .dial-card.is-home .globe { width: min(7.2rem, 70%); }
+    body.embed .dial-card.is-home .who-time,
+    body.embed .dial-card.is-chip .who-time { margin-top: 0.15rem; font-size: 1.28rem; }
+    body.embed .dial-card.is-chip .city-name,
+    body.embed .dial-card.is-chip .who-time,
+    body.embed .dial-card.is-chip .who-meta,
+    body.embed .dial-card.is-chip .when { text-align: center; }
+
+    body.embed .board { order: 2; margin: 0; }
+
+    body.embed .best { order: 3; margin-top: 0.85rem; }
+
+    body.embed .card-open-row { order: 4; }
+
+    .card-open-row { display: none; margin: 0.8rem 0 0; }
+
+    body.embed .card-open-row { display: block; }
+
+    .card-open {
+      font-size: 0.88rem;
+      font-weight: 560;
+      letter-spacing: -0.01em;
+    }
+
+    @media (hover: none) {
+      .dial-card .remove { opacity: 0.65; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
+      .night, .map { transition: none; }
     }
   </style>
 </head>
@@ -633,14 +1287,15 @@
     <header>
       <a class="brand" href="/">
         <span class="mark" aria-hidden="true">/.</span>
-        <span class="brand-name">forwardslashdot</span>
+        <span class="brand-name">Time</span>
       </a>
-      <button class="share" id="share" type="button">Share</button>
+      <div class="header-actions">
+        <button class="share" id="share" type="button">Copy</button>
+      </div>
     </header>
 
     <main>
-      <h1 class="sr">World Time Converter</h1>
-      <section class="moment" aria-labelledby="clock">
+      <section class="moment" aria-labelledby="ask">
         <div class="moment-bar">
           <div class="date-nav">
             <button class="icon-btn" id="prev-day" type="button" aria-label="Previous day">
@@ -660,26 +1315,40 @@
           </div>
         </div>
         <p class="clock" id="clock"><span id="clock-hm">–:–</span><span class="ampm" id="clock-ampm"></span></p>
-        <p class="where" id="where"></p>
+        <h1 class="ask" id="ask">What time is it?</h1>
+        <p class="answer" id="answer"></p>
+        <p class="chat-line" id="chat-line"></p>
+        <div class="where-wrap">
+          <button class="where" id="where" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-menu"></button>
+          <ul class="home-menu" id="home-menu" role="listbox" hidden></ul>
+        </div>
         <p class="summary" id="summary"></p>
+        <button class="best" id="best" type="button" hidden></button>
+        <details class="workday" id="workday">
+          <summary id="workday-summary">Workday 9:00 AM – 5:00 PM · 1 hour</summary>
+          <div class="workday-body">
+            <label>From <select id="work-start" aria-label="Workday starts"></select></label>
+            <label>to <select id="work-end" aria-label="Workday ends"></select></label>
+            <div class="segmented" role="group" aria-label="Meeting length">
+              <button class="dur" type="button" data-dur="30">30m</button>
+              <button class="dur" type="button" data-dur="60">1h</button>
+              <button class="dur" type="button" data-dur="120">2h</button>
+            </div>
+            <span class="work-note" id="work-note" role="status"></span>
+          </div>
+        </details>
+        <p class="meet-note" id="meet-note" hidden></p>
+        <p class="card-open-row"><a class="card-open" id="card-open" href="">Open the day</a></p>
       </section>
 
       <section class="board" id="board" aria-label="Cities on one day">
-        <div class="ruler">
-          <div class="ruler-side">
-            <p class="aligned" id="aligned"></p>
-          </div>
-          <div>
-            <div class="ticks" id="ticks"></div>
-            <div class="track-wrap" id="slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439" aria-label="Time of day" aria-describedby="summary">
-              <div class="track heat" id="heat"></div>
-              <div class="hair" aria-hidden="true"></div>
-              <div class="knob" aria-hidden="true"></div>
-            </div>
-          </div>
+        <div class="dials" id="rows"></div>
+        <div class="scrub track-wrap" id="slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439" aria-label="Time of day" aria-describedby="chat-line">
+          <div class="scrub-track"></div>
+          <div class="scrub-pearl" aria-hidden="true"></div>
         </div>
-        <div id="rows"></div>
-        <div class="adder">
+        <div class="adder" id="adder">
+          <p class="adder-title" id="adder-title">Add a city</p>
           <div class="search">
             <label class="sr" for="city-search">Add a city</label>
             <input id="city-search" type="text" placeholder="Add a city" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
@@ -689,37 +1358,11 @@
         </div>
       </section>
 
-      <p class="legend">
-        <span><i class="swatch work"></i>Workday</span>
-        <label>from
-          <select id="work-start" aria-label="Workday starts"></select>
-        </label>
-        <label>to
-          <select id="work-end" aria-label="Workday ends"></select>
-        </label>
-        <span><i class="swatch edge"></i>Just outside</span>
-        <span><i class="swatch night"></i>Night</span>
-        <span>in each city</span>
-        <span class="work-note" id="work-note" role="status"></span>
-      </p>
-
-      <section class="meet" aria-labelledby="meet-title">
-        <div class="meet-head">
-          <h2 id="meet-title">A time that works</h2>
-          <div class="segmented" role="group" aria-label="Meeting length">
-            <button class="dur" type="button" data-dur="30">30m</button>
-            <button class="dur" type="button" data-dur="60">1h</button>
-            <button class="dur" type="button" data-dur="120">2h</button>
-          </div>
-        </div>
-        <p class="lede" id="meet-lede"></p>
-        <div class="slots" id="slots"></div>
-      </section>
       <p class="sr" id="live" aria-live="polite"></p>
     </main>
 
     <footer>
-      <p>Times follow the IANA database, including daylight saving. Blue is 9 AM–5 PM in that city unless you change it. Drag the day, or use the arrow keys.</p>
+      <p>The home clock follows this device until you switch it. British Columbia stays on Pacific Time (PCT, UTC−7) all year. Copy puts a one-line comparison and this link on the clipboard, which is the form to paste into a chat.</p>
       <p class="foot-links">
         <a href="/llms.txt">llms.txt</a>
       </p>
@@ -762,21 +1405,24 @@
       workStart: 9 * 60,
       workEnd: 17 * 60,
       duration: 60,
-      detected: ""
+      detected: "",
+      followDevice: true,
+      replaceKey: ""
     };
 
     const board = document.getElementById("board");
     const rowsEl = document.getElementById("rows");
-    const heatEl = document.getElementById("heat");
-    const ticksEl = document.getElementById("ticks");
     const slider = document.getElementById("slider");
+    const presentation = new URLSearchParams(location.search);
+    if (presentation.get("embed") === "1" || presentation.get("card") === "1") document.body.classList.add("embed");
     const searchInput = document.getElementById("city-search");
     const cityList = document.getElementById("city-list");
     const chipsEl = document.getElementById("chips");
-    const slotsEl = document.getElementById("slots");
     const live = document.getElementById("live");
     let activeOption = 0;
     let dragLane = null;
+    let reorder = null;
+    let suppressClick = false;
 
     function keyOf(city) { return city.city + "~" + city.zone; }
 
@@ -793,7 +1439,36 @@
       return zone.split("/").pop().replaceAll("_", " ");
     }
 
+    // British Columbia's last clock change was the spring-forward on
+    // 8 March 2026. After 02:00 PST (10:00 UTC) the province stays on
+    // Pacific Time, UTC−7, abbreviated PCT. Older browser timezone data
+    // still falls back to PST in November or keeps the PDT label.
+    const BC_PCT_ZONES = { "America/Vancouver": true, "Canada/Pacific": true };
+    const BC_PCT_FROM = Date.UTC(2026, 2, 8, 10, 0);
+
+    function permanentRule(zone, utcMs) {
+      if (BC_PCT_ZONES[zone] && utcMs >= BC_PCT_FROM) return { offset: -420, abbr: "PCT" };
+      return null;
+    }
+
+    function partsFromOffset(utcMs, offset, abbr) {
+      const date = new Date(utcMs + offset * 60000);
+      const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      return {
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+        day: date.getUTCDate(),
+        hour: date.getUTCHours(),
+        minute: date.getUTCMinutes(),
+        second: date.getUTCSeconds(),
+        weekday: weekdays[date.getUTCDay()],
+        abbr: abbr
+      };
+    }
+
     function partsInZone(utcMs, timeZone) {
+      const fixed = permanentRule(timeZone, utcMs);
+      if (fixed) return partsFromOffset(utcMs, fixed.offset, fixed.abbr);
       const fmt = new Intl.DateTimeFormat("en-US", {
         timeZone: timeZone,
         hourCycle: "h23",
@@ -823,6 +1498,8 @@
     }
 
     function tzOffset(utcMs, timeZone) {
+      const fixed = permanentRule(timeZone, utcMs);
+      if (fixed) return fixed.offset;
       const parts = partsInZone(utcMs, timeZone);
       const asUTC = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
       return Math.round((asUTC - utcMs) / 60000);
@@ -1007,12 +1684,14 @@
       const time = formatTime(snap.anchorParts.hour, snap.anchorParts.minute);
       document.getElementById("clock-hm").textContent = time.h + ":" + time.m;
       document.getElementById("clock-ampm").textContent = time.suffix;
-      document.getElementById("where").innerHTML = "";
       const where = document.getElementById("where");
+      where.replaceChildren();
       where.append(document.createTextNode(snap.anchor.city + " "));
       const abbr = document.createElement("span");
       abbr.textContent = snap.anchorParts.abbr;
       where.append(abbr);
+      const yours = snap.anchor.zone === state.detected;
+      where.setAttribute("aria-label", (yours ? "Your location, " : "Home city, ") + snap.anchor.city + " " + snap.anchorParts.abbr + ". Change home city.");
 
       const today = partsInZone(Date.now(), snap.anchor.zone);
       const noon = partsInZone(civilToInstant(state.year, state.month, state.day, 12 * 60, snap.anchor.zone), snap.anchor.zone);
@@ -1025,90 +1704,244 @@
       const summaryEl = document.getElementById("summary");
       summaryEl.textContent = summary;
       summaryEl.classList.toggle("is-good", snap.places.every(function (place) { return place.period === "work"; }));
-      document.getElementById("aligned").textContent = "Aligned to " + snap.anchor.city;
+      const line = fillChatLine(snap);
+      const question = fillAsk(snap);
 
       const ratio = (state.minutes / 1440) * 100;
-      board.style.setProperty("--x", ratio + "%");
+      slider.style.setProperty("--x", ratio + "%");
       slider.setAttribute("aria-valuenow", String(state.minutes));
-      slider.setAttribute("aria-valuetext", time.text + " in " + snap.anchor.city + ". " + summary);
-      document.title = time.text + " · Time";
+      slider.setAttribute("aria-valuetext", line);
+      document.title = question;
+      const open = document.getElementById("card-open");
+      if (open) {
+        const bare = new URL(location.href);
+        bare.searchParams.delete("embed");
+        bare.searchParams.delete("card");
+        bare.searchParams.delete("format");
+        open.href = bare.pathname + bare.search;
+      }
 
       snap.places.forEach(function (place) {
         const row = rowsEl.querySelector('[data-key="' + CSS.escape(keyOf(place.city)) + '"]');
         if (!row) return;
         const clock = formatTime(place.parts.hour, place.parts.minute);
         row.querySelector("[data-time]").textContent = clock.text;
-        const when = row.querySelector("[data-when]");
-        when.textContent = dayText(place.delta, place.parts);
-        when.dataset.shift = dayShift(place.delta);
+        const wday = row.querySelector("[data-wday]");
+        if (place.delta === 0) {
+          wday.hidden = true;
+          wday.textContent = "";
+        } else {
+          wday.hidden = false;
+          wday.textContent = place.parts.weekday.slice(0, 3);
+        }
         const yours = place.city.zone === state.detected;
-        const meta = yours ? "Your time zone" : place.offsetLabel;
-        row.querySelector("[data-meta]").textContent = meta + " · " + place.parts.abbr;
+        const meta = (yours ? "Your location" : place.offsetLabel) + " · " + place.parts.abbr;
+        row.querySelector("[data-meta]").textContent = meta;
+        const when = row.querySelector("[data-when]");
+        when.textContent = place.delta === 0 ? "" : dayText(place.delta, place.parts);
+        when.hidden = place.delta === 0;
+        paintBand(row.querySelector("[data-band]"), place.parts.hour * 60 + place.parts.minute);
+        const geo = cityGeo(place.city, snap.instant);
+        lightGlobe(row.querySelector("[data-globe]"), place.parts.hour * 60 + place.parts.minute, geo.lon, geo.lat);
+        row.classList.toggle("is-home", keyOf(place.city) === state.anchorKey);
       });
 
-      slotsEl.querySelectorAll(".slot").forEach(function (button) {
-        const start = Number(button.dataset.start);
+      const best = document.getElementById("best");
+      if (!best.hidden) {
+        const start = Number(best.dataset.start);
         const inside = state.minutes >= start && state.minutes < start + state.duration;
-        button.setAttribute("aria-pressed", inside ? "true" : "false");
-      });
+        best.setAttribute("aria-pressed", inside ? "true" : "false");
+      }
+      const workOpen = formatTime(Math.floor(state.workStart / 60), state.workStart % 60).text;
+      const workClose = formatTime(Math.floor(state.workEnd / 60) % 24, state.workEnd % 60).text;
+      const lengthLabel = state.duration === 30 ? "30 min" : state.duration === 120 ? "2 hours" : "1 hour";
+      document.getElementById("workday-summary").textContent = "Workday " + workOpen + " – " + workClose + " · " + lengthLabel;
     }
 
     function sameDay(parts, clock) {
       return parts.year === clock.year && parts.month === clock.month && parts.day === clock.day;
     }
 
-    function renderTicks() {
-      ticksEl.innerHTML = "";
-      [0, 3, 6, 9, 12, 15, 18, 21, 24].forEach(function (hour) {
-        const tick = document.createElement("span");
-        tick.className = "tick" + (hour % 6 === 0 ? " major" : "") + (hour === 0 ? " start" : hour === 24 ? " end" : "");
-        tick.style.left = (hour / 24) * 100 + "%";
-        tick.textContent = hourLabel(hour === 24 ? 0 : hour);
-        ticksEl.append(tick);
+    function orderedPlaces(snap) {
+      const home = [];
+      const rest = [];
+      snap.places.forEach(function (place) {
+        if (keyOf(place.city) === state.anchorKey) home.push(place);
+        else rest.push(place);
       });
+      return home.concat(rest);
     }
 
-    function hourLabel(hour) {
-      if (hour === 0) return "12a";
-      if (hour === 12) return "12p";
-      if (hour < 12) return hour + "a";
-      return (hour - 12) + "p";
+    function placeLine(place) {
+      const time = formatTime(place.parts.hour, place.parts.minute).text;
+      const extra = place.delta === 0 ? "" : " " + dayText(place.delta, place.parts).toLowerCase();
+      return time + " " + place.city.city + extra;
     }
 
-    function fillTrack(track, periods) {
-      track.innerHTML = "";
-      periods.forEach(function (period) {
-        const seg = document.createElement("div");
-        seg.className = "seg " + (period === "work" ? "work" : period === "night" ? "off" : period);
-        track.append(seg);
+    function fillAsk(snap) {
+      const time = formatTime(snap.anchorParts.hour, snap.anchorParts.minute).text;
+      const question = "What time is " + time + " in " + snap.anchor.city + "?";
+      document.getElementById("ask").textContent = question;
+      const answer = document.getElementById("answer");
+      const others = orderedPlaces(snap).filter(function (place) {
+        return keyOf(place.city) !== state.anchorKey;
       });
+      answer.replaceChildren();
+      if (!others.length) {
+        answer.textContent = snap.anchorParts.weekday + ", " + MONTHS[snap.anchorParts.month - 1] + " " + snap.anchorParts.day;
+      } else {
+        others.forEach(function (place, index) {
+          if (index) answer.append(document.createTextNode(" \u00b7 "));
+          const bit = document.createElement("span");
+          bit.className = "chat-bit";
+          const clock = formatTime(place.parts.hour, place.parts.minute).text;
+          const extra = place.delta === 0 ? "" : dayText(place.delta, place.parts).toLowerCase() + " ";
+          bit.textContent = clock + " " + extra + "in " + place.city.city;
+          answer.append(bit);
+        });
+      }
+      const bits = others.map(function (place) {
+        const clock = formatTime(place.parts.hour, place.parts.minute).text;
+        const extra = place.delta === 0 ? "" : dayText(place.delta, place.parts).toLowerCase() + " ";
+        return clock + " " + extra + "in " + place.city.city;
+      });
+      let sentence = time + " in " + snap.anchor.city + ".";
+      if (bits.length === 1) sentence = time + " in " + snap.anchor.city + " is " + bits[0] + ".";
+      else if (bits.length > 1) sentence = time + " in " + snap.anchor.city + " is " + bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1] + ".";
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc) desc.setAttribute("content", sentence);
+      return question;
     }
+
+    function fillChatLine(snap) {
+      const el = document.getElementById("chat-line");
+      const ordered = orderedPlaces(snap);
+      el.replaceChildren();
+      ordered.forEach(function (place, index) {
+        if (index) el.append(document.createTextNode(" \u00b7 "));
+        const bit = document.createElement("span");
+        bit.className = "chat-bit";
+        bit.textContent = placeLine(place);
+        el.append(bit);
+      });
+      return el.textContent;
+    }
+
+    function paintBand(el, localMinutes) {
+      if (!el) return;
+      el.replaceChildren();
+      function add(className, start, end) {
+        const pieces = [];
+        let from = start;
+        let to = end;
+        if (from < 0) {
+          pieces.push([from + 1440, 1440]);
+          from = 0;
+        }
+        if (to > 1440) {
+          pieces.push([0, to - 1440]);
+          to = 1440;
+        }
+        if (from < to) pieces.push([from, to]);
+        pieces.forEach(function (span) {
+          const mark = document.createElement("i");
+          mark.className = className;
+          mark.style.left = (span[0] / 1440 * 100) + "%";
+          mark.style.width = ((span[1] - span[0]) / 1440 * 100) + "%";
+          el.append(mark);
+        });
+      }
+      add("band-early", state.workStart - 120, state.workStart);
+      add("band-work", state.workStart, state.workEnd);
+      add("band-late", state.workEnd, state.workEnd + 120);
+      const now = document.createElement("i");
+      now.className = "band-now";
+      now.style.left = (Math.max(0, Math.min(1439, localMinutes)) / 1440 * 100) + "%";
+      el.append(now);
+      const open = formatTime(Math.floor(state.workStart / 60), state.workStart % 60).text;
+      const close = formatTime(Math.floor(state.workEnd / 60) % 24, state.workEnd % 60).text;
+      const clock = formatTime(Math.floor(localMinutes / 60), localMinutes % 60).text;
+      el.title = "Workday " + open + " to " + close + ". Now " + clock;
+      el.setAttribute("aria-hidden", "true");
+    }
+
+    const WORLD = '<g fill="#f3eadc"><path d="M120.4 170.0L119.8 171.0L114.3 170.6L118.1 170.4L119.4 169.6ZM20.8 169.5L18.9 169.6L16.3 168.6L18.8 168.4L20.5 169.0ZM134.8 168.0L136.1 168.5L136.7 170.0L127.1 171.0L125.8 170.6L126.0 170.2L129.0 169.6L131.3 168.0L133.3 167.8ZM58.8 163.5L61.3 163.5L58.4 164.0L57.6 163.3ZM81.0 161.9L83.2 162.0L83.8 162.5L79.2 162.5L77.7 161.9L79.6 161.9ZM111.5 161.0L111.2 162.2L105.0 162.1L106.1 161.3L107.9 161.2L108.8 159.0L109.7 158.9L111.3 160.5ZM121.4 154.2L118.0 154.8L117.4 155.5L117.9 156.2L116.3 156.5L114.3 158.0L116.8 159.2L118.2 160.7L119.2 163.7L115.6 165.3L109.4 166.6L102.8 166.7L106.3 167.9L102.1 168.4L102.0 169.2L104.6 170.3L120.3 172.4L121.8 173.2L130.2 171.7L137.2 172.1L139.2 171.4L151.5 170.3L150.3 169.3L144.4 169.5L144.7 168.1L162.5 165.1L164.3 164.5L164.6 164.1L163.5 163.9L164.6 163.1L169.7 161.3L172.6 161.7L173.1 160.9L179.8 161.6L187.7 159.9L189.5 160.0L190.8 160.8L193.4 160.0L207.1 160.5L212.0 159.7L213.9 158.5L218.6 159.8L234.5 155.8L241.4 158.0L244.1 157.4L248.9 157.9L249.7 159.2L247.8 160.3L249.1 160.7L247.9 161.9L249.9 162.3L251.0 162.1L253.9 159.9L257.6 159.5L259.1 158.3L262.8 157.2L266.8 157.2L268.0 156.2L269.7 157.2L275.8 157.4L279.7 157.2L282.8 155.6L286.2 156.9L293.6 155.9L299.8 157.3L303.2 156.5L308.8 156.8L314.8 156.2L315.1 155.3L317.5 157.0L325.5 156.9L326.6 157.9L328.8 158.4L334.3 158.6L341.6 160.6L347.3 160.8L351.2 161.7L349.3 163.7L346.1 164.4L343.6 166.2L343.5 167.1L344.7 168.2L347.0 168.8L341.8 169.2L339.8 170.9L349.4 173.8L360.0 174.7L360.0 180.0ZM0.0 180.0L0.0 174.7L0.9 174.1L5.6 174.5L10.0 173.9L21.9 175.4L31.5 175.6L36.9 175.0L37.1 174.6L26.4 173.7L27.1 172.0L23.2 171.1L29.4 171.3L33.6 170.3L30.5 169.4L24.7 169.1L21.9 168.0L21.6 166.9L28.7 167.4L33.9 166.5L33.8 165.4L35.1 165.2L44.8 164.3L60.3 164.5L66.1 163.7L67.7 164.7L79.4 165.3L79.9 164.9L77.5 164.1L76.3 162.6L83.7 163.6L89.9 163.3L90.8 162.6L98.5 163.9L99.7 163.1L105.1 163.9L112.6 162.5L112.7 161.6L111.5 159.7L112.7 156.9L117.0 154.6L122.2 153.3L122.8 153.5L122.4 153.9ZM112.2 143.8L115.0 144.7L114.5 145.2L113.0 144.9L110.8 145.5L107.7 144.5L105.3 142.8L108.9 144.1L110.7 142.5L111.8 143.1ZM121.5 141.1L122.2 141.6L122.0 141.9L119.3 142.3L118.8 141.8L120.8 141.5ZM250.3 139.7L248.7 139.8L248.9 138.6L250.6 139.3ZM325.4 130.8L328.3 130.9L327.9 133.2L326.0 133.5L324.7 130.7ZM353.0 130.9L354.2 131.3L352.7 133.4L353.1 133.9L351.5 134.2L350.6 135.9L349.3 136.6L346.7 136.2L347.0 135.1L350.5 133.0L352.8 130.5ZM354.6 126.2L356.8 127.9L358.5 127.7L358.0 129.2L357.2 129.1L355.2 131.7L354.7 131.3L355.2 130.5L354.9 129.9L353.8 129.5L354.6 128.8L354.7 127.4L352.6 124.5L354.3 125.3ZM347.1 112.2L344.8 111.1L344.0 110.1L344.5 110.1L346.6 111.7ZM358.4 107.3L358.6 108.2L357.4 108.2L358.1 107.5ZM359.4 106.8L358.6 106.6L360.0 106.1L360.0 106.6ZM347.1 104.9L347.3 105.7L346.8 105.7L346.6 104.6ZM230.1 103.6L230.4 105.7L229.7 105.7L229.8 106.9L227.1 114.9L225.4 115.6L223.8 114.5L223.3 112.1L224.4 110.1L224.0 107.4L224.4 106.2L226.3 105.8L227.7 104.6L229.2 102.0L229.8 102.9ZM323.6 103.8L323.9 104.5L324.6 104.2L325.4 105.0L326.4 109.0L328.8 110.4L329.7 112.3L330.7 112.4L330.9 113.5L332.9 115.3L333.6 118.1L332.9 121.6L330.3 125.7L330.0 127.4L326.3 129.0L324.9 128.4L325.0 127.9L323.6 128.8L320.6 128.0L319.6 126.1L318.1 125.6L318.2 124.4L316.8 125.3L317.8 122.9L316.0 124.9L314.3 122.6L311.3 121.5L306.1 122.2L304.2 123.0L303.7 123.9L299.9 124.0L298.0 125.1L296.6 125.0L295.0 124.2L295.8 122.2L293.3 116.1L293.8 116.5L293.4 115.6L294.2 116.3L293.4 114.4L294.1 111.8L294.2 112.5L296.7 110.7L300.9 109.7L303.0 106.4L303.4 107.3L303.9 107.1L303.5 106.6L305.7 104.2L307.1 103.8L308.4 104.9L309.6 105.0L309.4 104.4L310.6 102.5L312.6 102.1L311.8 101.3L315.3 102.2L316.5 101.9L317.0 102.4L316.0 103.3L315.5 105.0L320.2 107.7L320.9 107.4L321.7 105.0L322.1 101.0L322.5 100.7L323.6 103.4ZM342.1 100.5L342.4 100.8L341.7 100.8L341.3 100.2L341.9 100.4ZM300.7 100.2L299.0 99.6L300.8 100.0ZM340.9 99.9L339.6 99.6L340.7 99.6ZM304.4 100.1L303.5 100.2L304.0 99.3L307.3 98.4L305.1 99.4ZM297.9 98.1L299.1 98.7L296.7 99.0L297.6 98.4ZM302.9 98.1L302.8 98.6L301.3 98.9L299.9 98.4L302.0 98.5ZM339.9 98.3L338.2 97.4L339.6 98.0ZM288.6 96.8L290.8 96.5L295.7 98.4L294.6 98.8L286.5 97.4L285.4 96.9L286.1 95.9L288.5 96.4ZM314.7 96.2L314.2 96.9L314.1 96.1L314.7 95.7ZM335.9 96.8L334.5 95.1L336.0 96.5ZM332.0 95.5L329.7 96.3L328.4 95.4L329.8 95.5L330.1 95.0L330.8 95.5L331.5 94.2L332.3 94.3L332.3 94.9ZM307.2 93.5L306.2 93.6L306.0 93.2L307.0 93.1ZM310.5 93.1L310.8 93.9L307.9 93.4L308.1 92.8L309.4 92.8ZM333.1 94.5L330.7 92.7L333.0 94.0ZM314.1 91.2L314.4 92.8L315.5 93.4L316.3 92.3L318.3 91.7L324.6 93.9L326.0 95.5L327.6 96.1L327.9 96.6L327.0 96.7L327.2 97.4L328.7 99.1L330.8 100.3L330.0 100.7L327.9 100.1L326.0 98.1L324.7 97.6L323.3 98.2L323.4 99.0L322.6 99.3L319.1 98.1L317.6 98.4L318.7 97.3L317.9 95.4L313.7 93.5L313.0 94.1L312.0 92.8L313.7 92.2L312.2 92.2L310.5 90.9L312.4 90.4L314.0 90.8ZM305.2 88.6L303.7 89.8L300.2 89.8L300.0 90.5L300.9 91.4L303.3 90.6L301.5 91.9L303.2 95.3L302.2 95.3L302.7 94.5L301.5 94.6L301.0 92.6L300.3 92.9L300.4 95.5L299.4 95.4L299.5 93.5L298.8 92.8L300.0 89.4L300.9 88.7L304.1 89.1L305.1 88.4ZM308.7 88.9L308.1 90.9L307.4 89.0L307.9 87.8L308.6 88.5ZM285.8 95.9L284.7 95.9L282.6 94.2L278.6 88.2L275.3 84.5L277.5 84.8L280.6 87.9L282.5 88.6L283.8 89.9L283.4 90.7L286.1 93.1L285.9 94.3ZM297.9 88.2L299.0 89.1L297.8 89.2L297.5 90.8L296.6 91.5L296.1 94.0L294.9 94.1L293.3 93.1L292.1 93.5L290.2 92.9L290.1 91.6L289.1 90.5L289.1 88.7L293.0 86.9L296.7 83.1L299.2 84.6L297.3 86.8L298.0 87.7ZM306.4 81.6L306.5 82.8L306.2 83.7L305.8 82.7L305.4 83.2L305.4 84.4L304.2 83.8L304.2 82.6L303.6 82.2L301.9 82.8L303.5 81.3L303.8 81.8L305.5 81.0L305.4 80.2L306.3 81.2ZM261.2 83.8L260.3 84.0L259.9 83.2L260.1 80.2L261.8 82.5L261.6 83.5ZM119.1 79.9L118.0 79.9L119.1 79.1ZM304.0 79.7L303.0 81.0L302.4 80.3L302.9 79.1L303.5 79.1L303.3 79.7L304.1 78.8ZM298.5 80.7L297.2 81.6L297.7 80.9L299.5 78.6L299.7 79.4L299.0 80.0ZM301.9 78.1L303.1 78.4L302.0 79.6L302.0 78.6ZM305.5 77.8L305.8 79.0L305.0 78.7L305.3 79.6L304.8 79.9L304.3 78.5L304.9 78.2L304.3 77.4L305.2 77.5ZM301.5 76.9L301.3 77.8L300.3 76.5L301.2 76.6ZM301.3 71.5L302.2 71.5L302.5 72.9L301.7 74.1L301.7 75.7L304.0 76.2L304.1 77.5L302.9 76.4L300.6 76.1L301.0 75.5L300.1 75.0L299.9 73.6L300.3 74.0L300.7 71.5ZM114.4 71.8L112.8 72.1L112.9 71.5L114.2 71.6ZM103.1 72.1L101.7 71.8L102.2 71.5L103.8 72.1ZM107.4 70.1L110.0 70.4L111.7 71.4L109.3 71.6L108.6 72.4L105.5 71.7L107.7 71.3L106.8 70.1ZM290.3 71.3L288.7 71.5L288.6 70.6L290.8 69.9L290.6 70.7ZM24.5 70.9L24.1 69.7L25.2 70.5L24.8 70.8ZM23.9 69.4L23.3 69.1L24.0 69.2ZM20.7 68.0L20.2 67.9L20.6 67.8ZM100.3 67.2L105.8 69.7L105.0 70.1L102.2 70.1L102.9 69.6L101.3 68.4L98.2 67.8L98.2 67.4L95.0 68.1L96.7 67.0L99.4 66.9ZM102.5 66.2L101.6 65.4L102.1 64.8L102.5 65.7ZM301.2 67.2L300.7 68.0L300.1 66.4L301.5 64.7L301.8 65.6ZM102.2 63.4L101.0 63.2L102.2 63.2ZM103.0 63.4L102.8 64.1L102.2 63.0ZM314.6 55.9L314.2 56.8L313.8 56.5L313.0 57.3L312.4 56.5L313.9 55.6ZM214.6 54.3L213.0 55.4L212.3 54.9L213.7 54.6ZM203.7 54.3L206.2 55.0L203.5 54.7ZM195.5 51.8L195.1 53.4L192.4 52.4L192.6 51.9L194.8 51.9ZM189.2 48.8L189.8 49.5L189.7 50.8L188.4 50.8L188.2 49.0L188.7 49.1ZM321.0 52.9L320.3 54.9L317.2 55.4L315.8 56.5L315.1 55.4L311.0 56.1L312.0 56.9L310.7 59.0L310.2 58.6L310.4 57.7L309.4 56.7L312.6 54.6L315.7 54.5L316.7 52.7L317.4 53.2L319.4 51.8L320.3 48.8L321.4 48.6L321.9 50.0L321.0 51.8ZM189.6 47.8L189.2 48.6L188.5 47.7L189.4 47.0ZM323.9 45.8L325.3 45.6L325.5 46.7L324.1 47.0L323.2 48.0L321.6 47.3L321.1 48.4L320.0 48.4L319.8 47.4L320.3 46.7L321.4 46.6L322.0 44.4L323.1 45.5ZM116.3 43.4L118.0 43.6L117.1 44.0L115.9 43.6L116.0 43.0ZM118.2 40.9L115.5 40.1L118.2 40.7ZM56.5 41.5L51.9 40.0L51.6 39.2L54.2 39.7L56.1 40.9ZM123.9 39.3L123.2 40.2L123.9 39.8L124.5 40.1L124.2 40.4L126.5 40.8L126.2 41.5L126.9 41.3L127.4 42.5L126.9 43.3L125.8 43.2L125.8 42.2L124.6 43.1L124.0 43.1L124.7 42.6L123.7 42.4L120.7 42.4L121.2 41.7L120.8 41.5L122.6 39.3L124.4 38.7ZM47.3 36.0L48.3 35.9L48.4 37.8L46.8 35.8ZM323.6 39.3L324.7 41.0L323.2 40.7L322.6 42.1L323.5 43.9L322.7 43.3L322.1 44.0L321.7 36.7L322.7 35.6L323.2 38.2ZM173.2 37.7L170.0 38.2L170.8 37.1L170.3 36.1L173.3 34.8L174.3 35.4L174.0 36.8ZM192.7 34.4L192.1 35.2L191.0 34.6L190.9 34.2L192.4 33.9ZM27.0 32.9L26.0 33.3L25.3 32.5L26.8 32.0L27.9 32.4ZM177.0 31.4L175.9 32.4L178.0 32.3L176.9 34.0L177.9 34.1L180.5 37.1L181.7 37.3L181.1 38.2L181.4 38.7L174.8 40.0L174.2 39.8L176.6 38.6L174.7 38.0L175.8 37.7L175.4 36.5L176.9 36.6L177.1 36.0L175.2 35.2L175.0 34.2L174.4 34.7L173.9 33.2L175.0 31.4L175.8 31.4ZM14.4 30.1L12.5 29.8L14.3 29.7ZM100.7 27.8L99.9 28.3L99.7 27.9L100.5 27.6ZM98.1 27.3L96.9 27.8L96.0 27.5L98.1 27.1ZM8.3 26.2L11.3 26.7L8.2 26.6ZM94.8 24.3L99.9 26.3L99.0 26.6L96.9 25.9L94.5 26.9L94.1 26.4L92.8 26.5L93.6 26.0L94.1 24.3ZM165.5 23.5L165.3 24.2L166.4 24.9L161.3 26.5L157.2 26.0L158.2 25.6L156.0 25.1L157.8 24.6L155.7 24.4L156.3 23.7L157.9 23.6L159.4 24.3L163.8 23.5ZM104.1 22.9L103.0 22.9L103.2 21.9L104.9 22.0L104.8 22.6ZM5.0 23.4L5.7 23.7L5.4 22.9L8.1 23.1L10.1 24.0L7.5 24.6L7.0 25.7L3.8 24.6L1.6 24.6L1.3 23.9L0.1 24.1L0.6 24.6L0.0 25.0L0.0 21.0L5.1 22.8ZM84.4 20.9L80.2 20.6L81.8 19.9L83.7 20.5ZM360.0 19.2L358.7 18.9L360.0 18.5ZM1.3 19.1L0.0 19.2L0.1 18.4L2.3 18.9ZM89.5 20.5L89.4 21.5L90.8 20.7L92.0 21.4L91.7 22.1L92.6 22.8L94.4 21.2L94.5 20.1L97.4 20.3L98.7 20.8L98.0 21.9L98.7 22.4L96.7 23.6L94.2 23.4L92.7 25.2L90.1 26.0L89.2 27.0L86.8 28.0L85.8 29.1L85.3 31.1L86.8 31.2L87.7 32.9L89.1 32.7L95.0 34.7L97.7 34.9L97.9 36.7L100.1 38.8L101.4 37.4L100.2 35.3L103.5 33.5L102.7 31.9L101.5 31.2L102.7 30.1L101.9 27.7L106.2 27.6L108.6 28.9L110.4 28.9L110.7 31.0L112.4 31.8L115.4 29.7L118.6 33.0L118.2 33.7L122.7 35.4L124.2 36.7L124.3 37.9L120.0 39.8L113.6 39.8L108.9 43.2L111.3 41.7L114.9 40.8L115.8 41.3L114.9 41.9L115.5 43.8L118.5 44.1L119.5 43.0L120.2 44.1L114.6 46.5L113.9 46.4L113.8 45.5L115.6 44.7L112.9 44.9L109.3 47.0L109.2 47.7L110.0 48.4L106.3 49.1L108.1 49.1L106.0 49.2L105.1 51.1L104.5 50.5L104.9 51.6L104.1 52.8L103.7 50.8L103.7 51.9L103.0 51.8L103.7 52.1L104.3 54.4L98.7 58.6L99.9 63.1L99.6 64.8L98.3 64.1L97.1 60.9L95.9 59.9L94.9 60.4L93.6 59.6L90.8 59.7L90.4 59.8L90.8 60.7L89.8 60.9L86.2 60.3L83.4 61.7L82.6 62.6L82.1 67.6L83.7 70.7L85.6 71.9L88.0 71.3L89.2 70.7L89.7 69.0L92.9 68.5L93.2 69.2L92.2 71.7L91.7 71.5L91.6 73.5L91.1 74.1L95.0 74.0L96.6 74.7L96.2 78.9L98.6 81.2L100.4 80.4L103.2 81.4L104.3 80.6L105.1 78.9L106.6 78.8L108.2 77.6L108.9 77.9L108.1 78.6L108.3 80.9L109.0 80.1L108.6 79.0L109.8 78.6L110.1 77.8L111.8 79.4L115.1 79.9L115.7 79.4L118.1 79.3L117.3 79.6L117.6 80.1L119.2 80.6L119.3 81.4L120.9 82.0L122.9 84.0L126.0 84.2L128.7 85.8L130.0 88.3L129.6 90.1L131.4 90.2L131.4 91.2L132.2 90.6L135.1 91.6L135.4 92.7L140.0 92.9L142.8 94.8L144.4 95.1L145.3 97.3L144.9 99.0L141.3 103.1L140.7 107.9L139.1 111.9L138.0 113.0L135.4 113.4L132.4 114.9L131.5 115.9L131.1 118.7L126.2 124.4L123.8 124.9L121.6 123.9L123.2 126.9L122.3 128.2L120.8 128.7L117.7 128.8L117.9 130.7L117.3 131.0L114.9 131.1L115.0 132.1L116.5 132.6L114.8 133.5L114.4 135.0L112.7 135.6L112.4 136.3L114.4 137.2L114.0 138.1L110.9 140.7L111.8 142.3L109.2 142.9L108.6 143.9L105.1 142.3L104.4 138.7L105.9 136.9L104.4 136.6L105.3 135.8L105.6 134.1L106.8 134.5L107.3 132.4L106.6 132.1L106.3 133.4L105.7 133.2L106.8 129.3L106.4 127.2L108.6 122.4L108.5 118.9L109.1 117.6L109.8 109.8L109.6 108.3L108.5 107.4L104.0 104.6L100.2 97.2L98.8 96.1L98.6 94.7L100.2 92.7L99.0 92.2L99.1 91.1L99.9 89.2L101.1 88.6L102.9 86.2L101.8 81.7L100.4 81.1L99.5 81.9L100.0 82.5L99.1 82.8L98.9 82.2L96.5 81.6L95.0 79.9L94.9 80.4L94.3 80.1L94.3 78.9L92.5 76.7L88.8 76.1L85.3 73.8L83.4 74.3L76.5 71.7L74.5 70.1L74.7 68.6L74.0 67.2L70.7 64.4L70.7 63.6L67.8 61.0L66.9 58.8L66.1 58.4L65.2 58.2L65.3 59.8L68.4 63.3L69.3 65.7L70.6 66.6L70.0 67.2L67.8 65.3L67.7 64.0L64.9 62.3L65.8 61.4L64.5 60.4L62.7 57.0L59.4 55.4L55.6 49.7L56.1 44.5L55.3 41.8L56.9 42.0L57.4 42.9L57.2 41.0L52.6 39.2L52.1 37.7L50.9 37.2L50.7 36.4L48.0 34.5L45.9 31.9L43.4 31.8L40.1 30.5L32.9 29.1L31.8 29.3L32.0 30.0L28.3 30.8L28.6 29.3L29.4 28.7L26.0 30.6L26.7 31.1L25.8 31.9L21.6 34.0L15.2 35.6L22.3 32.4L23.0 31.1L18.0 31.3L18.1 30.4L16.2 30.2L13.9 28.5L15.4 26.9L19.2 26.2L18.5 25.6L19.2 25.2L15.0 25.6L11.9 24.3L15.5 23.4L18.3 23.9L13.2 21.6L16.8 20.6L18.1 19.7L23.4 18.6L43.5 21.1L50.2 19.8L50.9 20.2L51.9 19.5L54.2 20.5L55.6 19.8L55.7 20.6L58.5 20.2L64.8 21.1L66.1 21.6L64.7 22.1L70.1 22.0L71.1 22.6L72.2 22.1L71.2 21.7L71.8 21.3L73.8 21.2L78.5 22.4L81.6 22.2L81.4 21.6L82.3 21.4L83.9 21.8L83.9 22.7L84.5 21.9L85.3 21.9L85.8 20.9L83.5 19.9L83.6 18.8L84.8 18.1L87.1 18.7L88.5 19.8L87.6 20.3ZM65.8 16.9L65.3 17.3L67.6 17.0L68.9 17.5L70.1 17.0L71.8 18.3L72.3 17.9L71.6 16.9L73.5 16.9L74.6 17.3L75.5 19.0L79.0 20.0L77.3 20.5L77.9 20.9L77.6 21.2L74.0 20.8L66.7 21.5L62.7 20.0L67.6 19.6L62.1 19.5L61.6 19.1L63.9 18.7L60.6 18.4L62.1 17.3L64.8 16.7ZM75.5 16.6L74.6 17.2L73.1 16.5L74.7 16.4ZM103.7 16.9L100.2 17.2L99.2 16.3L101.9 16.3ZM93.4 16.8L94.2 17.5L95.1 16.7L97.7 16.2L99.4 17.3L99.3 17.9L102.2 17.3L105.9 18.7L107.8 18.4L112.1 19.9L113.0 20.8L111.2 21.3L118.1 23.1L116.1 25.0L113.3 23.6L112.0 23.7L111.9 24.3L114.7 25.6L115.3 26.6L115.0 27.3L111.2 26.3L113.8 28.1L109.0 27.1L105.2 25.3L101.4 25.4L102.1 24.7L106.0 24.5L105.7 24.2L107.3 22.7L107.1 22.3L101.0 19.8L98.7 20.3L90.5 19.2L91.5 18.8L90.1 18.8L89.8 17.8L90.6 16.9L94.2 16.2ZM79.6 16.2L82.6 16.2L81.9 17.0L83.5 17.4L83.3 18.3L80.7 18.6L77.5 17.5L79.6 17.3L78.5 16.6ZM323.6 16.8L319.9 16.6L322.1 16.1L323.5 16.5ZM86.8 17.2L84.6 17.9L84.0 16.6L85.5 15.9L89.5 16.1L88.0 17.0ZM59.5 18.6L56.9 19.1L54.1 18.1L56.1 16.3L55.1 15.7L58.5 15.6L64.5 16.5L59.5 18.2ZM330.7 14.9L328.0 15.2L326.1 14.8L328.2 14.7ZM86.4 15.0L83.2 15.1L85.1 14.4L86.0 14.7ZM325.1 14.4L324.3 15.2L319.0 15.4L317.0 14.7L317.5 14.1L321.5 13.9ZM81.5 13.3L82.3 13.7L81.8 15.0L79.1 14.9L79.1 14.4L77.5 14.4L77.4 13.7L81.4 13.4ZM71.8 13.8L74.1 14.0L73.7 15.0L66.3 15.6L68.2 14.8L62.3 14.8L64.6 13.5L70.9 14.5L69.5 13.6L71.5 13.3ZM237.5 19.3L233.7 19.2L231.6 18.5L231.5 18.0L232.5 17.8L232.4 17.2L234.4 16.4L233.5 16.3L235.9 15.4L235.6 14.9L248.2 13.1L248.9 13.5L248.2 13.8L238.5 15.7L235.4 17.6L235.6 18.5ZM85.3 12.9L88.4 13.2L90.8 14.4L99.9 14.7L100.2 15.1L98.1 15.6L91.8 15.6L87.6 15.2L87.1 14.1L82.9 13.2L83.3 12.8ZM63.8 12.4L62.9 13.5L60.1 13.9L57.1 13.9L60.9 12.5L62.4 12.5ZM287.0 13.0L287.2 13.5L291.1 13.3L294.1 14.2L293.9 14.7L289.4 15.8L293.0 16.0L293.5 16.7L295.6 16.2L303.2 17.0L303.3 16.3L307.0 16.4L308.6 17.0L309.1 17.6L308.5 18.0L311.3 19.2L312.3 18.2L319.9 18.5L319.1 17.6L320.5 17.2L329.5 17.8L333.0 19.2L339.0 19.1L339.8 19.5L339.7 20.3L340.9 20.6L347.8 20.4L349.6 21.3L350.8 21.0L350.0 20.3L350.5 19.9L358.6 20.6L360.0 21.0L360.0 25.0L357.4 25.4L359.5 27.4L353.7 28.3L350.3 30.1L348.9 29.4L346.3 30.2L343.5 30.1L342.0 31.8L343.2 32.4L343.1 33.8L342.1 33.9L341.7 34.7L342.1 35.1L340.4 35.7L340.0 36.8L338.5 37.0L338.2 38.1L336.8 39.0L335.4 34.6L335.9 33.2L336.8 32.2L338.4 31.9L343.7 28.9L344.5 27.4L343.3 27.5L340.1 29.5L339.3 28.2L336.7 28.6L334.2 30.2L335.0 30.9L331.3 31.2L331.3 30.5L329.8 30.3L322.2 31.0L315.1 35.3L318.2 36.2L319.9 35.8L321.3 36.9L321.4 37.8L320.6 38.8L320.1 41.6L318.2 43.7L314.9 46.6L313.5 47.2L312.3 46.7L307.5 50.2L307.4 50.8L309.5 53.2L309.1 54.9L306.5 55.6L306.1 53.3L306.9 53.1L306.2 52.3L304.7 51.9L305.3 50.4L304.3 50.1L301.1 51.1L302.2 49.6L301.6 49.1L298.0 50.8L297.5 51.3L298.9 52.6L299.7 52.8L300.8 52.1L302.4 52.5L302.5 53.1L301.1 53.3L299.2 55.1L300.2 55.6L301.9 58.3L301.3 59.3L302.1 60.2L301.7 61.8L298.7 65.5L295.9 67.2L290.8 68.6L290.4 69.7L289.9 69.7L289.9 68.6L288.5 68.3L285.9 70.2L285.7 70.9L288.9 74.7L289.3 76.6L289.2 78.3L285.2 81.4L285.1 80.1L283.5 79.4L282.6 77.8L280.8 77.4L281.0 76.6L280.1 76.6L279.2 80.8L279.9 80.8L280.5 82.6L283.0 84.5L284.2 88.7L281.4 87.2L280.1 83.5L278.5 81.6L278.3 82.2L278.8 78.6L277.2 73.1L275.4 74.3L274.2 74.0L274.3 71.8L271.4 67.2L270.5 67.2L270.3 68.2L267.0 68.5L266.5 69.8L265.1 70.5L262.2 73.4L260.3 74.1L259.9 79.6L257.5 82.0L256.6 81.1L253.5 74.0L252.6 68.6L250.5 69.1L249.2 67.9L249.3 67.2L247.4 66.1L246.4 64.6L241.5 64.9L237.4 64.3L236.5 62.9L234.7 63.5L231.5 62.1L230.1 59.9L228.0 60.0L230.8 65.2L231.0 64.0L231.6 64.2L231.8 66.0L234.0 65.9L236.4 63.6L236.8 65.8L238.7 66.4L239.8 67.7L237.8 69.8L237.7 71.1L235.3 72.8L232.4 73.6L232.2 74.4L228.7 76.0L223.5 77.4L222.6 73.2L219.1 68.7L218.5 66.3L214.6 61.9L214.9 60.5L213.9 62.4L212.4 60.1L215.7 66.1L215.5 66.9L216.9 68.0L217.5 71.4L218.4 72.0L219.3 74.1L223.3 77.6L222.7 78.3L224.6 79.6L231.1 78.0L231.0 79.4L227.7 85.8L220.3 92.6L219.2 94.7L218.8 96.5L219.4 96.8L219.2 98.5L220.5 100.8L220.8 104.7L219.5 106.7L214.8 109.8L215.6 112.1L215.5 114.1L212.6 115.7L212.2 118.8L208.2 122.8L205.8 123.9L202.6 123.9L199.6 124.8L198.2 123.9L198.2 121.7L195.2 117.1L194.3 112.1L191.8 108.1L191.8 105.8L193.6 102.0L193.7 100.7L191.9 95.0L188.8 91.1L189.8 86.9L189.4 86.3L188.5 85.2L185.9 85.7L184.3 83.7L181.9 83.9L178.0 85.3L175.4 84.8L172.5 85.7L171.0 85.2L167.6 82.7L165.2 79.1L163.4 77.8L163.3 76.4L162.4 75.3L163.5 73.9L163.9 71.9L163.0 68.1L165.6 63.7L170.4 60.1L170.7 57.4L173.1 55.9L174.1 54.2L177.8 54.8L181.5 53.4L189.5 52.6L190.2 53.3L191.1 53.1L190.3 56.2L195.2 57.7L195.7 58.6L199.1 59.7L200.1 59.0L200.1 57.8L201.5 57.2L208.9 59.1L211.0 58.4L212.0 59.1L213.8 59.0L216.0 55.4L216.2 53.3L212.5 53.9L211.7 53.4L209.7 53.9L207.6 53.3L206.3 51.8L206.8 51.0L206.2 50.5L207.3 49.6L208.8 49.5L209.2 48.8L211.1 48.9L213.5 48.0L218.3 49.1L220.4 49.0L221.7 48.0L221.5 47.4L216.7 44.8L218.2 43.8L217.7 43.4L219.1 42.7L215.0 43.7L215.0 44.3L216.5 44.5L216.3 44.9L213.9 45.6L212.5 44.7L213.3 43.9L210.7 43.4L209.6 45.0L208.8 45.1L207.7 47.4L208.8 48.9L206.4 49.8L206.1 49.2L204.9 49.1L203.7 49.3L204.4 49.9L203.9 50.0L202.6 49.7L204.0 52.3L203.1 52.1L203.2 53.6L202.5 53.6L199.4 49.7L199.5 48.3L193.1 44.3L192.3 44.6L192.6 45.9L198.5 49.8L196.9 49.6L196.4 50.2L197.1 51.1L196.1 52.0L195.7 52.1L196.1 51.0L195.4 50.0L192.1 48.3L190.5 47.1L190.2 46.1L188.9 45.6L186.5 46.9L183.1 46.9L183.0 48.1L180.8 49.0L179.7 50.7L180.1 51.3L177.9 53.3L175.6 53.3L174.6 54.1L173.5 53.1L171.1 53.1L171.2 51.7L170.5 51.3L171.2 49.2L170.6 47.0L172.0 46.3L178.1 46.6L178.6 46.0L178.8 44.0L177.0 42.4L175.5 42.0L175.4 41.3L178.4 41.4L178.1 40.2L179.0 40.7L181.3 39.9L181.6 39.1L183.8 38.4L184.7 36.9L188.1 36.5L188.8 36.0L188.1 34.5L188.5 32.9L190.6 32.3L190.3 33.1L190.9 33.5L189.7 34.5L190.9 36.0L192.5 35.5L194.1 36.2L197.6 35.1L199.7 35.6L201.3 34.8L201.6 32.6L202.5 32.2L204.1 33.0L204.4 31.6L203.4 31.4L203.3 30.8L209.1 30.0L208.1 29.5L202.9 30.2L201.3 29.3L201.1 27.4L201.5 26.8L205.4 24.9L203.9 24.0L202.2 24.3L201.2 25.0L201.4 25.6L197.8 27.3L197.1 28.7L198.8 29.9L197.9 31.0L196.8 31.3L195.9 33.9L192.9 34.6L190.4 30.5L188.4 31.7L185.7 31.4L185.0 28.0L190.5 25.5L194.8 22.2L199.2 20.2L203.0 19.8L204.5 19.0L208.2 18.8L211.3 19.5L210.0 19.8L211.1 20.4L212.1 20.1L220.3 22.1L221.1 23.2L220.0 23.7L213.2 23.4L214.8 24.1L214.9 25.6L217.0 26.2L216.5 25.2L217.2 24.9L219.6 25.5L220.4 25.2L219.8 24.5L222.1 23.5L223.9 23.9L224.5 23.2L223.7 22.6L224.2 22.0L223.5 21.4L226.3 21.7L226.8 22.3L225.6 22.4L225.6 23.0L226.3 23.3L233.7 21.1L234.5 21.2L233.5 21.8L238.8 21.1L239.9 21.7L241.1 21.1L240.0 20.5L240.6 20.1L248.5 21.9L249.2 21.4L246.9 20.5L246.7 19.0L249.2 17.2L252.6 17.2L252.8 17.8L251.8 18.6L252.8 19.6L252.6 21.0L253.7 21.6L251.3 23.7L252.4 23.8L255.1 22.2L254.5 21.7L254.9 21.0L253.6 20.4L254.4 19.4L253.1 18.6L254.9 17.9L254.7 17.2L255.7 17.7L255.3 18.7L256.4 18.8L255.9 18.1L257.6 17.7L261.5 18.2L260.6 17.4L260.5 16.4L266.8 16.1L266.0 15.5L267.2 14.9L280.8 13.6L284.4 12.3L286.1 12.6L284.7 12.9ZM86.2 12.5L83.6 12.2L86.3 12.4ZM69.8 12.3L66.5 12.3L70.1 12.0ZM204.7 12.1L200.7 12.3L201.4 12.1L200.8 11.7L203.3 11.9ZM70.3 11.4L67.5 11.6L69.0 11.2ZM84.2 11.9L81.9 11.9L81.4 11.1L84.4 11.6ZM79.9 11.7L80.3 12.1L74.8 11.6L75.8 11.3L74.5 10.7L79.2 11.2ZM285.1 11.7L279.4 12.1L282.1 10.7L285.4 11.3ZM198.3 10.3L201.5 11.0L199.0 11.4L197.1 13.2L195.9 13.2L193.8 12.6L194.7 12.3L190.4 10.3L197.0 9.9ZM205.4 9.6L207.4 9.9L205.9 10.5L200.1 10.4L197.4 9.7L202.9 9.3ZM231.1 9.5L227.6 10.0L226.5 9.8L227.1 9.4L224.8 9.4L231.5 9.3ZM279.9 11.1L275.0 11.0L271.2 9.7L275.9 8.7L280.2 10.2ZM93.0 10.3L94.2 10.7L89.2 11.8L87.1 11.7L86.0 11.2L86.9 10.6L83.3 9.8L85.7 9.0L85.3 8.8L87.6 8.7L92.2 9.7ZM111.5 6.9L118.1 7.6L112.3 8.5L114.5 8.5L108.8 10.2L103.1 10.7L104.5 10.8L103.8 11.0L104.6 11.5L100.2 12.8L102.1 13.2L99.4 13.8L93.9 13.7L90.5 13.5L90.4 13.0L92.2 12.8L91.7 12.1L95.0 12.5L92.0 11.6L94.9 10.7L93.1 9.7L98.2 9.5L92.4 9.5L88.4 8.1L94.5 7.3L96.8 7.7L100.7 6.9L109.3 6.8ZM152.9 6.5L159.2 7.3L148.6 8.0L157.1 7.9L157.9 8.3L156.8 8.8L164.2 8.1L167.8 8.7L160.0 9.8L162.3 9.9L160.3 11.2L160.3 12.4L161.5 13.0L158.3 13.4L160.2 13.9L160.4 14.8L159.3 14.8L160.6 15.7L158.4 15.8L159.6 16.2L159.2 16.5L156.4 16.7L157.7 17.8L155.2 17.7L157.9 18.5L158.2 19.3L156.5 19.5L154.5 18.6L154.8 19.2L153.6 19.8L157.7 19.9L152.3 21.5L148.2 21.9L145.8 23.3L140.2 24.5L138.8 26.5L137.2 27.3L137.6 28.1L136.6 29.9L135.2 30.0L133.7 29.1L131.7 29.1L128.4 26.4L126.0 22.8L127.0 21.6L128.5 21.3L129.1 20.1L126.5 20.7L125.3 20.4L125.6 19.2L128.6 19.4L124.2 18.3L125.3 17.4L122.7 15.3L118.7 13.9L111.5 13.9L108.6 13.0L113.2 12.6L109.0 12.4L106.7 12.0L106.8 11.6L114.3 10.6L114.7 10.2L112.0 9.9L117.8 8.7L117.3 8.2L127.0 8.1L129.6 7.6L135.5 8.3L133.1 7.8L133.2 7.4L144.9 6.4Z"/></g>';
+
+    const CITY_GEO = {
+      "New York": [40.7, -74.0], "Boston": [42.4, -71.1], "Miami": [25.8, -80.2], "Atlanta": [33.7, -84.4],
+      "Toronto": [43.7, -79.4], "Montreal": [45.5, -73.6], "Washington": [38.9, -77.0], "Halifax": [44.6, -63.6],
+      "St. John's": [47.6, -52.7], "Chicago": [41.9, -87.6], "Austin": [30.3, -97.7], "Dallas": [32.8, -96.8],
+      "Houston": [29.8, -95.4], "Winnipeg": [49.9, -97.1], "Mexico City": [19.4, -99.1], "Bogotá": [4.7, -74.1],
+      "Lima": [-12.0, -77.0], "Denver": [39.7, -105.0], "Salt Lake City": [40.8, -111.9], "Edmonton": [53.5, -113.5],
+      "Calgary": [51.0, -114.1], "Phoenix": [33.4, -112.1], "Los Angeles": [34.1, -118.2], "San Francisco": [37.8, -122.4],
+      "Seattle": [47.6, -122.3], "Vancouver": [49.3, -123.1], "Vancouver, WA": [45.6, -122.7], "Anchorage": [61.2, -149.9],
+      "Honolulu": [21.3, -157.8], "São Paulo": [-23.5, -46.6], "Rio de Janeiro": [-22.9, -43.2], "Buenos Aires": [-34.6, -58.4],
+      "Santiago": [-33.4, -70.7], "Reykjavík": [64.1, -21.9], "London": [51.5, -0.1], "Dublin": [53.3, -6.3],
+      "Lisbon": [38.7, -9.1], "Paris": [48.9, 2.3], "Madrid": [40.4, -3.7], "Barcelona": [41.4, 2.2],
+      "Berlin": [52.5, 13.4], "Amsterdam": [52.4, 4.9], "Brussels": [50.8, 4.4], "Rome": [41.9, 12.5],
+      "Zurich": [47.4, 8.5], "Vienna": [48.2, 16.4], "Prague": [50.1, 14.4], "Warsaw": [52.2, 21.0],
+      "Stockholm": [59.3, 18.1], "Oslo": [59.9, 10.8], "Copenhagen": [55.7, 12.6], "Helsinki": [60.2, 24.9],
+      "Athens": [38.0, 23.7], "Bucharest": [44.4, 26.1], "Kyiv": [50.5, 30.5], "Istanbul": [41.0, 29.0],
+      "Moscow": [55.8, 37.6], "Cairo": [30.0, 31.2], "Johannesburg": [-26.2, 28.0], "Cape Town": [-33.9, 18.4],
+      "Lagos": [6.5, 3.4], "Nairobi": [-1.3, 36.8], "Addis Ababa": [9.0, 38.7], "Casablanca": [33.6, -7.6],
+      "Tel Aviv": [32.1, 34.8], "Riyadh": [24.7, 46.7], "Doha": [25.3, 51.5], "Dubai": [25.2, 55.3],
+      "Tehran": [35.7, 51.4], "Karachi": [24.9, 67.0], "Mumbai": [19.1, 72.9], "Delhi": [28.6, 77.2],
+      "Bengaluru": [13.0, 77.6], "Kolkata": [22.6, 88.4], "Kathmandu": [27.7, 85.3], "Dhaka": [23.8, 90.4],
+      "Bangkok": [13.8, 100.5], "Ho Chi Minh City": [10.8, 106.6], "Jakarta": [-6.2, 106.8], "Singapore": [1.3, 103.8],
+      "Kuala Lumpur": [3.1, 101.7], "Hong Kong": [22.3, 114.2], "Taipei": [25.0, 121.5], "Shanghai": [31.2, 121.5],
+      "Beijing": [39.9, 116.4], "Manila": [14.6, 121.0], "Seoul": [37.6, 127.0], "Tokyo": [35.7, 139.7],
+      "Osaka": [34.7, 135.5], "Perth": [-31.9, 115.9], "Adelaide": [-34.9, 138.6], "Brisbane": [-27.5, 153.0],
+      "Sydney": [-33.9, 151.2], "Melbourne": [-37.8, 145.0], "Auckland": [-36.8, 174.7], "Wellington": [-41.3, 174.8],
+      "Fiji": [-18.1, 178.4], "UTC": [51.5, 0]
+    };
+
+    function cityGeo(city, instant) {
+      const known = CITY_GEO[city.city];
+      if (known) return { lat: known[0], lon: known[1] };
+      return { lat: 28, lon: Math.max(-180, Math.min(175, tzOffset(instant, city.zone) / 4)) };
+    }
+
+    function globeMarkup() {
+      return '<div class="globe" data-globe>'
+        + '<div class="map"><svg viewBox="0 0 720 180" preserveAspectRatio="none">' + WORLD + '<g transform="translate(360)">' + WORLD + '</g></svg></div>'
+        + '<div class="night"></div><i class="pin"></i></div>';
+    }
+
+    const GLOBE_ZOOM = 2.4;
+
+    function lightGlobe(globe, minutes, lon, lat) {
+      if (!globe) return;
+      const hour = minutes / 60;
+      const angle = (hour - 12) / 24 * Math.PI * 2;
+      const widthPct = 400 * GLOBE_ZOOM;
+      const heightPct = 100 * GLOBE_ZOOM;
+      const safeLon = Math.max(-180, Math.min(180, lon));
+      const safeLat = Math.max(-55, Math.min(72, lat));
+      const mapX = 50 - widthPct * (safeLon + 180) / 720;
+      const mapY = 48 - ((90 - safeLat) / 180) * heightPct;
+      const night = Math.max(0, -Math.cos(angle));
+      globe.style.setProperty("--map-x", mapX.toFixed(2) + "%");
+      globe.style.setProperty("--map-y", mapY.toFixed(2) + "%");
+      globe.style.setProperty("--sx", (50 - Math.sin(angle) * 62).toFixed(1) + "%");
+      globe.style.setProperty("--sy", (40 - Math.cos(angle) * 10).toFixed(1) + "%");
+      globe.style.setProperty("--term", (angle * 180 / Math.PI).toFixed(1) + "deg");
+      globe.style.setProperty("--dark", (0.12 + night * 0.72).toFixed(3));
+      globe.style.setProperty("--veil", (night * 0.5).toFixed(3));
+    }
+
+    function renderTicks() {}
 
     function renderRows() {
-      const hours = [];
-      for (let hour = 0; hour < 24; hour += 1) hours.push(hour);
-      const byCity = state.cities.map(function (city) {
-        return hours.map(function (hour) { return segmentPeriod(city, hour); });
-      });
-      heatEl.innerHTML = "";
-      hours.forEach(function (hour) {
-        const count = byCity.filter(function (periods) { return periods[hour] === "work"; }).length;
-        const seg = document.createElement("div");
-        seg.className = "seg " + (count ? "work" : "off");
-        if (count) seg.style.opacity = String(0.35 + 0.65 * (count / state.cities.length));
-        heatEl.append(seg);
-      });
-
       rowsEl.innerHTML = "";
-      state.cities.forEach(function (city, cityIndex) {
-        const periods = byCity[cityIndex];
-        const row = document.createElement("div");
-        row.className = "row";
-        row.dataset.key = keyOf(city);
-        const who = document.createElement("div");
-        who.className = "who";
-        const top = document.createElement("div");
-        top.className = "who-top";
+      const ordered = state.cities.filter(function (city) { return keyOf(city) === state.anchorKey; })
+        .concat(state.cities.filter(function (city) { return keyOf(city) !== state.anchorKey; }));
+      ordered.forEach(function (city) {
+        const home = keyOf(city) === state.anchorKey;
+        const card = document.createElement("article");
+        card.className = "dial-card " + (home ? "is-home" : "is-chip");
+        card.dataset.key = keyOf(city);
+        const dial = document.createElement("div");
+        dial.innerHTML = globeMarkup();
         const name = document.createElement("button");
         name.type = "button";
         name.className = "city-name";
@@ -1116,97 +1949,98 @@
         name.textContent = city.city;
         name.setAttribute("aria-pressed", keyOf(city) === state.anchorKey ? "true" : "false");
         name.title = "Show the day in " + city.city + " time";
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "remove";
-        remove.dataset.remove = keyOf(city);
-        remove.setAttribute("aria-label", "Remove " + city.city);
-        remove.textContent = "×";
-        if (state.cities.length === 1) remove.disabled = true;
-        top.append(name, remove);
-        const meta = document.createElement("div");
-        meta.className = "who-meta";
-        meta.dataset.meta = "1";
         const time = document.createElement("div");
         time.className = "who-time";
         const hm = document.createElement("span");
         hm.dataset.time = "1";
-        const when = document.createElement("span");
+        const wday = document.createElement("span");
+        wday.className = "wday";
+        wday.dataset.wday = "1";
+        wday.hidden = true;
+        time.append(hm, wday);
+        const meta = document.createElement("div");
+        meta.className = "who-meta";
+        meta.dataset.meta = "1";
+        const when = document.createElement("div");
         when.className = "when";
         when.dataset.when = "1";
-        time.append(hm, when);
-        who.append(top, meta, time);
-        const wrap = document.createElement("div");
-        wrap.className = "track-wrap";
-        const track = document.createElement("div");
-        track.className = "track";
-        fillTrack(track, periods);
-        const hair = document.createElement("div");
-        hair.className = "hair";
-        hair.setAttribute("aria-hidden", "true");
-        wrap.append(track, hair);
-        row.append(who, wrap);
-        rowsEl.append(row);
+        const band = document.createElement("div");
+        band.className = "dayband";
+        band.dataset.band = "1";
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "more";
+        more.dataset.more = keyOf(city);
+        more.setAttribute("aria-label", "Actions for " + city.city);
+        more.setAttribute("aria-expanded", "false");
+        more.textContent = "···";
+        const menu = document.createElement("div");
+        menu.className = "card-menu";
+        menu.hidden = true;
+        menu.setAttribute("role", "menu");
+        [
+          { action: "change", label: "Change city" },
+          { action: "remove", label: "Remove", danger: true, disabled: state.cities.length === 1 }
+        ].forEach(function (item) {
+          const choice = document.createElement("button");
+          choice.type = "button";
+          choice.dataset.action = item.action;
+          choice.textContent = item.label;
+          choice.setAttribute("role", "menuitem");
+          if (item.danger) choice.className = "danger";
+          if (item.disabled) choice.disabled = true;
+          menu.append(choice);
+        });
+        card.tabIndex = 0;
+        card.setAttribute("aria-label", city.city + ". Drag to reorder.");
+        card.addEventListener("keydown", function (event) {
+          if (event.target !== card) return;
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          event.stopPropagation();
+          moveCity(card.dataset.key, event.key === "ArrowLeft" ? -1 : 1);
+        });
+        card.append(more, menu, dial, band, name, time, meta, when);
+        rowsEl.append(card);
       });
+      if (state.cities.length < 8) {
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "add-chip";
+        add.id = "add-city";
+        add.dataset.add = "1";
+        add.setAttribute("aria-label", "Add a city");
+        add.innerHTML = '<span class="round-add" aria-hidden="true">+</span><span>Add</span>';
+        rowsEl.append(add);
+      }
     }
 
     function renderMeetings() {
       document.querySelectorAll(".dur").forEach(function (button) {
         button.setAttribute("aria-pressed", Number(button.dataset.dur) === state.duration ? "true" : "false");
       });
-      const title = document.getElementById("meet-title");
-      const lede = document.getElementById("meet-lede");
-      slotsEl.innerHTML = "";
+      const best = document.getElementById("best");
+      const note = document.getElementById("meet-note");
       if (state.cities.length < 2) {
-        title.textContent = "A time that works";
-        lede.textContent = "Add another city to look for a time inside more than one workday.";
+        best.hidden = true;
+        note.hidden = true;
         return;
       }
       const windows = findWindows();
-      const all = windows.some(function (item) { return item.all; });
-      const length = state.duration === 30 ? "30-minute" : state.duration === 120 ? "2-hour" : "1-hour";
-      if (!all) {
-        title.textContent = "Closest times";
-        lede.textContent = "No " + length + " window lands in every workday.";
+      const good = windows.find(function (item) { return item.all; });
+      if (good) {
+        const startText = formatTime(Math.floor(good.start / 60), good.start % 60).text;
+        best.hidden = false;
+        best.dataset.start = String(good.start);
+        best.textContent = startText + " " + anchorCity().city + ", everyone is in their workday";
+        note.hidden = true;
       } else {
-        title.textContent = "A time that works";
-        lede.textContent = "";
+        best.hidden = true;
+        best.removeAttribute("data-start");
+        const length = state.duration === 30 ? "30-minute" : state.duration === 120 ? "2-hour" : "1-hour";
+        note.hidden = false;
+        note.textContent = "No " + length + " window lands in every workday.";
       }
-      windows.forEach(function (item) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "slot";
-        button.dataset.start = String(item.start);
-        const endMin = item.start + state.duration;
-        const startText = formatTime(Math.floor(item.start / 60), item.start % 60).text;
-        const endText = formatTime(Math.floor(endMin / 60) % 24, endMin % 60).text;
-        const when = document.createElement("span");
-        when.className = "slot-when";
-        const dot = document.createElement("i");
-        dot.className = "dot" + (item.all ? " good" : "");
-        when.append(dot, document.createTextNode(startText + " – " + endText));
-        const places = state.cities.map(function (city, index) {
-          const parts = partsInZone(item.instant, city.zone);
-          return city.city + " " + formatTime(parts.hour, parts.minute).text;
-        });
-        const summary = document.createElement("span");
-        summary.className = "slot-summary";
-        const fake = state.cities.map(function (city, index) {
-          return { city: city, period: item.held[index], parts: partsInZone(item.instant, city.zone) };
-        });
-        summary.textContent = summarize(fake);
-        const line = document.createElement("span");
-        line.className = "slot-places";
-        line.textContent = places.join(" · ");
-        button.append(when, summary, line);
-        button.addEventListener("click", function () {
-          state.minutes = item.start;
-          paint();
-          commit();
-          announce();
-        });
-        slotsEl.append(button);
-      });
     }
 
     function renderChips() {
@@ -1275,6 +2109,19 @@
       const we = String(Math.floor(state.workEnd / 60)).padStart(2, "0") + ":" + String(state.workEnd % 60).padStart(2, "0");
       params.set("work", ws + "-" + we);
       params.set("dur", String(state.duration));
+      if (document.body.classList.contains("embed")) {
+        const incoming = new URLSearchParams(location.search);
+        if (incoming.get("card") === "1") params.set("card", "1");
+        else params.set("embed", "1");
+      }
+      const open = document.getElementById("card-open");
+      if (open) {
+        const bare = new URLSearchParams(params);
+        bare.delete("embed");
+        bare.delete("card");
+        bare.delete("format");
+        open.href = location.pathname + "?" + bare.toString();
+      }
       const next = location.pathname + "?" + params.toString();
       if (next !== location.pathname + location.search) history.replaceState(null, "", next);
     }
@@ -1284,6 +2131,7 @@
         localStorage.setItem(STORAGE, JSON.stringify({
           cities: state.cities,
           anchorKey: state.anchorKey,
+          followDevice: state.followDevice === true,
           workStart: state.workStart,
           workEnd: state.workEnd,
           duration: state.duration
@@ -1330,6 +2178,14 @@
         return (item.aliases || []).some(function (alias) { return alias.toLowerCase() === folded; });
       });
       if (byAlias) return { city: byAlias.city, region: byAlias.region, zone: byAlias.zone };
+      const abbrZones = ABBR_ZONES[folded.replace(/\s+/g, "")];
+      if (abbrZones) {
+        const matches = CITIES.filter(function (item) { return abbrZones.indexOf(item.zone) !== -1; });
+        matches.sort(function (a, b) {
+          return (b.popular === true) - (a.popular === true) || a.city.localeCompare(b.city);
+        });
+        if (matches[0]) return { city: matches[0].city, region: matches[0].region, zone: matches[0].zone };
+      }
       if (safeZone(token)) {
         const known = CITIES.find(function (item) { return item.zone === token; });
         return known
@@ -1337,6 +2193,41 @@
           : { city: zoneLabel(token), region: token, zone: token };
       }
       return null;
+    }
+
+    function parseCityList(raw) {
+      const bits = raw.split(",");
+      const cities = [];
+      let index = 0;
+      while (index < bits.length && cities.length < 8) {
+        const one = bits[index].trim();
+        const two = index + 1 < bits.length ? one + ", " + bits[index + 1].trim() : "";
+        const pair = two ? parseToken(two) : null;
+        if (pair) {
+          cities.push(pair);
+          index += 2;
+          continue;
+        }
+        const single = parseToken(one);
+        if (single) cities.push(single);
+        index += 1;
+      }
+      return cities;
+    }
+
+    function parseLooseTime(value) {
+      const text = String(value || "").trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, "");
+      const match = text.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+      if (!match) return null;
+      let hour = Number(match[1]);
+      const minute = match[2] ? Number(match[2]) : 0;
+      if (minute > 59 || hour > 24) return null;
+      if (match[3] === "pm" && hour < 12) hour += 12;
+      if (match[3] === "am" && hour === 12) hour = 0;
+      if (match[3] === "am" && hour > 12) return null;
+      if (!match[3] && hour === 24) hour = 0;
+      if (!match[3] && hour > 23) return null;
+      return hour * 60 + minute;
     }
 
     function seed(detected) {
@@ -1350,26 +2241,33 @@
       return cities;
     }
 
+    function placeForZone(zone) {
+      return parseToken(zone);
+    }
+
     function restore() {
       state.detected = safeZone(Intl.DateTimeFormat().resolvedOptions().timeZone) || "Etc/UTC";
       const params = new URLSearchParams(location.search);
       let cities = [];
       let fromStore = null;
-      if (params.get("cities")) {
-        cities = params.get("cities").split(",").map(parseToken).filter(Boolean);
-      } else {
-        try { fromStore = JSON.parse(localStorage.getItem(STORAGE) || "null"); } catch (err) { fromStore = null; }
-        if (fromStore && Array.isArray(fromStore.cities)) {
-          cities = fromStore.cities.map(function (city) {
-            return city && safeZone(city.zone) ? { city: city.city, region: city.region, zone: city.zone } : null;
-          }).filter(Boolean);
-          if (fromStore.workStart != null && fromStore.workEnd > fromStore.workStart) {
-            state.workStart = fromStore.workStart;
-            state.workEnd = fromStore.workEnd;
-          }
-          if ([30, 60, 120].includes(fromStore.duration)) state.duration = fromStore.duration;
-          state.anchorKey = fromStore.anchorKey || "";
+      state.followDevice = true;
+      try { fromStore = JSON.parse(localStorage.getItem(STORAGE) || "null"); } catch (err) { fromStore = null; }
+      if (fromStore) {
+        if (fromStore.workStart != null && fromStore.workEnd > fromStore.workStart) {
+          state.workStart = fromStore.workStart;
+          state.workEnd = fromStore.workEnd;
         }
+        if ([30, 60, 120].includes(fromStore.duration)) state.duration = fromStore.duration;
+      }
+      if (params.get("cities")) {
+        cities = parseCityList(params.get("cities"));
+        state.followDevice = false;
+      } else if (fromStore && fromStore.followDevice === false && Array.isArray(fromStore.cities)) {
+        cities = fromStore.cities.map(function (city) {
+          return city && safeZone(city.zone) ? { city: city.city, region: city.region, zone: city.zone } : null;
+        }).filter(Boolean);
+        state.anchorKey = fromStore.anchorKey || "";
+        state.followDevice = false;
       }
       if (!cities.length) cities = seed(state.detected);
       state.cities = cities.slice(0, 8);
@@ -1387,6 +2285,7 @@
       const dur = Number(params.get("dur"));
       if ([30, 60, 120].includes(dur)) state.duration = dur;
       const at = params.get("at") || "";
+      const loose = parseLooseTime(at);
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(at)) {
         const date = at.slice(0, 10).split("-").map(Number);
         const time = at.slice(11, 16).split(":").map(Number);
@@ -1394,6 +2293,12 @@
         state.month = date[1];
         state.day = date[2];
         state.minutes = Math.max(0, Math.min(1439, time[0] * 60 + time[1]));
+      } else if (loose != null) {
+        const now = partsInZone(Date.now(), anchorCity().zone);
+        state.year = now.year;
+        state.month = now.month;
+        state.day = now.day;
+        state.minutes = loose;
       } else {
         const now = partsInZone(Date.now(), anchorCity().zone);
         state.year = now.year;
@@ -1403,23 +2308,82 @@
       }
     }
 
+    const ABBR_ZONES = {
+      pst: ["America/Los_Angeles"], pdt: ["America/Los_Angeles"], pt: ["America/Los_Angeles"],
+      pct: ["America/Vancouver"],
+      est: ["America/New_York", "America/Toronto"], edt: ["America/New_York", "America/Toronto"], et: ["America/New_York", "America/Toronto"],
+      cst: ["America/Chicago", "America/Winnipeg"], cdt: ["America/Chicago", "America/Winnipeg"], ct: ["America/Chicago", "America/Winnipeg"],
+      mst: ["America/Denver", "America/Phoenix", "America/Edmonton"], mdt: ["America/Denver", "America/Edmonton"], mt: ["America/Denver", "America/Edmonton"],
+      gmt: ["Europe/London", "Etc/UTC"], bst: ["Europe/London"], utc: ["Etc/UTC"], z: ["Etc/UTC"],
+      cet: ["Europe/Paris", "Europe/Berlin", "Europe/Amsterdam", "Europe/Rome", "Europe/Madrid", "Europe/Zurich", "Europe/Vienna", "Europe/Prague", "Europe/Warsaw", "Europe/Stockholm", "Europe/Oslo", "Europe/Copenhagen"],
+      cest: ["Europe/Paris", "Europe/Berlin", "Europe/Amsterdam", "Europe/Rome", "Europe/Madrid"],
+      jst: ["Asia/Tokyo"], kst: ["Asia/Seoul"], ist: ["Asia/Kolkata"], hkt: ["Asia/Hong_Kong"], sgt: ["Asia/Singapore"],
+      aest: ["Australia/Sydney", "Australia/Melbourne", "Australia/Brisbane"],
+      aedt: ["Australia/Sydney", "Australia/Melbourne"], awst: ["Australia/Perth"], nzst: ["Pacific/Auckland"],
+      hst: ["Pacific/Honolulu"], akst: ["America/Anchorage"], akdt: ["America/Anchorage"]
+    };
+
+    function foldQuery(value) {
+      return String(value || "").toLowerCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
+    }
+
+    function parseOffsetQuery(raw) {
+      let q = foldQuery(raw).replace(/\s+/g, "");
+      q = q.replace(/^gmt/, "").replace(/^utc/, "");
+      if (!q || (q[0] !== "+" && q[0] !== "-")) return null;
+      const sign = q[0] === "+" ? 1 : -1;
+      const body = q.slice(1);
+      let hours = 0;
+      let mins = 0;
+      if (/^\d{1,2}$/.test(body)) hours = Number(body);
+      else if (/^\d{1,2}:\d{2}$/.test(body)) {
+        const bits = body.split(":");
+        hours = Number(bits[0]);
+        mins = Number(bits[1]);
+      } else if (/^\d{1,2}\.\d$/.test(body)) {
+        const bits = body.split(".");
+        hours = Number(bits[0]);
+        mins = Math.round(Number("0." + bits[1]) * 60);
+      } else if (/^\d{4}$/.test(body)) {
+        hours = Number(body.slice(0, 2));
+        mins = Number(body.slice(2));
+      } else return null;
+      if (hours > 14 || mins > 59) return null;
+      return sign * (hours * 60 + mins);
+    }
+
+    function byPopular(a, b) {
+      return (b.popular === true) - (a.popular === true) || a.city.localeCompare(b.city);
+    }
+
     function search(query) {
-      const q = query.trim().toLowerCase();
+      const q = foldQuery(query);
       if (!q) return [];
+      const zones = ABBR_ZONES[q.replace(/\s+/g, "")];
+      if (zones) {
+        const wanted = {};
+        zones.forEach(function (zone) { wanted[zone] = true; });
+        return CITIES.filter(function (row) { return wanted[row.zone]; }).sort(byPopular).slice(0, 8);
+      }
+      const offset = parseOffsetQuery(query);
+      if (offset != null) {
+        const now = Date.now();
+        return CITIES.filter(function (row) { return tzOffset(now, row.zone) === offset; }).sort(byPopular).slice(0, 8);
+      }
       const scored = [];
       CITIES.forEach(function (row) {
-        const name = row.city.toLowerCase();
-        const region = row.region.toLowerCase();
-        const zone = row.zone.toLowerCase();
-        const aliases = (row.aliases || []).map(function (alias) { return alias.toLowerCase(); });
+        const name = foldQuery(row.city);
+        const region = foldQuery(row.region);
+        const zone = row.zone.toLowerCase().replaceAll("_", " ");
+        const aliases = (row.aliases || []).map(foldQuery);
         let score = 0;
         if (name === q) score = 100;
         else if (name.startsWith(q)) score = 80;
         else if (aliases.indexOf(q) !== -1) score = 75;
         else if (aliases.some(function (alias) { return alias.startsWith(q); })) score = 60;
-        else if (name.includes(q)) score = 50;
+        else if (name.includes(q) || aliases.some(function (alias) { return alias.includes(q); })) score = 50;
         else if (region.startsWith(q)) score = 40;
-        else if (zone.replaceAll("_", " ").includes(q)) score = 30;
+        else if (zone.includes(q)) score = 30;
         if (score) scored.push({ score: score, row: row });
       });
       scored.sort(function (a, b) {
@@ -1480,8 +2444,185 @@
       options[activeOption].scrollIntoView({ block: "nearest" });
     }
 
+    function closeComposer() {
+      state.replaceKey = "";
+      document.getElementById("adder").classList.remove("is-open");
+      document.getElementById("adder-title").textContent = "Add a city";
+      searchInput.placeholder = "City or time zone";
+      searchInput.value = "";
+      const addBtn = document.getElementById("add-city");
+      if (addBtn) addBtn.setAttribute("aria-expanded", "false");
+      closeList();
+    }
+
+    function openComposer(key) {
+      closeCardMenus();
+      state.replaceKey = key || "";
+      const current = state.cities.find(function (city) { return keyOf(city) === key; });
+      document.getElementById("adder-title").textContent = current ? "Change " + current.city : "Add a city";
+      searchInput.placeholder = current ? "Search for a different city" : "City or time zone";
+      searchInput.value = "";
+      document.getElementById("adder").classList.add("is-open");
+      const addBtn = document.getElementById("add-city");
+      if (addBtn) addBtn.setAttribute("aria-expanded", state.replaceKey ? "false" : "true");
+      closeList();
+      renderChips();
+      searchInput.focus();
+      document.getElementById("adder").scrollIntoView({ block: "nearest" });
+    }
+
+    function closeCardMenus() {
+      rowsEl.querySelectorAll(".card-menu").forEach(function (menu) { menu.hidden = true; });
+      rowsEl.querySelectorAll(".more").forEach(function (button) { button.setAttribute("aria-expanded", "false"); });
+      rowsEl.querySelectorAll(".dial-card.is-menu").forEach(function (card) { card.classList.remove("is-menu"); });
+    }
+
+    function openCardMenu(card) {
+      closeCardMenus();
+      closeComposer();
+      const menu = card.querySelector(".card-menu");
+      const more = card.querySelector(".more");
+      if (!menu || !more) return;
+      card.classList.add("is-menu");
+      menu.hidden = false;
+      more.setAttribute("aria-expanded", "true");
+    }
+
+    function moveCity(key, dir) {
+      const index = state.cities.findIndex(function (city) { return keyOf(city) === key; });
+      const next = index + dir;
+      if (index < 0 || next < 0 || next >= state.cities.length) return;
+      const cities = state.cities.slice();
+      const moved = cities[index];
+      cities[index] = cities[next];
+      cities[next] = moved;
+      state.cities = cities;
+      renderAll();
+    }
+
+    function shiftLayout(card, dir) {
+      const neighbor = dir < 0 ? card.previousElementSibling : card.nextElementSibling;
+      if (!neighbor || !neighbor.classList.contains("dial-card")) return;
+      const cards = Array.from(rowsEl.querySelectorAll(".dial-card"));
+      const before = new Map(cards.map(function (el) { return [el, el.getBoundingClientRect()]; }));
+      const layoutBefore = before.get(card);
+      if (dir < 0) rowsEl.insertBefore(card, neighbor);
+      else rowsEl.insertBefore(neighbor, card);
+      const layoutAfter = card.getBoundingClientRect();
+      reorder.originX += layoutAfter.left - layoutBefore.left;
+      reorder.originY += layoutAfter.top - layoutBefore.top;
+      if (reorder.lastX != null) {
+        card.style.transform = "translate(" + (reorder.lastX - reorder.originX).toFixed(1) + "px," + (reorder.lastY - reorder.originY).toFixed(1) + "px) scale(1.03)";
+      }
+      cards.forEach(function (el) {
+        if (el === card) return;
+        const dx = before.get(el).left - el.getBoundingClientRect().left;
+        const dy = before.get(el).top - el.getBoundingClientRect().top;
+        if (!dx && !dy) return;
+        el.style.transition = "none";
+        el.style.transform = "translate(" + dx + "px," + dy + "px)";
+        requestAnimationFrame(function () {
+          el.style.transition = "transform 180ms ease";
+          el.style.transform = "";
+        });
+      });
+    }
+
+    function crossed(card, neighbor, dir) {
+      const a = card.getBoundingClientRect();
+      const b = neighbor.getBoundingClientRect();
+      const cx = a.left + a.width / 2;
+      const cy = a.top + a.height / 2;
+      const nx = b.left + b.width / 2;
+      const ny = b.top + b.height / 2;
+      if (Math.abs(cy - ny) < b.height * 0.75) return dir < 0 ? cx < nx : cx > nx;
+      return dir < 0 ? cy < ny : cy > ny;
+    }
+
+    function finishReorder(commitOrder) {
+      if (!reorder) return;
+      clearTimeout(reorder.timer);
+      const card = reorder.card;
+      const moved = reorder.moved;
+      card.classList.remove("is-dragging");
+      card.style.transform = "";
+      rowsEl.classList.remove("is-reordering");
+      let order = null;
+      if (commitOrder && moved) {
+        order = Array.from(rowsEl.querySelectorAll(".dial-card")).map(function (el) { return el.dataset.key; });
+      }
+      reorder = null;
+      if (!order) return;
+      const same = order.every(function (key, index) { return state.cities[index] && key === keyOf(state.cities[index]); });
+      if (same) return;
+      suppressClick = true;
+      state.cities.sort(function (a, b) { return order.indexOf(keyOf(a)) - order.indexOf(keyOf(b)); });
+      renderAll();
+    }
+
+    function onReorderMove(event) {
+      if (!reorder || event.pointerId !== reorder.pointerId) return;
+      const dx = event.clientX - reorder.originX;
+      const dy = event.clientY - reorder.originY;
+      if (!reorder.armed) {
+        if (Math.hypot(dx, dy) > 12) finishReorder(false);
+        return;
+      }
+      if (!reorder.moved) {
+        if (Math.hypot(dx, dy) < 6) return;
+        reorder.moved = true;
+        reorder.card.classList.add("is-dragging");
+        rowsEl.classList.add("is-reordering");
+      }
+      reorder.card.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(1.03)";
+      reorder.lastX = event.clientX;
+      reorder.lastY = event.clientY;
+      const card = reorder.card;
+      const prev = card.previousElementSibling;
+      const next = card.nextElementSibling;
+      if (prev && prev.classList.contains("dial-card") && !prev.classList.contains("is-home") && crossed(card, prev, -1)) shiftLayout(card, -1);
+      else if (next && next.classList.contains("dial-card") && crossed(card, next, 1)) shiftLayout(card, 1);
+    }
+
+    function onReorderEnd(event) {
+      if (!reorder || event.pointerId !== reorder.pointerId) return;
+      const moved = reorder.moved;
+      const held = reorder.pointerType !== "mouse" && reorder.armed && !reorder.moved && event.type !== "pointercancel";
+      const card = reorder.card;
+      finishReorder(event.type !== "pointercancel");
+      if (moved) suppressClick = true;
+      if (held) {
+        suppressClick = true;
+        openCardMenu(card);
+      }
+    }
+
     function addCity(city) {
       const key = keyOf(city);
+      const place = { city: city.city, region: city.region, zone: city.zone };
+      if (state.replaceKey) {
+        const index = state.cities.findIndex(function (item) { return keyOf(item) === state.replaceKey; });
+        if (index < 0) return;
+        if (state.cities.some(function (item, itemIndex) { return itemIndex !== index && keyOf(item) === key; })) {
+          searchInput.value = "";
+          closeList();
+          return;
+        }
+        const instant = currentInstant();
+        const wasAnchor = state.anchorKey === state.replaceKey;
+        state.cities[index] = place;
+        if (wasAnchor) {
+          state.anchorKey = key;
+          const parts = partsInZone(instant, place.zone);
+          state.year = parts.year;
+          state.month = parts.month;
+          state.day = parts.day;
+          state.minutes = parts.hour * 60 + parts.minute;
+        }
+        closeComposer();
+        renderAll();
+        return;
+      }
       if (state.cities.some(function (item) { return keyOf(item) === key; })) {
         searchInput.value = "";
         closeList();
@@ -1489,11 +2630,9 @@
         return;
       }
       if (state.cities.length >= 8) return;
-      state.cities.push({ city: city.city, region: city.region, zone: city.zone });
-      searchInput.value = "";
-      closeList();
+      state.cities.push(place);
+      closeComposer();
       renderAll();
-      searchInput.focus();
     }
 
     function removeCity(key) {
@@ -1511,8 +2650,12 @@
       renderAll();
     }
 
-    function setAnchor(key) {
-      if (state.anchorKey === key) return;
+    function setAnchor(key, follow) {
+      state.followDevice = follow === true;
+      if (state.anchorKey === key) {
+        commit();
+        return;
+      }
       const instant = currentInstant();
       state.anchorKey = key;
       const parts = partsInZone(instant, anchorCity().zone);
@@ -1559,6 +2702,7 @@
     fillWorkSelects();
     renderTicks();
 
+    try{fetch("https://api.forwardslashdot.com/api/hit?area=world_time_converter",{mode:"cors",credentials:"omit"}).catch(function(){})}catch(e){}
     fetch("/cities.json").then(function (res) {
       if (!res.ok) return null;
       return res.json();
@@ -1620,21 +2764,82 @@
     document.getElementById("work-start").addEventListener("change", onWorkChange);
     document.getElementById("work-end").addEventListener("change", onWorkChange);
 
+    rowsEl.addEventListener("pointerdown", function (event) {
+      if (document.body.classList.contains("embed")) return;
+      if (event.button) return;
+      const card = event.target.closest(".dial-card");
+      if (!card || card.classList.contains("is-home") || event.target.closest(".more, .card-menu")) return;
+      reorder = {
+        card: card,
+        pointerId: event.pointerId,
+        originX: event.clientX,
+        originY: event.clientY,
+        moved: false,
+        armed: event.pointerType === "mouse",
+        pointerType: event.pointerType,
+        timer: 0
+      };
+      if (!reorder.armed) {
+        reorder.timer = setTimeout(function () {
+          if (!reorder || reorder.pointerId !== event.pointerId) return;
+          reorder.armed = true;
+        }, 220);
+      }
+    });
+    window.addEventListener("pointermove", onReorderMove);
+    window.addEventListener("pointerup", onReorderEnd);
+    window.addEventListener("pointercancel", onReorderEnd);
+
     rowsEl.addEventListener("click", function (event) {
-      const remove = event.target.closest("[data-remove]");
-      if (remove) {
-        removeCity(remove.dataset.remove);
+      if (suppressClick) {
+        suppressClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.target.closest("[data-action], [data-more], [data-add]")) {
+        event.stopPropagation();
+        closeHome();
+      }
+      const action = event.target.closest("[data-action]");
+      if (action) {
+        const key = action.closest("[data-key]").dataset.key;
+        closeCardMenus();
+        if (action.dataset.action === "change") openComposer(key);
+        else if (action.dataset.action === "remove") removeCity(key);
+        return;
+      }
+      const more = event.target.closest("[data-more]");
+      if (more) {
+        const menu = more.parentElement.querySelector(".card-menu");
+        const willOpen = menu.hidden;
+        closeCardMenus();
+        closeComposer();
+        if (willOpen) {
+          menu.hidden = false;
+          more.setAttribute("aria-expanded", "true");
+        }
+        return;
+      }
+      if (event.target.closest("[data-add]")) {
+        const adder = document.getElementById("adder");
+        if (adder.classList.contains("is-open") && !state.replaceKey) closeComposer();
+        else openComposer("");
         return;
       }
       const name = event.target.closest("[data-anchor]");
-      if (name) setAnchor(name.dataset.anchor);
+      if (name) {
+        closeCardMenus();
+        setAnchor(name.dataset.anchor);
+      }
     });
 
     board.addEventListener("pointerdown", function (event) {
-      if (event.target.closest("button, input, a, select")) return;
+      if (event.target.closest("button, input, a, select, summary")) return;
       const lane = event.target.closest(".track-wrap");
       if (!lane) return;
       dragLane = lane;
+      document.body.classList.add("is-scrubbing");
       state.minutes = minutesFromEvent(event);
       paint();
       board.setPointerCapture(event.pointerId);
@@ -1647,6 +2852,7 @@
     function endDrag() {
       if (!dragLane) return;
       dragLane = null;
+      document.body.classList.remove("is-scrubbing");
       commit();
       announce();
     }
@@ -1714,30 +2920,106 @@
       setTimeout(closeList, 140);
     });
 
+    function closeHome() {
+      const menu = document.getElementById("home-menu");
+      menu.hidden = true;
+      document.getElementById("where").setAttribute("aria-expanded", "false");
+    }
+
+    function useMyLocation() {
+      const place = placeForZone(state.detected);
+      if (!place) return;
+      if (!state.cities.some(function (city) { return city.zone === place.zone; })) {
+        if (state.cities.length >= 8) state.cities.pop();
+        state.cities.unshift(place);
+      }
+      const match = state.cities.find(function (city) { return city.zone === place.zone; });
+      closeHome();
+      setAnchor(keyOf(match), true);
+      renderAll();
+    }
+
+    function openHome() {
+      const menu = document.getElementById("home-menu");
+      const button = document.getElementById("where");
+      menu.replaceChildren();
+      const detected = placeForZone(state.detected);
+      const items = [];
+      if (detected) items.push({ place: detected, follow: true, label: "Your location", hint: detected.city });
+      state.cities.forEach(function (city) {
+        if (detected && city.zone === detected.zone && city.city === detected.city) return;
+        items.push({ place: city, follow: false, label: city.city, hint: "Show the day in this city" });
+      });
+      items.forEach(function (item, index) {
+        const li = document.createElement("li");
+        li.setAttribute("role", "presentation");
+        const choice = document.createElement("button");
+        choice.type = "button";
+        choice.setAttribute("role", "option");
+        const selected = item.follow ? state.followDevice : keyOf(item.place) === state.anchorKey && !state.followDevice;
+        choice.setAttribute("aria-selected", selected ? "true" : "false");
+        choice.id = "home-opt-" + index;
+        const name = document.createElement("span");
+        name.textContent = item.label;
+        const hint = document.createElement("span");
+        hint.className = "hint";
+        hint.textContent = item.hint;
+        choice.append(name, hint);
+        choice.addEventListener("click", function () {
+          closeHome();
+          if (item.follow) useMyLocation();
+          else setAnchor(keyOf(item.place), false);
+        });
+        li.append(choice);
+        menu.append(li);
+      });
+      menu.hidden = false;
+      button.setAttribute("aria-expanded", "true");
+    }
+
+    document.getElementById("where").addEventListener("click", function () {
+      const menu = document.getElementById("home-menu");
+      if (menu.hidden) openHome();
+      else closeHome();
+    });
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest(".where-wrap")) closeHome();
+      if (!event.target.closest(".card-menu, .more")) closeCardMenus();
+      if (!event.target.closest("#adder, #add-city, [data-add]")) closeComposer();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        closeHome();
+        closeCardMenus();
+        closeComposer();
+      }
+    });
+
+    document.getElementById("best").addEventListener("click", function () {
+      const start = Number(this.dataset.start);
+      if (!Number.isFinite(start)) return;
+      state.minutes = start;
+      paint();
+      commit();
+      announce();
+    });
+
     document.getElementById("share").addEventListener("click", function () {
       const button = document.getElementById("share");
       syncUrl();
+      const text = document.getElementById("chat-line").textContent + "\n" + location.href;
       const done = function (label) {
         button.textContent = label;
-        setTimeout(function () { button.textContent = "Share"; }, 1600);
+        setTimeout(function () { button.textContent = "Copy"; }, 1600);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(location.href).then(function () { done("Copied"); }, function () { done("Copy the link"); });
+        navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Copy the link"); });
       } else {
         done("Copy the link");
       }
     });
 
     window.addEventListener("resize", paint);
-
-    // Non-PII area hit for public /stats (aggregates only). GET keeps CORS simple.
-    try {
-      fetch("https://api.forwardslashdot.com/api/hit?area=world_time_converter", {
-        credentials: "omit",
-        cache: "no-store",
-        keepalive: true,
-      }).catch(function () {});
-    } catch (e) {}
   </script>
 </body>
 </html>
