@@ -109,17 +109,27 @@ Example Cursor MCP config snippet:
 }
 ```
 
-## Docker / Coolify
+## Public URL
+
+Production origin: **https://api.forwardslashdot.com**
+
+Discovery for LLMs: `/llms.txt`, `/.well-known/mcp.json`, `/openapi.json`, MCP at `/mcp`.
+
+## Docker / Coolify / Fly / Tunnel
 
 ```bash
 cd services/domain-checker
 docker build -t forwardslashdot-domain-checker .
 docker run --rm -p 8000:8000 \
-  -e PUBLIC_BASE_URL=https://domains.example.com \
+  -e PUBLIC_BASE_URL=https://api.forwardslashdot.com \
   forwardslashdot-domain-checker
 ```
 
-**Coolify:** create an application from this subdirectory (`services/domain-checker`), Dockerfile build, expose port `8000` (or set `PORT`). Attach a domain / reverse proxy; set `PUBLIC_BASE_URL` to that public HTTPS origin. Leave `AFFILIATE_*` empty until you have a referral program.
+**Cloudflare Tunnel (current public path):** named tunnel fronts `api.forwardslashdot.com` → local `:8000`. Connector must stay running (`cloudflared tunnel run --token …`). Token lives in Cloudflare Zero Trust → Networks → Tunnels (never commit it).
+
+**Fly.io (durable alternative):** `fly.toml` in this directory + `.github/workflows/fly-domain-checker.yml`. Needs repo secret `FLY_API_TOKEN`. After first `fly apps create` / deploy, point DNS `api` CNAME at the Fly app hostname (or keep the Tunnel and change ingress to the Fly URL).
+
+**Coolify:** create an application from this subdirectory, Dockerfile build, expose port `8000` (or set `PORT`). Attach a domain / reverse proxy; set `PUBLIC_BASE_URL=https://api.forwardslashdot.com`. Leave `AFFILIATE_*` empty until you have a referral program.
 
 ## Tests
 

@@ -1,0 +1,36 @@
+name: Deploy domain-checker (Fly)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/domain-checker/**"
+      - ".github/workflows/fly-domain-checker.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: fly deploy
+    runs-on: ubuntu-latest
+    concurrency: fly-domain-checker
+    defaults:
+      run:
+        working-directory: services/domain-checker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Require FLY_API_TOKEN
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::FLY_API_TOKEN secret is missing."
+            echo "Kevin: create a Fly.io account, then run:"
+            echo "  fly tokens create deploy -x 999999h"
+            echo "Add the value as repo secret FLY_API_TOKEN, then re-run this workflow."
+            exit 1
+          fi
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Domain availability — forwardslashdot</title>
-  <meta name="description" content="Domain availability utility for forwardslashdot — REST and MCP. Run locally until the public API is hosted." />
+  <meta name="description" content="Domain availability for forwardslashdot — live REST and MCP at api.forwardslashdot.com." />
   <style>
     :root {
       --bg-top: #f5f5f7;
@@ -147,57 +147,45 @@
 
     <h1>Domain availability</h1>
     <p class="lede">
-      REST and MCP domain checks for forwardslashdot. The code is in the repo;
-      a public API host is the next deploy step (Docker / Coolify — separate from this static site).
+      REST and MCP domain checks for forwardslashdot. Public base:
+      <a href="https://api.forwardslashdot.com/health"><code class="inline">https://api.forwardslashdot.com</code></a>
     </p>
-    <p class="status">API not live on www yet</p>
+    <p class="status">API live</p>
 
     <h2>What it is</h2>
     <ul>
       <li><code class="inline">GET /api/domain?q=</code> — comma-separated batch (capped)</li>
       <li><code class="inline">/mcp</code> — FastMCP Streamable HTTP; tool <code class="inline">check_domains</code></li>
-      <li>Also <code class="inline">/health</code>, <code class="inline">/llms.txt</code>, <code class="inline">/.well-known/mcp.json</code></li>
+      <li>Also <code class="inline">/health</code>, <code class="inline">/llms.txt</code>, <code class="inline">/.well-known/mcp.json</code>, <code class="inline">/openapi.json</code></li>
     </ul>
-    <p style="margin-top: 0.85rem;">
-      Cloudflare Pages hosts only this static site. The FastAPI service needs its own Docker host.
-    </p>
 
-    <h2>Run locally with Docker</h2>
+    <h2>curl (live)</h2>
+    <pre>curl -s 'https://api.forwardslashdot.com/api/domain?q=example.com'
+curl -s 'https://api.forwardslashdot.com/health'
+curl -s 'https://api.forwardslashdot.com/llms.txt'
+curl -s 'https://api.forwardslashdot.com/.well-known/mcp.json'</pre>
+
+    <h2>MCP</h2>
+    <p>Point an MCP client at Streamable HTTP:</p>
+    <pre>https://api.forwardslashdot.com/mcp</pre>
+
+    <h2>Run locally</h2>
     <pre>cd services/domain-checker
 docker build -t forwardslashdot-domain-checker .
 docker run --rm -p 8000:8000 \
   -e PUBLIC_BASE_URL=http://127.0.0.1:8000 \
   forwardslashdot-domain-checker</pre>
 
-    <h2>Or with uvicorn</h2>
-    <pre>cd services/domain-checker
-python3 -m venv .venv &amp;&amp; source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</pre>
-
-    <h2>curl (local today)</h2>
-    <pre>curl -s 'http://127.0.0.1:8000/api/domain?q=example.com'
-curl -s 'http://127.0.0.1:8000/health'</pre>
-
-    <h2>curl (future public host)</h2>
-    <p>
-      After Coolify (or similar) is up, point these at that HTTPS origin —
-      not at <code class="inline">www.forwardslashdot.com</code> (Pages is static-only).
-    </p>
-    <pre>curl -s 'https://YOUR-API-HOST/api/domain?q=example.com'
-curl -s 'https://YOUR-API-HOST/health'</pre>
-
     <h2>Docs</h2>
     <p>
-      Full service README (layout, env vars, Coolify notes, MCP config):
+      Full service README (layout, env vars, deploy notes, MCP config):
       <a href="https://github.com/kevinslashdot/forwardslashdot-site/tree/main/services/domain-checker">
         github.com/…/services/domain-checker
       </a>
     </p>
 
     <p class="footnote">
-      Next step: deploy <code class="inline">services/domain-checker</code> with Docker on Coolify (or another host),
-      set <code class="inline">PUBLIC_BASE_URL</code>, then link this page to the live <code class="inline">/api/domain</code> URL.
+      Affiliate/referral links are off until <code class="inline">AFFILIATE_*</code> env vars are set on the host.
     </p>
   </div>
 </body>
