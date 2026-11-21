@@ -196,6 +196,7 @@
       grid-template-columns: 1fr auto;
       align-items: stretch;
       gap: 0;
+      margin: 0;
       border: 1px solid var(--field-border);
       border-radius: 0.75rem;
       background: var(--field);
@@ -384,12 +385,17 @@
         </div>
 
         <label class="name-label" for="name-input">Name</label>
-        <div class="compose">
+        <form class="compose" autocomplete="off" action="javascript:void(0)" onsubmit="return false;">
+          <!--
+            Suppress browser / password-manager suggestion overlays that cover
+            the live green/red status. Keep TLD picker + availability typing.
+            No custom typeahead UI.
+          -->
           <input
             id="name-input"
             class="name-input"
             type="text"
-            name="domain"
+            name="fwdslash-domain-label"
             autocomplete="off"
             autocorrect="off"
             autocapitalize="none"
@@ -397,10 +403,16 @@
             placeholder="yourname"
             maxlength="63"
             inputmode="text"
+            enterkeyhint="done"
+            data-1p-ignore="true"
+            data-lpignore="true"
+            data-form-type="other"
+            data-bwignore="true"
+            aria-autocomplete="none"
             aria-describedby="result-status"
           />
           <span class="tld-suffix" id="tld-suffix" aria-hidden="true">.com</span>
-        </div>
+        </form>
 
         <div class="result" aria-live="polite">
           <span class="preview" id="preview">—</span>
@@ -619,6 +631,18 @@
           nameInput.focus();
         });
         tldGroup.appendChild(btn);
+      });
+
+      // Block autofill/suggestion popups that cover the status row.
+      // readonly-until-focus is the reliable cross-browser pattern.
+      nameInput.setAttribute("readonly", "readonly");
+      nameInput.addEventListener("focus", function () {
+        nameInput.removeAttribute("readonly");
+        // Re-assert off after focus so Chromium does not re-enable suggestions.
+        nameInput.setAttribute("autocomplete", "off");
+      });
+      nameInput.addEventListener("mousedown", function () {
+        nameInput.removeAttribute("readonly");
       });
 
       nameInput.addEventListener("input", scheduleCheck);
