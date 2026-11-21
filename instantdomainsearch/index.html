@@ -212,23 +212,22 @@
       box-shadow: 0 0 0 4px var(--focus);
     }
 
-    .name-input {
+    .name-host {
       width: 100%;
-      border: 0;
-      background: transparent;
-      font-family: inherit;
-      font-size: clamp(1.15rem, 3.5vw, 1.35rem);
-      font-weight: 500;
-      letter-spacing: -0.025em;
-      color: var(--ink);
-      padding: 1rem 0.35rem 1rem 1.1rem;
-      outline: none;
       min-width: 0;
+      display: block;
     }
 
-    .name-input::placeholder {
-      color: rgba(110, 110, 115, 0.7);
-      font-weight: 400;
+    /* Honeypots: soak Chrome / password-manager autofill away from the real field. */
+    .autofill-trap {
+      position: absolute;
+      left: -10000px;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
     }
 
     .tld-suffix {
@@ -384,33 +383,26 @@
           <!-- filled by JS -->
         </div>
 
-        <label class="name-label" for="name-input">Name</label>
-        <form class="compose" autocomplete="off" action="javascript:void(0)" onsubmit="return false;">
+        <span class="name-label" id="label-hint">Name</span>
+        <form class="compose" id="compose-form" autocomplete="off" action="javascript:void(0)" onsubmit="return false;">
           <!--
-            Suppress browser / password-manager suggestion overlays that cover
-            the live green/red status. Keep TLD picker + availability typing.
-            No custom typeahead UI.
+            Kill Chrome contact / password-manager popups over the status row.
+            Prior autocomplete=off pass failed (label "Name" + plain input).
+            Closed shadow + contenteditable + decoys + non-name attrs.
           -->
-          <input
-            id="name-input"
-            class="name-input"
-            type="text"
-            name="fwdslash-domain-label"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="none"
-            spellcheck="false"
-            placeholder="yourname"
-            maxlength="63"
-            inputmode="text"
-            enterkeyhint="done"
-            data-1p-ignore="true"
-            data-lpignore="true"
-            data-form-type="other"
-            data-bwignore="true"
-            aria-autocomplete="none"
+          <div class="autofill-trap" aria-hidden="true">
+            <input type="text" name="username" tabindex="-1" autocomplete="username" value="" />
+            <input type="email" name="email" tabindex="-1" autocomplete="email" value="" />
+            <input type="password" name="password" tabindex="-1" autocomplete="new-password" value="" />
+          </div>
+          <span
+            id="q-host"
+            class="name-host"
+            role="textbox"
+            aria-labelledby="label-hint"
             aria-describedby="result-status"
-          />
+            aria-multiline="false"
+          ></span>
           <span class="tld-suffix" id="tld-suffix" aria-hidden="true">.com</span>
         </form>
 
@@ -451,9 +443,78 @@
 
       var tldGroup = document.getElementById("tld-group");
       var tldSuffix = document.getElementById("tld-suffix");
-      var nameInput = document.getElementById("name-input");
       var preview = document.getElementById("preview");
       var statusEl = document.getElementById("result-status");
+      var host = document.getElementById("q-host");
+
+      // Closed shadow field: Chromium contact autofill cannot target this.
+      var shadow = host.attachShadow({ mode: "closed" });
+      var fieldStyle = document.createElement("style");
+      fieldStyle.textContent =
+        ':host{display:block;width:100%;min-width:0;}' +
+        '.shell{position:relative;width:100%;}' +
+        '.ghost{position:absolute;inset:0;pointer-events:none;font:inherit;' +
+        'font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:400;letter-spacing:-0.025em;' +
+        'color:rgba(110,110,115,0.7);padding:1rem 0.35rem 1rem 1.1rem;white-space:nowrap;overflow:hidden;}' +
+        '.field{width:100%;border:0;background:transparent;outline:none;caret-color:var(--ink,#1d1d1f);' +
+        'font-family:inherit;font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:500;letter-spacing:-0.025em;' +
+        'color:inherit;padding:1rem 0.35rem 1rem 1.1rem;min-width:0;white-space:nowrap;overflow:hidden;}' +
+        '.field:empty{display:block;}' +
+        /* Hidden real input as secondary sink with new-password / non-name attrs. */ +
+        '.sink{position:absolute;opacity:0;width:1px;height:1px;border:0;padding:0;margin:0;pointer-events:none;}';
+      var shell = document.createElement("div");
+      shell.className = "shell";
+      var ghost = document.createElement("div");
+      ghost.className = "ghost";
+      ghost.textContent = "yourname";
+      var field = document.createElement("div");
+      field.className = "field";
+      field.setAttribute("contenteditable", "plaintext-only");
+      field.setAttribute("spellcheck", "false");
+      field.setAttribute("autocorrect", "off");
+      field.setAttribute("autocapitalize", "none");
+      field.setAttribute("inputmode", "text");
+      field.setAttribute("enterkeyhint", "done");
+      field.setAttribute("role", "textbox");
+      field.setAttribute("data-1p-ignore", "true");
+      field.setAttribute("data-lpignore", "true");
+      field.setAttribute("data-bwignore", "true");
+      field.setAttribute("data-form-type", "other");
+      // Fallback for browsers that do not support plaintext-only.
+      try {
+        field.contentEditable = "plaintext-only";
+      } catch (_) {
+        field.setAttribute("contenteditable", "true");
+      }
+      var sink = document.createElement("input");
+      sink.className = "sink";
+      sink.type = "text";
+      sink.name = "x7k9q2-label";
+      sink.id = "x7k9q2-label";
+      sink.setAttribute("autocomplete", "new-password");
+      sink.setAttribute("aria-hidden", "true");
+      sink.tabIndex = -1;
+      shell.appendChild(ghost);
+      shell.appendChild(field);
+      shell.appendChild(sink);
+      shadow.appendChild(fieldStyle);
+      shadow.appendChild(shell);
+
+      var nameInput = {
+        get value() {
+          return (field.innerText || field.textContent || "").replace(/\n/g, "");
+        },
+        set value(v) {
+          field.textContent = v || "";
+          ghost.hidden = !!v;
+          sink.value = v || "";
+        },
+        focus: function () {
+          field.focus();
+        },
+        selectionStart: 0,
+        setSelectionRange: function () {},
+      };
 
       var selectedTld = ".com";
       var timer = null;
@@ -471,7 +532,8 @@
           .replace(/\.+$/, "")
           .split(".")[0]
           .replace(/[^a-z0-9-]/g, "")
-          .replace(/^-+|-+$/g, "");
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 63);
       }
 
       function setState(state, domain, message) {
@@ -528,12 +590,18 @@
         lastTypedAt = Date.now();
         var label = normalizeLabel(nameInput.value);
         if (nameInput.value !== label) {
-          var pos = nameInput.selectionStart;
           nameInput.value = label;
-          if (typeof pos === "number") {
-            nameInput.setSelectionRange(Math.min(pos, label.length), Math.min(pos, label.length));
-          }
+          // Keep caret at end after sanitize (contenteditable selection APIs vary).
+          try {
+            var range = document.createRange();
+            range.selectNodeContents(field);
+            range.collapse(false);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (_) {}
         }
+        ghost.hidden = !!label;
 
         if (!label) {
           if (abortController) abortController.abort();
@@ -633,26 +701,23 @@
         tldGroup.appendChild(btn);
       });
 
-      // Block autofill/suggestion popups that cover the status row.
-      // readonly-until-focus is the reliable cross-browser pattern.
-      nameInput.setAttribute("readonly", "readonly");
-      nameInput.addEventListener("focus", function () {
-        nameInput.removeAttribute("readonly");
-        // Re-assert off after focus so Chromium does not re-enable suggestions.
-        nameInput.setAttribute("autocomplete", "off");
-      });
-      nameInput.addEventListener("mousedown", function () {
-        nameInput.removeAttribute("readonly");
-      });
-
-      nameInput.addEventListener("input", scheduleCheck);
-      nameInput.addEventListener("keydown", function (e) {
+      field.addEventListener("input", scheduleCheck);
+      field.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
           clearTimeout(timer);
           var label = normalizeLabel(nameInput.value);
           if (label) runCheck(fullDomain(label));
         }
+      });
+      field.addEventListener("paste", function (e) {
+        e.preventDefault();
+        var text = "";
+        try {
+          text = (e.clipboardData || window.clipboardData).getData("text") || "";
+        } catch (_) {}
+        nameInput.value = normalizeLabel(text);
+        scheduleCheck();
       });
 
       // Deep-link: ?q=name or ?q=name.com
