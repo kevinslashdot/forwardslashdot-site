@@ -1,0 +1,24 @@
+# Durable host for the domain-checker (Fly.io).
+# Requires FLY_API_TOKEN (Kevin). Deploy: fly deploy --remote-only
+# App name reserved for api.forwardslashdot.com via Cloudflare CNAME later.
+
+app = "forwardslashdot-domain-checker"
+primary_region = "ord"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PUBLIC_BASE_URL = "https://api.forwardslashdot.com"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
