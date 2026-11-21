@@ -49,7 +49,9 @@ services/domain-checker/
 |----------|----------|-------------|
 | `PORT` | No | Listen port (default `8000`) |
 | `PUBLIC_BASE_URL` | No | Absolute public origin for `/llms.txt` and `/.well-known/mcp.json` links |
-| `METRICS_PATH` | No | JSON file for request counters (default `/data/metrics.json` in Docker, else `/tmp/…`) |
+| `DATABASE_URL` / `NEON_DATABASE_URL` | No | Postgres (Neon) for durable `/stats` aggregates; uses schema `domain_checker` |
+| `METRICS_PG_SCHEMA` | No | Override Postgres schema (default `domain_checker`) |
+| `METRICS_PATH` | No | JSON file fallback when DB unset (default `/data/metrics.json` in Docker, else `/tmp/…`) |
 | `AFFILIATE_BASE_URL` | No | Registrar search/register base URL |
 | `AFFILIATE_PARAM_NAME` | No | Query param name for the affiliate id |
 | `AFFILIATE_ID` | No | Affiliate / referral id |

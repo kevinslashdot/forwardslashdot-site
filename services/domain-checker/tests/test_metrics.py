@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import httpx
@@ -22,7 +23,7 @@ BOOTSTRAP_BODY = {
 
 def test_metrics_record_and_persist(tmp_path: Path):
     path = tmp_path / "metrics.json"
-    m = RequestMetrics(path=path)
+    m = RequestMetrics(path=path, database_url=None)
     m.record("http", domain_count=2)
     m.record("mcp", domain_count=1)
     snap = m.snapshot()
@@ -35,7 +36,7 @@ def test_metrics_record_and_persist(tmp_path: Path):
     assert path.is_file()
 
     # Reload from disk
-    m2 = RequestMetrics(path=path)
+    m2 = RequestMetrics(path=path, database_url=None)
     snap2 = m2.snapshot()
     assert snap2["total_checks"] == 2
     assert snap2["by_source"]["http"] == 1
@@ -44,7 +45,7 @@ def test_metrics_record_and_persist(tmp_path: Path):
 
 def test_metrics_snapshot_has_no_domain_names(tmp_path: Path):
     path = tmp_path / "m.json"
-    m = RequestMetrics(path=path)
+    m = RequestMetrics(path=path, database_url=None)
     m.record("http", domain_count=1)
     blob = json.dumps(m.snapshot())
     assert "example.com" not in blob
@@ -54,7 +55,7 @@ def test_metrics_snapshot_has_no_domain_names(tmp_path: Path):
 @pytest.fixture
 async def api_client_metrics(tmp_path: Path, monkeypatch):
     metrics_path = tmp_path / "api-metrics.json"
-    reset_metrics(path=metrics_path)
+    reset_metrics(path=metrics_path, database_url=None)
 
     from app import main as main_mod
     import app.metrics as metrics_mod
@@ -110,16 +111,11 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_mcp_tool_increments_mcp_count(tmp_path: Path, monkeypatch):
-    reset_metrics(path=tmp_path / "mcp-metrics.json")
+    reset_metrics(path=tmp_path / "mcp-metrics.json", database_url=None)
     from app import main as main_mod
     import app.metrics as metrics_mod
 
     main_mod.metrics = metrics_mod.metrics
-
-    respx.get(IANA_DNS_BOOTSTRAP).mock(return_value=httpx.Response(200, json=BOOTSTRAP_BODY))
-    respx.get("https://rdap.verisign.com/com/v1/domain/mcp-count.com").mock(
-        return_value=httpx.Response(404)
-    )
 
     with respx.mock:
         respx.get(IANA_DNS_BOOTSTRAP).mock(
@@ -148,6 +144,43 @@ async def test_mcp_tool_increments_mcp_count(tmp_path: Path, monkeypatch):
     assert snap["total_checks"] == 1
     assert snap["by_source"]["mcp"] == 1
     assert snap["domains_checked"] == 1
+
+
+def _postgres_url_available() -> bool:
+    if os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL"):
+        return True
+    return Path("/agent/secrets-scratch/database_url").is_file()
+
+
+@pytest.mark.skipif(not _postgres_url_available(), reason="No Postgres URL for integration test")
+def test_metrics_postgres_roundtrip(tmp_path: Path):
+    url = os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL")
+    if not url and Path("/agent/secrets-scratch/database_url").is_file():
+        url = Path("/agent/secrets-scratch/database_url").read_text().strip()
+    assert url
+    # Unique schema so parallel/local runs do not collide with prod counters.
+    os.environ["METRICS_PG_SCHEMA"] = "domain_checker_test"
+    try:
+        m = RequestMetrics(path=tmp_path / "ignored.json", database_url=url)
+        assert m.persistence == "postgres"
+        before = m.snapshot()["total_checks"]
+        m.record("http", domain_count=2)
+        snap = m.snapshot()
+        assert snap["persistence"] == "postgres"
+        assert snap["total_checks"] == before + 1
+        assert snap["by_source"]["http"] >= 1
+        m2 = RequestMetrics(path=tmp_path / "ignored2.json", database_url=url)
+        assert m2.snapshot()["total_checks"] == snap["total_checks"]
+    finally:
+        os.environ.pop("METRICS_PG_SCHEMA", None)
+        try:
+            import psycopg
+
+            with psycopg.connect(url, connect_timeout=10) as conn:
+                conn.execute("DROP SCHEMA IF EXISTS domain_checker_test CASCADE")
+                conn.commit()
+        except Exception:
+            pass
 
 
 def test_llms_mentions_stats():
