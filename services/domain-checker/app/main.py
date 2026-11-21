@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastmcp import FastMCP
 
@@ -85,6 +86,20 @@ app = FastAPI(
     description=SERVICE_DESCRIPTION,
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# Browser clients on the marketing site (instant domain search).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://www.forwardslashdot.com",
+        "https://forwardslashdot.com",
+        "https://forwardslashdot.pages.dev",
+    ],
+    allow_origin_regex=r"https://[a-z0-9-]+\.forwardslashdot\.pages\.dev",
+    allow_methods=["GET", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type"],
+    max_age=86400,
 )
 
 
