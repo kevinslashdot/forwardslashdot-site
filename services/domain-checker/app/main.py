@@ -22,7 +22,7 @@ from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
 from app.llms import MCP_DISCOVERY, build_llms_txt
-from app.metrics import metrics, normalize_area
+from app.metrics import country_from_headers, metrics, normalize_area
 
 
 def _record_metrics_async(
@@ -30,22 +30,28 @@ def _record_metrics_async(
     domain_count: int,
     *,
     area: str | None = None,
+    country: str | None = None,
 ) -> None:
     """Postgres metrics writes must not block the domain-check hot path (~100ms+)."""
 
     def _run() -> None:
         try:
-            metrics.record(source, domain_count=domain_count, area=area)  # type: ignore[arg-type]
+            metrics.record(
+                source,
+                domain_count=domain_count,
+                area=area,
+                country=country,
+            )  # type: ignore[arg-type]
         except Exception:
             pass
 
     threading.Thread(target=_run, daemon=True, name="domain-metrics").start()
 
 
-def _record_hit_async(area: str | None) -> None:
+def _record_hit_async(area: str | None, *, country: str | None = None) -> None:
     def _run() -> None:
         try:
-            metrics.record_hit(area)
+            metrics.record_hit(area, country=country)
         except Exception:
             pass
 
@@ -141,7 +147,7 @@ async def health() -> dict[str, str]:
 
 @app.get("/stats", tags=["ops"])
 async def stats() -> dict[str, Any]:
-    """Aggregate domain-check and utility hit counts. No query logs / PII."""
+    """Aggregate counts by area and country. No query logs, IPs, or PII."""
     return metrics.snapshot()
 
 
@@ -157,7 +163,7 @@ async def api_hit(
         description="Alias for area (accepted for older clients).",
     ),
 ) -> JSONResponse:
-    """Record a non-PII utility hit attributed to a site area."""
+    """Record a non-PII utility hit attributed to a site area + coarse country."""
     # Prefer explicit query; fall back to Referer path heuristics (no raw URL stored).
     label = area or source
     if not label:
@@ -167,9 +173,10 @@ async def api_hit(
             label = "instant_domain_search"
         elif "worldtimeconverter" in low or "/utilities/time" in low:
             label = "world_time_converter"
-    _record_hit_async(normalize_area(label))
+    country = country_from_headers(request.headers)
+    _record_hit_async(normalize_area(label), country=country)
     return JSONResponse(
-        {"ok": True, "area": normalize_area(label)},
+        {"ok": True, "area": normalize_area(label), "country": country},
         headers={"Cache-Control": "no-store"},
     )
 
@@ -201,7 +208,8 @@ async def api_domain(
     # Cap for counting matches DomainChecker.check_domains truncation.
     capped = raw_parts[: dc.batch_cap]
     area_label = normalize_area(area or source or "instant_domain_search")
-    _record_metrics_async("http", len(capped), area=area_label)
+    country = country_from_headers(request.headers)
+    _record_metrics_async("http", len(capped), area=area_label, country=country)
     payload = await dc.check_domains(raw_parts)
     payload["timing_ms"] = int((time.perf_counter() - t0) * 1000)
 

@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Stats — forwardslashdot</title>
-  <meta name="description" content="Public forwardslashdot stats by site area — Instant Domain Search and World Time Converter. Aggregates only; no personal data." />
+  <meta name="description" content="Public forwardslashdot stats by site area and country — Instant Domain Search and World Time Converter. Aggregates only; country codes, never IPs." />
   <link rel="canonical" href="https://www.forwardslashdot.com/stats/" />
   <meta property="og:title" content="Stats — forwardslashdot" />
-  <meta property="og:description" content="Apple-clean public aggregates for Instant Domain Search and World Time Converter." />
+  <meta property="og:description" content="Apple-clean public aggregates by site area and country. Codes only — no IPs." />
   <meta property="og:url" content="https://www.forwardslashdot.com/stats/" />
   <meta name="theme-color" content="#f5f5f7" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -222,6 +222,91 @@
       transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
+    .countries {
+      border-top: 1px solid var(--hairline);
+      margin-top: 2.75rem;
+      padding-top: 2.5rem;
+      opacity: 0;
+      transform: translateY(14px);
+      animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.9s forwards;
+    }
+
+    .countries-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 0.55rem;
+      text-align: center;
+    }
+
+    .countries-note {
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--ink-soft);
+      margin-bottom: 1.75rem;
+      line-height: 1.4;
+    }
+
+    .country-list {
+      list-style: none;
+      max-width: 28rem;
+      margin: 0 auto;
+    }
+
+    .country-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) auto auto;
+      gap: 0.75rem 1.25rem;
+      align-items: baseline;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .country-row:first-child { border-top: 1px solid var(--hairline); }
+
+    .country-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .country-code {
+      margin-left: 0.45rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--ink-soft);
+      text-transform: uppercase;
+    }
+
+    .country-metric {
+      font-size: 1.05rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      text-align: right;
+    }
+
+    .country-metric-label {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 0.2rem;
+      text-align: right;
+    }
+
+    .countries-empty {
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+      padding: 1rem 0 0.25rem;
+    }
+
     .foot {
       margin-top: 2.75rem;
       text-align: center;
@@ -250,10 +335,14 @@
         gap: 1rem 1.25rem;
       }
       .area-copy { grid-column: 1 / -1; }
+      .country-row {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 0.5rem 0.85rem;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .back, .mark, .headline, .lede, .totals, .areas {
+      .back, .mark, .headline, .lede, .totals, .areas, .countries {
         animation: none;
         opacity: 1;
         transform: none;
@@ -270,7 +359,7 @@
       <span class="mark" aria-label="forwardslashdot">/.</span>
       <h1 class="headline">Stats</h1>
       <p class="lede">
-        Public aggregates by site area. Checks, domains, and hits — never queries, never people.
+        Public aggregates by site area and country. Checks, domains, and hits — never queries, never IPs.
       </p>
     </header>
 
@@ -329,6 +418,13 @@
       </article>
     </section>
 
+    <section class="countries" aria-labelledby="countries-heading">
+      <p class="countries-label" id="countries-heading">By country</p>
+      <p class="countries-note">Coarse location from the edge (CF-IPCountry). Country codes only — never IP addresses.</p>
+      <ul class="country-list" id="country-list"></ul>
+      <p class="countries-empty" id="countries-empty" hidden>No country data yet.</p>
+    </section>
+
     <p class="foot">
       Raw JSON at
       <a href="https://api.forwardslashdot.com/stats">api.forwardslashdot.com/stats</a>.
@@ -342,6 +438,16 @@
     (function () {
       var API = "https://api.forwardslashdot.com/stats";
       var statusEl = document.getElementById("status");
+      var countryList = document.getElementById("country-list");
+      var countriesEmpty = document.getElementById("countries-empty");
+      var displayNames = null;
+      try {
+        if (typeof Intl !== "undefined" && Intl.DisplayNames) {
+          displayNames = new Intl.DisplayNames(["en"], { type: "region" });
+        }
+      } catch (e) {
+        displayNames = null;
+      }
 
       function fmt(n) {
         if (n == null || Number.isNaN(n)) return "—";
@@ -361,6 +467,18 @@
       function daySlot(data, key) {
         var areas = (data && data.last_24h && data.last_24h.by_area) || {};
         return areas[key] || { checks: 0, domains_checked: 0, hits: 0 };
+      }
+
+      function countryLabel(code) {
+        if (code === "XX") return "Unknown";
+        if (code === "T1") return "Tor";
+        if (displayNames) {
+          try {
+            var name = displayNames.of(code);
+            if (name) return name;
+          } catch (e) { /* fall through */ }
+        }
+        return code;
       }
 
       function fillArea(root, all, day, mode) {
@@ -392,6 +510,36 @@
         }
       }
 
+      function fillCountries(data) {
+        var byCountry = (data && data.by_country) || {};
+        var dayMap = (data && data.last_24h && data.last_24h.by_country) || {};
+        var codes = Object.keys(byCountry);
+        countryList.innerHTML = "";
+        if (!codes.length) {
+          countriesEmpty.hidden = false;
+          return;
+        }
+        countriesEmpty.hidden = true;
+        codes.slice(0, 24).forEach(function (code) {
+          var slot = byCountry[code] || {};
+          var day = dayMap[code] || {};
+          var activity = (slot.checks || 0) + (slot.hits || 0);
+          var dayActivity = (day.checks || 0) + (day.hits || 0);
+          var li = document.createElement("li");
+          li.className = "country-row";
+          li.innerHTML =
+            '<div class="country-name">' +
+              countryLabel(code) +
+              '<span class="country-code">' + code + "</span>" +
+            "</div>" +
+            '<div><span class="country-metric-label">All</span>' +
+              '<p class="country-metric">' + fmt(activity) + "</p></div>" +
+            '<div><span class="country-metric-label">24h</span>' +
+              '<p class="country-metric">' + fmt(dayActivity) + "</p></div>";
+          countryList.appendChild(li);
+        });
+      }
+
       function render(data) {
         setText("total-checks", fmt(data.total_checks));
         setText("total-domains", fmt(data.domains_checked));
@@ -405,6 +553,8 @@
           var mode = key === "world_time_converter" ? "hits" : "checks";
           fillArea(root, areaSlot(data, key), daySlot(data, key), mode);
         });
+
+        fillCountries(data);
 
         statusEl.className = "status";
         statusEl.textContent = "Live · persistence " + (data.persistence || "—");
