@@ -231,6 +231,7 @@
       width: 100%;
       min-width: 0;
       display: block;
+      cursor: text;
     }
 
 
@@ -474,7 +475,8 @@
       var host = document.getElementById("q-host");
 
       // Closed shadow contenteditable — no <input>, so no contact/password autofill.
-      var shadow = host.attachShadow({ mode: "closed" });
+      // delegatesFocus sends clicks and Tab on the host into the editor.
+      var shadow = host.attachShadow({ mode: "closed", delegatesFocus: true });
       var fieldStyle = document.createElement("style");
       fieldStyle.textContent =
         ':host{display:block;width:100%;min-width:0;outline:none;}' +
@@ -482,7 +484,7 @@
         '.ghost{position:absolute;inset:0;pointer-events:none;font:inherit;' +
         'font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:400;letter-spacing:-0.025em;' +
         'color:rgba(110,110,115,0.7);padding:1rem 0.35rem 1rem 1.1rem;white-space:nowrap;overflow:hidden;}' +
-        '.field{display:block;width:100%;border:0;background:transparent;outline:none;' +
+        '.field{display:block;width:100%;border:0;background:transparent;outline:none;cursor:text;' +
         'caret-color:#1d1d1f;font-family:inherit;font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:500;' +
         'letter-spacing:-0.025em;color:inherit;padding:1rem 0.35rem 1rem 1.1rem;min-width:0;' +
         'white-space:nowrap;overflow-x:auto;overflow-y:hidden;line-height:1.25;}' +
@@ -544,14 +546,13 @@
         },
       };
 
+      // Clicks inside the closed shadow retarget to the host. Canceling mousedown
+      // left focus on that span, so the caret never entered the editor.
       host.addEventListener("focus", function () {
-        nameInput.focus();
+        if (shadow.activeElement !== field) field.focus();
       });
-      host.addEventListener("mousedown", function (e) {
-        if (e.target === host) {
-          e.preventDefault();
-          nameInput.focus();
-        }
+      shell.addEventListener("mousedown", function (e) {
+        if (!field.contains(e.target)) field.focus();
       });
 
       var selectedTld = ".com";
