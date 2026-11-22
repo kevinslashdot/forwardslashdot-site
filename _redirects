@@ -5,3 +5,8 @@
 /utilities/time             /worldtimeconverter     301
 /utilities/time.html        /worldtimeconverter     301
 /utilities/time/            /worldtimeconverter     301
+
+# Agent discovery lives on the API host (avoid soft-404 HTML from Pages)
+/.well-known/mcp.json       https://api.forwardslashdot.com/.well-known/mcp.json  302
+/.well-known/api-catalog    https://api.forwardslashdot.com/.well-known/api-catalog  302
+/openapi.json               https://api.forwardslashdot.com/openapi.json  302

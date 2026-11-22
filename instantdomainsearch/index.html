@@ -6,10 +6,25 @@
   <title>Instant Domain Search — forwardslashdot</title>
   <meta name="description" content="Instant Domain Search by forwardslashdot — type a name, pick a TLD, see green or red live via api.forwardslashdot.com." />
   <link rel="canonical" href="https://www.forwardslashdot.com/instantdomainsearch/" />
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
+  <link rel="describedby" href="https://api.forwardslashdot.com/llms.txt" />
   <meta property="og:title" content="Instant Domain Search — forwardslashdot" />
   <meta property="og:description" content="Type a name, pick a TLD — green when available, red when taken." />
   <meta property="og:url" content="https://www.forwardslashdot.com/instantdomainsearch/" />
   <meta name="theme-color" content="#f5f5f7" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Instant Domain Search",
+    "url": "https://www.forwardslashdot.com/instantdomainsearch/",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Any",
+    "description": "Type a name, pick a TLD — green when available, red when taken. Powered by api.forwardslashdot.com.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "publisher": { "@type": "Organization", "name": "forwardslashdot", "url": "https://www.forwardslashdot.com/" }
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -259,6 +274,28 @@
       color: var(--taken);
     }
 
+    .register {
+      display: none;
+      margin-top: 0.85rem;
+      font-size: 0.92rem;
+      font-weight: 560;
+    }
+
+    .register.is-on { display: block; }
+
+    .register a { color: var(--ok); }
+
+    .disclosure {
+      display: none;
+      margin-top: 0.45rem;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: var(--ink-soft);
+      max-width: 22rem;
+    }
+
+    .disclosure.is-on { display: block; }
+
     .preview.is-checking {
       color: var(--ink-soft);
     }
@@ -393,6 +430,8 @@
         <div class="result" aria-live="polite">
           <span class="preview" id="preview">—</span>
           <span class="status-text" id="result-status"></span>
+          <p class="register" id="register"><a id="register-link" href="#" rel="sponsored noopener noreferrer" target="_blank">Register</a></p>
+          <p class="disclosure" id="disclosure"></p>
         </div>
       </div>
 
@@ -429,6 +468,9 @@
       var tldSuffix = document.getElementById("tld-suffix");
       var preview = document.getElementById("preview");
       var statusEl = document.getElementById("result-status");
+      var registerEl = document.getElementById("register");
+      var registerLink = document.getElementById("register-link");
+      var disclosureEl = document.getElementById("disclosure");
       var host = document.getElementById("q-host");
 
       // Closed shadow contenteditable — no <input>, so no contact/password autofill.
@@ -517,7 +559,7 @@
       var abortController = null;
       var requestSeq = 0;
       var lastTypedAt = 0;
-      var cache = new Map(); // domain -> { status, at, domain }
+      var cache = new Map(); // domain -> { status, at, domain, affiliate_url, disclosure }
 
       function normalizeLabel(raw) {
         return String(raw || "")
@@ -532,17 +574,43 @@
           .slice(0, 63);
       }
 
+      function clearAffiliate() {
+        registerEl.classList.remove("is-on");
+        disclosureEl.classList.remove("is-on");
+        registerLink.removeAttribute("href");
+        disclosureEl.textContent = "";
+      }
+
+      function setAffiliate(row) {
+        if (row && row.status === "available" && row.affiliate_url) {
+          registerLink.href = row.affiliate_url;
+          registerLink.textContent = "Register at registrar";
+          registerEl.classList.add("is-on");
+          if (row.disclosure) {
+            disclosureEl.textContent = row.disclosure;
+            disclosureEl.classList.add("is-on");
+          } else {
+            disclosureEl.classList.remove("is-on");
+            disclosureEl.textContent = "";
+          }
+        } else {
+          clearAffiliate();
+        }
+      }
+
       function setState(state, domain, message) {
         preview.className = "preview" + (state ? " is-" + state : "");
         statusEl.className = "status-text" + (state ? " is-" + state : "");
         preview.textContent = domain || "—";
         statusEl.textContent = message || "";
+        if (state !== "available") clearAffiliate();
       }
 
-      function applyRow(domain, status) {
+      function applyRow(domain, status, row) {
         if (status === "available") setState("available", domain, "Available");
         else if (status === "registered") setState("taken", domain, "Taken");
         else setState("invalid", domain, status === "invalid" ? "Invalid" : "Unknown");
+        setAffiliate(row);
       }
 
       function fullDomain(label) {
@@ -559,12 +627,16 @@
         return hit;
       }
 
-      function cacheSet(domain, status, resolved) {
+      function cacheSet(domain, status, resolved, extras) {
         if (cache.size >= CACHE_MAX) {
           var oldest = cache.keys().next().value;
           cache.delete(oldest);
         }
-        cache.set(domain, { status: status, at: Date.now(), domain: resolved || domain });
+        cache.set(domain, Object.assign({
+          status: status,
+          at: Date.now(),
+          domain: resolved || domain
+        }, extras || {}));
       }
 
       function debounceMs(label) {
@@ -602,12 +674,13 @@
         // Optimistic: show the composed name immediately; status fills in when ready.
         var cached = cacheGet(domain);
         if (cached) {
-          applyRow(cached.domain || domain, cached.status);
+          applyRow(cached.domain || domain, cached.status, cached);
           clearTimeout(timer);
           if (abortController) abortController.abort();
           return;
         }
 
+        clearAffiliate();
         setState("checking", domain, "");
         clearTimeout(timer);
         var wait = debounceMs(label);
@@ -620,7 +693,7 @@
       function runCheck(domain) {
         var cached = cacheGet(domain);
         if (cached) {
-          applyRow(cached.domain || domain, cached.status);
+          applyRow(cached.domain || domain, cached.status, cached);
           return;
         }
 
@@ -648,14 +721,19 @@
             if (seq !== requestSeq) return;
             var row = data && data.results && data.results[0];
             if (!row) {
+              clearAffiliate();
               setState("invalid", domain, "No result");
               return;
             }
             var status = row.status;
             if (status === "available" || status === "registered" || status === "invalid") {
-              cacheSet(domain, status, row.domain);
+              cacheSet(domain, status, row.domain, {
+                affiliate_url: row.affiliate_url || "",
+                disclosure: row.disclosure || "",
+                status: status
+              });
             }
-            applyRow(row.domain || domain, status);
+            applyRow(row.domain || domain, status, row);
             if (window.__domainSearchPerf) {
               window.__domainSearchPerf.last = {
                 domain: domain,
@@ -669,6 +747,7 @@
           .catch(function (err) {
             if (err && err.name === "AbortError") return;
             if (seq !== requestSeq) return;
+            clearAffiliate();
             setState("invalid", domain, "Try again");
           });
       }

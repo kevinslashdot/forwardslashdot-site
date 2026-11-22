@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
-from app.llms import MCP_DISCOVERY, build_llms_txt
+from app.llms import MCP_DISCOVERY, api_catalog, build_llms_txt
 from app.metrics import (
     country_from_headers,
     metrics,
@@ -364,6 +364,19 @@ async def well_known_mcp(request: Request) -> JSONResponse:
             "Access-Control-Allow-Origin": "*",
             "Cache-Control": "public, max-age=3600",
         },
+    )
+
+
+@app.get("/.well-known/api-catalog", tags=["discovery"])
+async def well_known_api_catalog(request: Request) -> JSONResponse:
+    """RFC 9727 API catalog linkset for the OpenAPI document."""
+    public = (os.getenv("PUBLIC_BASE_URL") or "").rstrip("/")
+    if not public:
+        public = str(request.base_url).rstrip("/")
+    return JSONResponse(
+        api_catalog(base_url=public),
+        media_type="application/linkset+json",
+        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 

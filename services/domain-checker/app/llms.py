@@ -34,6 +34,7 @@ This service is part of the forwardslashdot.com project. The marketing site rema
 - [Hit]({u("/api/hit")}): `GET /api/hit?area=&actor=human|llm&visitor=&day=` — one non-PII visit. The same visitor counts once per calendar day.
 - [Domain API]({u("/api/domain")}): `GET /api/domain?q=&area=` — comma-separated domains, batch capped (~25). Optional `area` for stats. Shared logic with the MCP tool.
 - [OpenAPI]({u("/openapi.json")}): Machine-readable HTTP API schema.
+- [API catalog]({u("/.well-known/api-catalog")}): RFC 9727 linkset pointing at OpenAPI.
 - [MCP]({u("/mcp")}): FastMCP Streamable HTTP endpoint. Tool: `check_domains`.
 - [MCP discovery]({u("/.well-known/mcp.json")}): Server name, description, and MCP endpoint URL.
 - [llms.txt]({u("/llms.txt")}): This file.
@@ -58,3 +59,21 @@ MCP_DISCOVERY = {
     ),
     "endpoint": "/mcp",
 }
+
+
+def api_catalog(*, base_url: str) -> dict:
+    """RFC 9727 API catalog linkset for the OpenAPI document."""
+    root = base_url.rstrip("/")
+    return {
+        "linkset": [
+            {
+                "anchor": f"{root}/",
+                "item": [
+                    {
+                        "href": f"{root}/openapi.json",
+                        "type": "application/openapi+json",
+                    }
+                ],
+            }
+        ]
+    }

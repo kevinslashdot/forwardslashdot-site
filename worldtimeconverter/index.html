@@ -18,7 +18,22 @@
   <meta name="twitter:description" content="Compare cities on one day and find a meeting that lands in everyone's workday." />
   <meta name="twitter:image" content="https://www.forwardslashdot.com/time.svg" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
+  <link rel="alternate" type="text/plain" href="/time.txt" title="Plain-text comparison" />
+  <link rel="describedby" href="/llms.txt" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-size='26' font-weight='600' fill='white'%3E/.%3C/text%3E%3C/svg%3E" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "World Time Converter",
+    "url": "https://www.forwardslashdot.com/worldtimeconverter",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Any",
+    "description": "Compare cities on one day and find a meeting that lands in everyone's workday. Uses the IANA time zone database, including daylight saving.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "publisher": { "@type": "Organization", "name": "forwardslashdot", "url": "https://www.forwardslashdot.com/" }
+  }
+  </script>
   <style>
     :root {
       --bg-top: #f7f1e8;
@@ -1365,6 +1380,8 @@
       <p>The home clock follows this device until you switch it. British Columbia stays on Pacific Time (PCT, UTC−7) all year. Copy puts a one-line comparison and this link on the clipboard, which is the form to paste into a chat.</p>
       <p class="foot-links">
         <a href="/llms.txt">llms.txt</a>
+        <a href="/time.txt">plain text</a>
+        <a href="https://api.forwardslashdot.com/llms.txt">domain API</a>
       </p>
     </footer>
   </div>

@@ -1,16 +1,18 @@
 # forwardslashdot
 
-> Utilities on https://www.forwardslashdot.com. World Time Converter is a page on this origin. Domain availability is a separate API. Public aggregates live at /stats/.
+> Utilities on https://www.forwardslashdot.com. World Time Converter is a page on this origin. Domain availability is a separate API. Public aggregates live at /stats/. Prefer absolute API URLs for agents.
 
 ## World Time Converter
 
 - [World Time Converter](https://www.forwardslashdot.com/worldtimeconverter): Compare cities on one shared day. The page uses the IANA time zone database in the browser, including daylight saving. Drag the day or open a link.
+- [Plain text answer](https://www.forwardslashdot.com/time.txt): Same comparison as one line plus a share URL. Append the same query string as the page, or `?format=txt` on the page URL.
+- [Share card SVG](https://www.forwardslashdot.com/time.svg): 1200×630 Open Graph image for the same query.
 
 Build a link with these query parameters:
 
 - `cities`: comma-separated `City~Zone` pairs. Example: `New York~America/New_York,London~Europe/London`
 - `anchor`: the home clock, in the same `City~Zone` form. The day along the top uses this city.
-- `at`: civil time in the anchor city, `YYYY-MM-DDTHH:MM`. This is not UTC.
+- `at`: civil time in the anchor city, `YYYY-MM-DDTHH:MM`. This is not UTC. Loose forms like `9am` also work.
 - `work`: local workday in each city, `HH:MM-HH:MM`. Default `09:00-17:00`.
 - `dur`: meeting length in minutes. `30`, `60`, or `120`.
 
@@ -18,16 +20,30 @@ Example: 9:00 AM in Los Angeles on 15 January 2026 is 5:00 PM in London the same
 
 https://www.forwardslashdot.com/worldtimeconverter?cities=Los%20Angeles~America/Los_Angeles,London~Europe/London,Tokyo~Asia/Tokyo&anchor=Los%20Angeles~America/Los_Angeles&at=2026-01-15T09:00
 
+https://www.forwardslashdot.com/time.txt?cities=Los%20Angeles~America/Los_Angeles,London~Europe/London,Tokyo~Asia/Tokyo&anchor=Los%20Angeles~America/Los_Angeles&at=2026-01-15T09:00
+
 Blue on the page is the workday in that city. Gold is the two hours on either side. Gray is night. A suggested meeting is only "everyone" when every city stays inside the workday for the whole duration. Otherwise the page shows the closest windows and says who is outside.
 
-City names and IANA zones are both accepted in the search box. `sf` is San Francisco, `nyc` is New York.
+City names and IANA zones are both accepted in the search box. `sf` is San Francisco, `nyc` is New York. British Columbia stays on Pacific Time (PCT, UTC−7) year-round.
 
 ## Instant Domain Search
 
 - [Instant Domain Search](https://www.forwardslashdot.com/instantdomainsearch/): Instant search on this site.
 - [Domain API](https://api.forwardslashdot.com/llms.txt): REST, OpenAPI, and MCP for availability checks.
+- [MCP discovery](https://api.forwardslashdot.com/.well-known/mcp.json): Streamable HTTP endpoint for `check_domains`.
+- [OpenAPI](https://api.forwardslashdot.com/openapi.json): Machine-readable schema.
+
+When the API operator has set affiliate env vars, available domains include an `affiliate_url` registrar deep-link and a short disclosure. Without those vars, availability is returned without a buy link.
 
 ## Stats
 
-- [Stats page](https://www.forwardslashdot.com/stats/): Apple-clean presentation of public aggregates by site area.
+- [Stats page](https://www.forwardslashdot.com/stats/): Public aggregates by site area.
 - [Stats API](https://api.forwardslashdot.com/stats): JSON totals for Instant Domain Search and World Time Converter. People and models are separate. A device counts once per day. No query logs or PII.
+
+## Discovery on this origin
+
+These paths on www redirect to the API host so agents do not receive HTML soft-404s:
+
+- https://www.forwardslashdot.com/.well-known/mcp.json
+- https://www.forwardslashdot.com/.well-known/api-catalog
+- https://www.forwardslashdot.com/openapi.json

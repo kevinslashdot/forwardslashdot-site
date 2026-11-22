@@ -20,4 +20,9 @@
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
+  <url>
+    <loc>https://www.forwardslashdot.com/llms.txt</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+  </url>
 </urlset>

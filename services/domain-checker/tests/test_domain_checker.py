@@ -277,12 +277,25 @@ async def test_well_known_mcp_json(api_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_well_known_api_catalog(api_client: AsyncClient):
+    resp = await api_client.get("/.well-known/api-catalog")
+    assert resp.status_code == 200
+    assert "linkset" in resp.headers.get("content-type", "") or resp.headers.get("content-type", "").startswith(
+        "application/"
+    )
+    data = resp.json()
+    href = data["linkset"][0]["item"][0]["href"]
+    assert href.endswith("/openapi.json")
+
+
+@pytest.mark.asyncio
 async def test_openapi_json(api_client: AsyncClient):
     resp = await api_client.get("/openapi.json")
     assert resp.status_code == 200
     schema = resp.json()
     assert "/api/domain" in schema["paths"]
     assert "/health" in schema["paths"]
+    assert "/.well-known/api-catalog" in schema["paths"]
 
 
 # ---------------------------------------------------------------------------

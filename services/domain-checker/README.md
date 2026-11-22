@@ -15,6 +15,7 @@ Lives under `services/domain-checker/` so the Cloudflare Pages deploy of the rep
 | REST | `GET /api/domain?q=` | Comma-separated batch, capped (~25) |
 | MCP | `/mcp` | FastMCP Streamable HTTP; tool `check_domains` |
 | OpenAPI | `/openapi.json` | FastAPI schema |
+| API catalog | `/.well-known/api-catalog` | RFC 9727 linkset → OpenAPI |
 | llms.txt | `/llms.txt` | [llmstxt.org](https://llmstxt.org/) |
 | Discovery | `/.well-known/mcp.json` | MCP endpoint metadata |
 
