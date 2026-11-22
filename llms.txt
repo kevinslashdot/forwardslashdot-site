@@ -30,4 +30,4 @@ City names and IANA zones are both accepted in the search box. `sf` is San Franc
 ## Stats
 
 - [Stats page](https://www.forwardslashdot.com/stats/): Apple-clean presentation of public aggregates by site area.
-- [Stats API](https://api.forwardslashdot.com/stats): JSON totals by transport (`http`/`mcp`) and area (`instant_domain_search`, `world_time_converter`). No query logs or PII.
+- [Stats API](https://api.forwardslashdot.com/stats): JSON totals for Instant Domain Search and World Time Converter. People and models are separate. A device counts once per day. No query logs or PII.

@@ -724,7 +724,39 @@
           }
         }
       } catch (_) {}
+
+      noteVisit("instant_domain_search");
     })();
+
+    function noteVisit(area) {
+      try {
+        if (navigator.webdriver) return;
+        var key = "fwd-audience";
+        var now = new Date();
+        var day = now.getFullYear() + "-"
+          + String(now.getMonth() + 1).padStart(2, "0") + "-"
+          + String(now.getDate()).padStart(2, "0");
+        var store = {};
+        try { store = JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch (err) { store = {}; }
+        if (!store.id || !/^[A-Za-z0-9_-]{8,64}$/.test(store.id)) {
+          store.id = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+        }
+        if (store[area] === day) return;
+        var url = "https://api.forwardslashdot.com/api/hit?area=" + encodeURIComponent(area)
+          + "&actor=human&visitor=" + encodeURIComponent(store.id)
+          + "&day=" + day;
+        fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" }).then(function (res) {
+          if (!res.ok) return;
+          store[area] = day;
+          localStorage.setItem(key, JSON.stringify(store));
+        }).catch(function () {});
+        var pending = { id: store.id };
+        Object.keys(store).forEach(function (name) {
+          if (name !== "id" && name !== area) pending[name] = store[name];
+        });
+        localStorage.setItem(key, JSON.stringify(pending));
+      } catch (err) {}
+    }
   </script>
 </body>
 </html>

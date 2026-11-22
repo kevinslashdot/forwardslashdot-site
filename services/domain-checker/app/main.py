@@ -9,9 +9,12 @@ passed into FastAPI so the session manager initializes correctly.
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import threading
 import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -22,7 +25,14 @@ from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
 from app.llms import MCP_DISCOVERY, build_llms_txt
-from app.metrics import country_from_headers, metrics, normalize_area
+from app.metrics import (
+    country_from_headers,
+    metrics,
+    normalize_actor,
+    normalize_area,
+    normalize_country,
+    normalize_day,
+)
 
 
 def _record_metrics_async(
@@ -93,6 +103,13 @@ async def check_domains(domains: list[str] | str) -> dict[str, Any]:
     else:
         domain_list = list(domains)[: checker.batch_cap]
     _record_metrics_async("mcp", len(domain_list), area="other")
+    metrics.record_audience(
+        "instant_domain_search",
+        actor="llm",
+        visitor=uuid.uuid4().hex,
+        day=normalize_day(None),
+        country=None,
+    )
     return await checker.check_domains(domain_list)
 
 
@@ -151,6 +168,44 @@ async def stats() -> dict[str, Any]:
     return metrics.snapshot()
 
 
+_MODEL_UA = re.compile(
+    r"GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Anthropic|"
+    r"Perplexity|Google-Extended|Bytespider|Amazonbot|meta-externalagent|"
+    r"cohere|YouBot|Phind|DuckAssist|CCBot|Applebot-Extended",
+    re.IGNORECASE,
+)
+_UNFURL_UA = re.compile(
+    r"Slackbot|Twitterbot|facebookexternalhit|Facebot|Discordbot|TelegramBot|"
+    r"WhatsApp|LinkedInBot|Iframely|embedly|Pinterest|vkShare",
+    re.IGNORECASE,
+)
+_BROWSER_UA = re.compile(r"Mozilla/|AppleWebKit|Chrome/|Firefox/|Safari/", re.IGNORECASE)
+
+
+def request_actor(headers: Any) -> str:
+    """A browser navigation is a person. A client with no browser headers is a model."""
+    ua = headers.get("user-agent") or ""
+    if _UNFURL_UA.search(ua):
+        return "unfurl"
+    if _MODEL_UA.search(ua):
+        return "llm"
+    if headers.get("sec-fetch-dest") or headers.get("sec-fetch-mode"):
+        return "human"
+    if _BROWSER_UA.search(ua):
+        return "human"
+    if not ua:
+        return "human"
+    return "llm"
+
+
+def request_visitor(headers: Any) -> str:
+    """Daily device key. The address is hashed and never stored."""
+    day = normalize_day(None)
+    ip = headers.get("cf-connecting-ip") or headers.get("fly-client-ip") or ""
+    ua = headers.get("user-agent") or ""
+    return hashlib.sha256(f"{day}|{ip}|{ua}".encode()).hexdigest()[:32]
+
+
 @app.get("/api/hit", tags=["ops"])
 async def api_hit(
     request: Request,
@@ -161,6 +216,22 @@ async def api_hit(
     source: str | None = Query(
         None,
         description="Alias for area (accepted for older clients).",
+    ),
+    actor: str | None = Query(
+        None,
+        description="human for a browser, llm for a model fetch.",
+    ),
+    visitor: str | None = Query(
+        None,
+        description="Opaque device id. The same id counts once per day.",
+    ),
+    day: str | None = Query(
+        None,
+        description="Local calendar day, YYYY-MM-DD.",
+    ),
+    country: str | None = Query(
+        None,
+        description="Optional ISO country code. Ignored unless it is a country code.",
     ),
 ) -> JSONResponse:
     """Record a non-PII utility hit attributed to a site area + coarse country."""
@@ -173,10 +244,29 @@ async def api_hit(
             label = "instant_domain_search"
         elif "worldtimeconverter" in low or "/utilities/time" in low:
             label = "world_time_converter"
-    country = country_from_headers(request.headers)
-    _record_hit_async(normalize_area(label), country=country)
+    resolved_country = (
+        normalize_country(country) if country else country_from_headers(request.headers)
+    )
+    actor_key = normalize_actor(actor)
+    if visitor:
+        recorded = metrics.record_audience(
+            normalize_area(label),
+            actor=actor_key,
+            visitor=visitor,
+            day=normalize_day(day),
+            country=resolved_country,
+        )
+    else:
+        _record_hit_async(normalize_area(label), country=resolved_country)
+        recorded = True
     return JSONResponse(
-        {"ok": True, "area": normalize_area(label), "country": country},
+        {
+            "ok": True,
+            "area": normalize_area(label),
+            "country": resolved_country,
+            "actor": actor_key,
+            "recorded": recorded,
+        },
         headers={"Cache-Control": "no-store"},
     )
 
@@ -210,6 +300,14 @@ async def api_domain(
     area_label = normalize_area(area or source or "instant_domain_search")
     country = country_from_headers(request.headers)
     _record_metrics_async("http", len(capped), area=area_label, country=country)
+    if request_actor(request.headers) == "llm":
+        metrics.record_audience(
+            area_label,
+            actor="llm",
+            visitor=request_visitor(request.headers),
+            day=normalize_day(None),
+            country=country,
+        )
     payload = await dc.check_domains(raw_parts)
     payload["timing_ms"] = int((time.perf_counter() - t0) * 1000)
 

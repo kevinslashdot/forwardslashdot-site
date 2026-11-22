@@ -13,12 +13,14 @@ Persistence order:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal, Mapping
 from urllib.parse import urlparse
@@ -127,8 +129,40 @@ def _redacted_host(url: str) -> str:
         return "postgres"
 
 
+_VISITOR_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+ACTORS = frozenset({"human", "llm"})
+
+
+def normalize_actor(raw: str | None) -> str:
+    """People are browsers. Models are fetches that never run the page."""
+    key = (raw or "").strip().lower()
+    if key in ("llm", "model", "bot", "mcp"):
+        return "llm"
+    return "human"
+
+
+def normalize_day(raw: str | None) -> str:
+    """Accept a local calendar day within a day of UTC, otherwise use UTC today."""
+    today = datetime.now(timezone.utc).date()
+    if not raw:
+        return today.isoformat()
+    try:
+        day = datetime.strptime(str(raw).strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return today.isoformat()
+    if abs((day - today).days) > 1:
+        return today.isoformat()
+    return day.isoformat()
+
+
+def audience_digest(area: str, actor: str, day: str, visitor: str) -> str:
+    """One-way key for a device-day. The visitor id itself is not stored."""
+    material = f"{area}|{actor}|{day}|{visitor}".encode()
+    return hashlib.sha256(material).hexdigest()
+
+
 def _empty_area() -> dict[str, int]:
-    return {"checks": 0, "domains_checked": 0, "hits": 0}
+    return {"checks": 0, "domains_checked": 0, "hits": 0, "human": 0, "llm": 0}
 
 
 def _empty_country() -> dict[str, int]:
@@ -143,6 +177,8 @@ def _area_payload(areas: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]
             "checks": int(slot.get("checks") or 0),
             "domains_checked": int(slot.get("domains_checked") or 0),
             "hits": int(slot.get("hits") or 0),
+            "human": int(slot.get("human") or 0),
+            "llm": int(slot.get("llm") or 0),
         }
     return out
 
@@ -200,6 +236,8 @@ class RequestMetrics:
     countries: dict[str, dict[str, int]] = field(default_factory=dict)
     # hour_epoch -> country -> {checks, domains, hits}
     countries_hourly: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
+    # sha256(area|actor|day|visitor) -> calendar day, so a device counts once
+    seen: dict[str, str] = field(default_factory=dict)
     started_at: float = field(default_factory=time.time)
     persistence: str = "file"
     _pg_ready: bool = field(default=False, repr=False)
@@ -297,6 +335,28 @@ class RequestMetrics:
                     )
                     """
                 )
+                conn.execute(
+                    f"""
+                    ALTER TABLE "{_pg_schema()}".metrics_areas
+                      ADD COLUMN IF NOT EXISTS human_hits BIGINT NOT NULL DEFAULT 0,
+                      ADD COLUMN IF NOT EXISTS llm_hits BIGINT NOT NULL DEFAULT 0
+                    """
+                )
+                conn.execute(
+                    f"""
+                    ALTER TABLE "{_pg_schema()}".metrics_areas_hourly
+                      ADD COLUMN IF NOT EXISTS human_hits BIGINT NOT NULL DEFAULT 0,
+                      ADD COLUMN IF NOT EXISTS llm_hits BIGINT NOT NULL DEFAULT 0
+                    """
+                )
+                conn.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS "{_pg_schema()}".metrics_seen (
+                      seen_key TEXT PRIMARY KEY,
+                      day DATE NOT NULL
+                    )
+                    """
+                )
                 for area in ALLOWED_AREAS:
                     conn.execute(
                         f"""
@@ -333,7 +393,7 @@ class RequestMetrics:
     def _refresh_areas_cache(self, conn: Any) -> None:
         rows = conn.execute(
             f"""
-            SELECT area, checks, domains_checked, hits
+            SELECT area, checks, domains_checked, hits, human_hits, llm_hits
             FROM "{_pg_schema()}".metrics_areas
             """
         ).fetchall()
@@ -343,6 +403,8 @@ class RequestMetrics:
                 "checks": int(row[1] or 0),
                 "domains_checked": int(row[2] or 0),
                 "hits": int(row[3] or 0),
+                "human": int(row[4] or 0),
+                "llm": int(row[5] or 0),
             }
         self.areas = areas
 
@@ -373,6 +435,8 @@ class RequestMetrics:
         stale_countries = [k for k in self.countries_hourly if int(k) < cutoff]
         for k in stale_countries:
             del self.countries_hourly[k]
+        keep_after = (datetime.now(timezone.utc).date() - timedelta(days=3)).isoformat()
+        self.seen = {key: day for key, day in self.seen.items() if day >= keep_after}
 
     def _load_file(self) -> None:
         try:
@@ -408,6 +472,8 @@ class RequestMetrics:
                 slot["checks"] += int(v.get("checks") or 0)
                 slot["domains_checked"] += int(v.get("domains_checked") or 0)
                 slot["hits"] += int(v.get("hits") or 0)
+                slot["human"] += int(v.get("human") or 0)
+                slot["llm"] += int(v.get("llm") or 0)
             self.areas = cleaned_areas
         areas_hourly = raw.get("areas_hourly") or {}
         if isinstance(areas_hourly, dict):
@@ -420,10 +486,12 @@ class RequestMetrics:
                     if not isinstance(vals, dict):
                         continue
                     area = normalize_area(str(area_name))
-                    slot = hour_slot.setdefault(area, {"checks": 0, "domains": 0, "hits": 0})
+                    slot = hour_slot.setdefault(area, {"checks": 0, "domains": 0, "hits": 0, "human": 0, "llm": 0})
                     slot["checks"] += int(vals.get("checks") or 0)
                     slot["domains"] += int(vals.get("domains") or 0)
                     slot["hits"] += int(vals.get("hits") or 0)
+                    slot["human"] += int(vals.get("human") or 0)
+                    slot["llm"] += int(vals.get("llm") or 0)
                 cleaned_ah[str(hour)] = hour_slot
             self.areas_hourly = cleaned_ah
         countries_raw = raw.get("countries") or {}
@@ -455,6 +523,13 @@ class RequestMetrics:
                     slot["hits"] += int(vals.get("hits") or 0)
                 cleaned_ch[str(hour)] = hour_slot
             self.countries_hourly = cleaned_ch
+        seen_raw = raw.get("seen") or {}
+        if isinstance(seen_raw, dict):
+            self.seen = {
+                str(key): str(day)
+                for key, day in seen_raw.items()
+                if isinstance(key, str) and isinstance(day, str)
+            }
         if raw.get("started_at"):
             try:
                 self.started_at = float(raw["started_at"])
@@ -474,6 +549,7 @@ class RequestMetrics:
             "areas_hourly": self.areas_hourly,
             "countries": self.countries,
             "countries_hourly": self.countries_hourly,
+            "seen": self.seen,
             "started_at": self.started_at,
         }
         try:
@@ -492,17 +568,23 @@ class RequestMetrics:
         checks: int = 0,
         domains: int = 0,
         hits: int = 0,
+        human: int = 0,
+        llm: int = 0,
     ) -> None:
         slot = self.areas.setdefault(area, _empty_area())
         slot["checks"] = int(slot.get("checks") or 0) + checks
         slot["domains_checked"] = int(slot.get("domains_checked") or 0) + domains
         slot["hits"] = int(slot.get("hits") or 0) + hits
+        slot["human"] = int(slot.get("human") or 0) + human
+        slot["llm"] = int(slot.get("llm") or 0) + llm
         bucket = str(_hour_bucket())
         hour_map = self.areas_hourly.setdefault(bucket, {})
-        hour_slot = hour_map.setdefault(area, {"checks": 0, "domains": 0, "hits": 0})
+        hour_slot = hour_map.setdefault(area, {"checks": 0, "domains": 0, "hits": 0, "human": 0, "llm": 0})
         hour_slot["checks"] = int(hour_slot.get("checks") or 0) + checks
         hour_slot["domains"] = int(hour_slot.get("domains") or 0) + domains
         hour_slot["hits"] = int(hour_slot.get("hits") or 0) + hits
+        hour_slot["human"] = int(hour_slot.get("human") or 0) + human
+        hour_slot["llm"] = int(hour_slot.get("llm") or 0) + llm
 
     def _bump_country_memory(
         self,
@@ -693,7 +775,7 @@ class RequestMetrics:
                 ).fetchone()
                 area_rows = conn.execute(
                     f"""
-                    SELECT area, checks, domains_checked, hits
+                    SELECT area, checks, domains_checked, hits, human_hits, llm_hits
                     FROM "{_pg_schema()}".metrics_areas
                     """
                 ).fetchall()
@@ -702,7 +784,9 @@ class RequestMetrics:
                     SELECT area,
                            COALESCE(SUM(checks),0),
                            COALESCE(SUM(domains),0),
-                           COALESCE(SUM(hits),0)
+                           COALESCE(SUM(hits),0),
+                           COALESCE(SUM(human_hits),0),
+                           COALESCE(SUM(llm_hits),0)
                     FROM "{_pg_schema()}".metrics_areas_hourly
                     WHERE hour_epoch >= %s
                     GROUP BY area
@@ -739,6 +823,8 @@ class RequestMetrics:
                     "checks": int(row[1] or 0),
                     "domains_checked": int(row[2] or 0),
                     "hits": int(row[3] or 0),
+                    "human": int(row[4] or 0) if len(row) > 4 else 0,
+                    "llm": int(row[5] or 0) if len(row) > 5 else 0,
                 }
             last_areas: dict[str, dict[str, int]] = {}
             for row in area_hourly_rows or []:
@@ -746,6 +832,8 @@ class RequestMetrics:
                     "checks": int(row[1] or 0),
                     "domains_checked": int(row[2] or 0),
                     "hits": int(row[3] or 0),
+                    "human": int(row[4] or 0) if len(row) > 4 else 0,
+                    "llm": int(row[5] or 0) if len(row) > 5 else 0,
                 }
             countries: dict[str, dict[str, int]] = {}
             for row in country_rows or []:
@@ -840,6 +928,147 @@ class RequestMetrics:
             self._bump_country_memory(country_key, hits=1)
             self._save_file_unlocked()
 
+    def record_audience(
+        self,
+        area: str | None,
+        *,
+        actor: str | None,
+        visitor: str | None,
+        day: str | None,
+        country: str | None = None,
+    ) -> bool:
+        """Count one person or model. The same visitor counts once per calendar day.
+
+        Returns True when this call incremented the counter.
+        A missing or malformed visitor is counted every time (older beacons).
+        """
+        area_key = normalize_area(area)
+        actor_key = normalize_actor(actor)
+        day_key = normalize_day(day)
+        country_key = normalize_country(country)
+        visitor_id = (visitor or "").strip()
+        dedupe = bool(_VISITOR_RE.match(visitor_id))
+        seen_key = audience_digest(area_key, actor_key, day_key, visitor_id) if dedupe else ""
+        human = 1 if actor_key == "human" else 0
+        llm = 1 if actor_key == "llm" else 0
+        with self._lock:
+            if self._pg_ready:
+                recorded = self._record_audience_postgres(
+                    area_key,
+                    actor_key,
+                    seen_key,
+                    day_key,
+                    country_key,
+                    human=human,
+                    llm=llm,
+                )
+                if recorded is not None:
+                    return recorded
+            if seen_key and seen_key in self.seen:
+                return False
+            if seen_key:
+                self.seen[seen_key] = day_key
+            self._bump_area_memory(area_key, hits=1, human=human, llm=llm)
+            self._bump_country_memory(country_key, hits=1)
+            self._save_file_unlocked()
+            return True
+
+    def _record_audience_postgres(
+        self,
+        area: str,
+        actor: str,
+        seen_key: str,
+        day: str,
+        country: str,
+        *,
+        human: int,
+        llm: int,
+    ) -> bool | None:
+        """True recorded, False duplicate, None if Postgres is unavailable."""
+        if not self._pg_ready or not self.database_url:
+            return None
+        try:
+            import psycopg
+        except ImportError:
+            return None
+        bucket = _hour_bucket()
+        try:
+            with psycopg.connect(self.database_url, connect_timeout=10) as conn:
+                if seen_key:
+                    inserted = conn.execute(
+                        f"""
+                        INSERT INTO "{_pg_schema()}".metrics_seen (seen_key, day)
+                        VALUES (%s, %s)
+                        ON CONFLICT (seen_key) DO NOTHING
+                        RETURNING seen_key
+                        """,
+                        (seen_key, day),
+                    ).fetchone()
+                    if inserted is None:
+                        conn.commit()
+                        return False
+                    conn.execute(
+                        f"""
+                        DELETE FROM "{_pg_schema()}".metrics_seen
+                        WHERE day < %s::date
+                        """,
+                        ((datetime.now(timezone.utc).date() - timedelta(days=3)).isoformat(),),
+                    )
+                conn.execute(
+                    f"""
+                    INSERT INTO "{_pg_schema()}".metrics_areas
+                      (area, hits, human_hits, llm_hits)
+                    VALUES (%s, 1, %s, %s)
+                    ON CONFLICT (area) DO UPDATE SET
+                      hits = "{_pg_schema()}".metrics_areas.hits + 1,
+                      human_hits = "{_pg_schema()}".metrics_areas.human_hits + EXCLUDED.human_hits,
+                      llm_hits = "{_pg_schema()}".metrics_areas.llm_hits + EXCLUDED.llm_hits
+                    """,
+                    (area, human, llm),
+                )
+                conn.execute(
+                    f"""
+                    INSERT INTO "{_pg_schema()}".metrics_areas_hourly
+                      (hour_epoch, area, hits, human_hits, llm_hits)
+                    VALUES (%s, %s, 1, %s, %s)
+                    ON CONFLICT (hour_epoch, area) DO UPDATE SET
+                      hits = "{_pg_schema()}".metrics_areas_hourly.hits + 1,
+                      human_hits = "{_pg_schema()}".metrics_areas_hourly.human_hits
+                                   + EXCLUDED.human_hits,
+                      llm_hits = "{_pg_schema()}".metrics_areas_hourly.llm_hits
+                                 + EXCLUDED.llm_hits
+                    """,
+                    (bucket, area, human, llm),
+                )
+                conn.execute(
+                    f"""
+                    INSERT INTO "{_pg_schema()}".metrics_countries
+                      (country, hits)
+                    VALUES (%s, 1)
+                    ON CONFLICT (country) DO UPDATE SET
+                      hits = "{_pg_schema()}".metrics_countries.hits + 1
+                    """,
+                    (country,),
+                )
+                conn.execute(
+                    f"""
+                    INSERT INTO "{_pg_schema()}".metrics_countries_hourly
+                      (hour_epoch, country, hits)
+                    VALUES (%s, %s, 1)
+                    ON CONFLICT (hour_epoch, country) DO UPDATE SET
+                      hits = "{_pg_schema()}".metrics_countries_hourly.hits + 1
+                    """,
+                    (bucket, country),
+                )
+                conn.commit()
+                self._refresh_areas_cache(conn)
+                self._refresh_countries_cache(conn)
+            self.persistence = "postgres"
+            return True
+        except Exception:
+            self._pg_ready = False
+            return None
+
     def snapshot(self) -> dict[str, Any]:
         """Public aggregate JSON (no domain names / query logs / IPs)."""
         with self._lock:
@@ -864,6 +1093,8 @@ class RequestMetrics:
                     slot["checks"] += int(vals.get("checks") or 0)
                     slot["domains_checked"] += int(vals.get("domains") or 0)
                     slot["hits"] += int(vals.get("hits") or 0)
+                    slot["human"] += int(vals.get("human") or 0)
+                    slot["llm"] += int(vals.get("llm") or 0)
             last_countries: dict[str, dict[str, int]] = {}
             for hour_map in self.countries_hourly.values():
                 for country_name, vals in hour_map.items():

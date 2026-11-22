@@ -54,6 +54,45 @@ def test_metrics_record_and_persist(tmp_path: Path):
     assert snap2["by_country"]["US"]["checks"] == 1
 
 
+def test_audience_counts_a_device_once_per_day(tmp_path: Path):
+    from datetime import datetime, timedelta, timezone
+
+    today = datetime.now(timezone.utc).date()
+    yesterday = (today - timedelta(days=1)).isoformat()
+    m = RequestMetrics(path=tmp_path / "audience.json", database_url=None)
+    assert m.record_audience(
+        "world_time_converter", actor="human", visitor="device-one", day=yesterday, country="CA"
+    )
+    assert not m.record_audience(
+        "world_time_converter", actor="human", visitor="device-one", day=yesterday, country="CA"
+    )
+    assert m.record_audience(
+        "world_time_converter", actor="human", visitor="device-one", day=today.isoformat(), country="CA"
+    )
+    assert m.record_audience(
+        "instant_domain_search", actor="llm", visitor="modelhash01", day=today.isoformat(), country="US"
+    )
+    assert not m.record_audience(
+        "instant_domain_search", actor="llm", visitor="modelhash01", day=today.isoformat(), country="US"
+    )
+    snap = m.snapshot()
+    time_area = snap["by_area"]["world_time_converter"]
+    domain_area = snap["by_area"]["instant_domain_search"]
+    assert time_area["human"] == 2
+    assert time_area["llm"] == 0
+    assert time_area["hits"] == 2
+    assert domain_area["llm"] == 1
+    assert domain_area["human"] == 0
+    blob = json.dumps(snap)
+    assert "device-one" not in blob
+    assert "modelhash01" not in blob
+
+    reloaded = RequestMetrics(path=tmp_path / "audience.json", database_url=None)
+    assert not reloaded.record_audience(
+        "world_time_converter", actor="human", visitor="device-one", day=today.isoformat(), country="CA"
+    )
+
+
 def test_normalize_area_aliases():
     from app.metrics import normalize_area
 
@@ -173,6 +212,22 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
     paths = (await api_client_metrics.get("/openapi.json")).json()["paths"]
     assert "/stats" in paths
     assert "/api/hit" in paths
+
+    day = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).date().isoformat()
+    first = await api_client_metrics.get(
+        "/api/hit",
+        params={"area": "instant_domain_search", "actor": "human", "visitor": "browser-1", "day": day},
+        headers={"CF-IPCountry": "CA"},
+    )
+    second = await api_client_metrics.get(
+        "/api/hit",
+        params={"area": "instant_domain_search", "actor": "human", "visitor": "browser-1", "day": day},
+        headers={"CF-IPCountry": "CA"},
+    )
+    assert first.json()["recorded"] is True
+    assert second.json()["recorded"] is False
+    deduped = (await api_client_metrics.get("/stats")).json()
+    assert deduped["by_area"]["instant_domain_search"]["human"] == 1
 
 
 @pytest.mark.asyncio

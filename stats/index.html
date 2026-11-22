@@ -359,7 +359,7 @@
       <span class="mark" aria-label="forwardslashdot">/.</span>
       <h1 class="headline">Stats</h1>
       <p class="lede">
-        Public aggregates by site area and country. Checks, domains, and hits — never queries, never IPs.
+        People and models, counted once per device each day. Never queries, never IPs.
       </p>
     </header>
 
@@ -373,7 +373,7 @@
         <dd id="total-domains">—</dd>
       </div>
       <div>
-        <dt>Last 24h</dt>
+        <dt>People today</dt>
         <dd id="total-day">—</dd>
       </div>
     </dl>
@@ -384,17 +384,17 @@
       <article class="area" data-area="instant_domain_search">
         <div class="area-copy">
           <h2 class="area-name"><a href="/instantdomainsearch/">Instant Domain Search</a></h2>
-          <p class="area-note">Live availability checks through the public API.</p>
+          <p class="area-note">A browser counts once a day. A model fetch counts once a day from that client.</p>
         </div>
         <div>
-          <span class="metric-label">Checks</span>
-          <p class="metric-value" data-field="checks">—</p>
-          <p class="metric-sub"><span data-field="domains">—</span> domains</p>
+          <span class="metric-label">People</span>
+          <p class="metric-value" data-field="people">—</p>
+          <p class="metric-sub"><span data-field="day-people">—</span> today</p>
         </div>
         <div>
-          <span class="metric-label">24h</span>
-          <p class="metric-value" data-field="day-checks">—</p>
-          <p class="metric-sub"><span data-field="day-domains">—</span> domains</p>
+          <span class="metric-label">Models</span>
+          <p class="metric-value" data-field="models">—</p>
+          <p class="metric-sub"><span data-field="day-models">—</span> today</p>
         </div>
         <div class="bar" aria-hidden="true"><span data-bar></span></div>
       </article>
@@ -402,17 +402,17 @@
       <article class="area" data-area="world_time_converter">
         <div class="area-copy">
           <h2 class="area-name"><a href="/worldtimeconverter">World Time Converter</a></h2>
-          <p class="area-note">Page opens attributed as utility hits.</p>
+          <p class="area-note">A browser counts once a day. A model fetch counts once a day from that client.</p>
         </div>
         <div>
-          <span class="metric-label">Hits</span>
-          <p class="metric-value" data-field="hits">—</p>
-          <p class="metric-sub">all time</p>
+          <span class="metric-label">People</span>
+          <p class="metric-value" data-field="people">—</p>
+          <p class="metric-sub"><span data-field="day-people">—</span> today</p>
         </div>
         <div>
-          <span class="metric-label">24h</span>
-          <p class="metric-value" data-field="day-hits">—</p>
-          <p class="metric-sub">recent</p>
+          <span class="metric-label">Models</span>
+          <p class="metric-value" data-field="models">—</p>
+          <p class="metric-sub"><span data-field="day-models">—</span> today</p>
         </div>
         <div class="bar" aria-hidden="true"><span data-bar></span></div>
       </article>
@@ -481,32 +481,26 @@
         return code;
       }
 
-      function fillArea(root, all, day, mode) {
-        var checks = all.checks || 0;
-        var domains = all.domains_checked || 0;
-        var hits = all.hits || 0;
-        var dayChecks = day.checks || 0;
-        var dayDomains = day.domains_checked || 0;
-        var dayHits = day.hits || 0;
+      function audience(slot) {
+        var split = slot && Object.prototype.hasOwnProperty.call(slot, "human");
+        if (split) return { people: slot.human || 0, models: slot.llm || 0 };
+        return { people: (slot && slot.hits) || 0, models: null };
+      }
 
+      function fillArea(root, all, day) {
+        var people = audience(all);
+        var today = audience(day);
         root.querySelectorAll("[data-field]").forEach(function (el) {
           var field = el.getAttribute("data-field");
-          if (field === "checks") el.textContent = fmt(checks);
-          if (field === "domains") el.textContent = fmt(domains);
-          if (field === "hits") el.textContent = fmt(hits);
-          if (field === "day-checks") el.textContent = fmt(dayChecks);
-          if (field === "day-domains") el.textContent = fmt(dayDomains);
-          if (field === "day-hits") el.textContent = fmt(dayHits);
+          if (field === "people") el.textContent = fmt(people.people);
+          if (field === "models") el.textContent = people.models == null ? "—" : fmt(people.models);
+          if (field === "day-people") el.textContent = fmt(today.people);
+          if (field === "day-models") el.textContent = today.models == null ? "—" : fmt(today.models);
         });
-
         var bar = root.querySelector("[data-bar]");
         if (bar) {
-          var share = mode === "hits"
-            ? (hits > 0 ? Math.min(100, 18 + Math.log10(hits + 1) * 28) : 0)
-            : (checks > 0 ? Math.min(100, 18 + Math.log10(checks + 1) * 28) : 0);
-          requestAnimationFrame(function () {
-            bar.style.width = share + "%";
-          });
+          var share = people.people > 0 ? Math.min(100, 18 + Math.log10(people.people + 1) * 28) : 0;
+          requestAnimationFrame(function () { bar.style.width = share + "%"; });
         }
       }
 
@@ -541,23 +535,28 @@
       }
 
       function render(data) {
+        var dayAreas = (data.last_24h && data.last_24h.by_area) || {};
+        var peopleToday = 0;
+        ["instant_domain_search", "world_time_converter"].forEach(function (key) {
+          peopleToday += audience(dayAreas[key] || {}).people;
+        });
         setText("total-checks", fmt(data.total_checks));
         setText("total-domains", fmt(data.domains_checked));
-        setText("total-day", fmt(data.last_24h && data.last_24h.checks));
+        setText("total-day", fmt(peopleToday));
         setText("src-http", fmt(data.by_source && data.by_source.http));
         setText("src-mcp", fmt(data.by_source && data.by_source.mcp));
         setText("started", data.started_at ? String(data.started_at).replace("T", " ").replace("Z", " UTC") : "—");
 
         document.querySelectorAll(".area").forEach(function (root) {
           var key = root.getAttribute("data-area");
-          var mode = key === "world_time_converter" ? "hits" : "checks";
-          fillArea(root, areaSlot(data, key), daySlot(data, key), mode);
+          fillArea(root, areaSlot(data, key), daySlot(data, key));
         });
 
         fillCountries(data);
 
         statusEl.className = "status";
-        statusEl.textContent = "Live · persistence " + (data.persistence || "—");
+        var stamp = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+        statusEl.textContent = "Updated " + stamp + " · persistence " + (data.persistence || "—");
       }
 
       function fail(message) {
@@ -565,15 +564,20 @@
         statusEl.textContent = message;
       }
 
-      fetch(API, { credentials: "omit", cache: "no-store" })
-        .then(function (res) {
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          return res.json();
-        })
-        .then(render)
-        .catch(function () {
-          fail("Could not load stats. Try again shortly.");
-        });
+      function load() {
+        fetch(API, { credentials: "omit", cache: "no-store" })
+          .then(function (res) {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+          })
+          .then(render)
+          .catch(function () {
+            fail("Could not load stats. Try again shortly.");
+          });
+      }
+
+      load();
+      setInterval(load, 60000);
     })();
   </script>
 </body>
