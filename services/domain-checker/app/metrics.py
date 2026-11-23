@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Literal, Mapping
 from urllib.parse import urlparse
 
+from app.endings import endings_payload, normalize_ending
+
 Source = Literal["http", "mcp"]
 
 ALLOWED_AREAS = frozenset(
@@ -234,6 +236,8 @@ class RequestMetrics:
     areas_hourly: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
     # country_code -> {checks, domains_checked, hits}
     countries: dict[str, dict[str, int]] = field(default_factory=dict)
+    # country_code -> ending -> checks. Endings only, never the typed domain.
+    endings: dict[str, dict[str, int]] = field(default_factory=dict)
     # hour_epoch -> country -> {checks, domains, hits}
     countries_hourly: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
     # sha256(area|actor|day|visitor) -> calendar day, so a device counts once
@@ -332,6 +336,16 @@ class RequestMetrics:
                       domains BIGINT NOT NULL DEFAULT 0,
                       hits BIGINT NOT NULL DEFAULT 0,
                       PRIMARY KEY (hour_epoch, country)
+                    )
+                    """
+                )
+                conn.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS "{_pg_schema()}".metrics_endings (
+                      country TEXT NOT NULL,
+                      ending TEXT NOT NULL,
+                      checks BIGINT NOT NULL DEFAULT 0,
+                      PRIMARY KEY (country, ending)
                     )
                     """
                 )
@@ -523,6 +537,22 @@ class RequestMetrics:
                     slot["hits"] += int(vals.get("hits") or 0)
                 cleaned_ch[str(hour)] = hour_slot
             self.countries_hourly = cleaned_ch
+        endings_raw = raw.get("endings") or {}
+        if isinstance(endings_raw, dict):
+            cleaned_endings: dict[str, dict[str, int]] = {}
+            for raw_code, bucket in endings_raw.items():
+                if not isinstance(bucket, dict):
+                    continue
+                code = normalize_country(str(raw_code))
+                slot: dict[str, int] = {}
+                for raw_ending, raw_count in bucket.items():
+                    key = normalize_ending(str(raw_ending))
+                    if not key:
+                        continue
+                    slot[key] = int(slot.get(key) or 0) + int(raw_count or 0)
+                if slot:
+                    cleaned_endings[code] = slot
+            self.endings = cleaned_endings
         seen_raw = raw.get("seen") or {}
         if isinstance(seen_raw, dict):
             self.seen = {
@@ -549,6 +579,7 @@ class RequestMetrics:
             "areas_hourly": self.areas_hourly,
             "countries": self.countries,
             "countries_hourly": self.countries_hourly,
+            "endings": self.endings,
             "seen": self.seen,
             "started_at": self.started_at,
         }
@@ -811,6 +842,12 @@ class RequestMetrics:
                     """,
                     (cutoff,),
                 ).fetchall()
+                ending_rows = conn.execute(
+                    f"""
+                    SELECT country, ending, checks
+                    FROM "{_pg_schema()}".metrics_endings
+                    """
+                ).fetchall()
             if not totals:
                 return None
             last_http = int(hourly[0] or 0) if hourly else 0
@@ -849,6 +886,14 @@ class RequestMetrics:
                 slot["checks"] += int(row[1] or 0)
                 slot["domains_checked"] += int(row[2] or 0)
                 slot["hits"] += int(row[3] or 0)
+            stored_endings: dict[str, dict[str, int]] = {}
+            for row in ending_rows or []:
+                code = normalize_country(str(row[0]))
+                key = normalize_ending(str(row[1]))
+                if not key:
+                    continue
+                bucket = stored_endings.setdefault(code, {})
+                bucket[key] = int(bucket.get(key) or 0) + int(row[2] or 0)
             self.persistence = "postgres"
             return {
                 "service": "domain-checker",
@@ -859,6 +904,7 @@ class RequestMetrics:
                 },
                 "by_area": _area_payload(areas),
                 "by_country": _country_payload(countries),
+                "endings_by_country": endings_payload(stored_endings),
                 "domains_checked": int(totals[3] or 0),
                 "last_24h": {
                     "checks": last_http + last_mcp,
@@ -972,6 +1018,86 @@ class RequestMetrics:
             self._bump_country_memory(country_key, hits=1)
             self._save_file_unlocked()
             return True
+
+    def record_endings(self, country: str | None, endings: list[str]) -> None:
+        """Count endings checked from a country. The domain itself is not stored."""
+        code = normalize_country(country)
+        if code == "UK":
+            code = "GB"
+        cleaned = [key for key in (normalize_ending(item) for item in endings) if key]
+        if not cleaned:
+            return
+        with self._lock:
+            if self._pg_ready and self._record_endings_postgres(code, cleaned):
+                return
+            bucket = self.endings.setdefault(code, {})
+            for key in cleaned:
+                bucket[key] = int(bucket.get(key) or 0) + 1
+            self._save_file_unlocked()
+
+    def ending_counts(self, country: str | None) -> dict[str, int]:
+        code = normalize_country(country)
+        if code == "UK":
+            code = "GB"
+        with self._lock:
+            if self._pg_ready:
+                rows = self._ending_counts_postgres(code)
+                if rows is not None:
+                    return rows
+            bucket = self.endings.get(code) or {}
+            return {key: int(count) for key, count in bucket.items()}
+
+    def _record_endings_postgres(self, country: str, endings: list[str]) -> bool:
+        if not self._pg_ready or not self.database_url:
+            return False
+        try:
+            import psycopg
+        except ImportError:
+            return False
+        try:
+            with psycopg.connect(self.database_url, connect_timeout=10) as conn:
+                for ending in endings:
+                    conn.execute(
+                        f"""
+                        INSERT INTO "{_pg_schema()}".metrics_endings
+                          (country, ending, checks)
+                        VALUES (%s, %s, 1)
+                        ON CONFLICT (country, ending) DO UPDATE SET
+                          checks = "{_pg_schema()}".metrics_endings.checks + 1
+                        """,
+                        (country, ending),
+                    )
+                conn.commit()
+            self.persistence = "postgres"
+            return True
+        except Exception:
+            return False
+
+    def _ending_counts_postgres(self, country: str) -> dict[str, int] | None:
+        if not self._pg_ready or not self.database_url:
+            return None
+        try:
+            import psycopg
+        except ImportError:
+            return None
+        try:
+            with psycopg.connect(self.database_url, connect_timeout=10) as conn:
+                rows = conn.execute(
+                    f"""
+                    SELECT ending, checks
+                    FROM "{_pg_schema()}".metrics_endings
+                    WHERE country = %s
+                    """,
+                    (country,),
+                ).fetchall()
+            counts: dict[str, int] = {}
+            for ending, count in rows:
+                key = normalize_ending(str(ending))
+                if key:
+                    counts[key] = int(count or 0)
+            return counts
+        except Exception:
+            return None
 
     def _record_audience_postgres(
         self,
@@ -1112,6 +1238,7 @@ class RequestMetrics:
                 },
                 "by_area": _area_payload(self.areas),
                 "by_country": _country_payload(self.countries),
+                "endings_by_country": endings_payload(self.endings),
                 "domains_checked": self.domains_checked,
                 "last_24h": {
                     "checks": last_24h_checks,

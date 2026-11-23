@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
+from app.endings import ending_of, row_for
 from app.llms import MCP_DISCOVERY, api_catalog, build_llms_txt
 from app.metrics import (
     country_from_headers,
@@ -57,6 +58,21 @@ def _record_metrics_async(
             pass
 
     threading.Thread(target=_run, daemon=True, name="domain-metrics").start()
+
+
+def _record_endings_async(country: str | None, domains: list[str]) -> None:
+    """Count the ending only. The name that was checked is discarded."""
+    found = [ending for name in domains if (ending := ending_of(name))]
+    if not found:
+        return
+
+    def _run() -> None:
+        try:
+            metrics.record_endings(country, found)
+        except Exception:
+            pass
+
+    threading.Thread(target=_run, daemon=True, name="ending-metrics").start()
 
 
 def _record_hit_async(area: str | None, *, country: str | None = None) -> None:
@@ -291,6 +307,26 @@ async def api_hit(
     )
 
 
+@app.get("/api/endings", tags=["domains"])
+async def api_endings(
+    request: Request,
+    country: str | None = Query(
+        None,
+        description="ISO country code. Defaults to the edge country. Returns the six endings to show.",
+    ),
+) -> JSONResponse:
+    """Endings to show for a country. Counts are aggregates; no domains or IPs."""
+    explicit = normalize_country(country) if country else ""
+    resolved = explicit if explicit and explicit != "XX" else country_from_headers(request.headers)
+    if resolved == "UK":
+        resolved = "GB"
+    endings, source = row_for(resolved, metrics.ending_counts(resolved))
+    return JSONResponse(
+        {"country": resolved, "endings": endings, "source": source},
+        headers={"Cache-Control": "public, max-age=60"},
+    )
+
+
 @app.get("/api/domain", tags=["domains"])
 async def api_domain(
     request: Request,
@@ -308,6 +344,14 @@ async def api_domain(
         None,
         description="Alias for area when clients already send source=.",
     ),
+    country: str | None = Query(
+        None,
+        description="ISO country code from the edge. Used only to count which endings a country checks.",
+    ),
+    warm: str | None = Query(
+        None,
+        description="1 when this is a background prefetch. Prefetches are not counted.",
+    ),
 ) -> JSONResponse:
     """Check one or more domains. Shares logic with the MCP `check_domains` tool."""
     t0 = time.perf_counter()
@@ -318,17 +362,26 @@ async def api_domain(
     # Cap for counting matches DomainChecker.check_domains truncation.
     capped = raw_parts[: dc.batch_cap]
     area_label = normalize_area(area or source or "instant_domain_search")
-    country = country_from_headers(request.headers)
-    _record_metrics_async("http", len(capped), area=area_label, country=country)
-    if request_actor(request.headers) == "llm":
-        metrics.record_audience(
-            area_label,
-            actor="llm",
-            visitor=request_visitor(request.headers),
-            day=normalize_day(None),
-            country=country,
-        )
+    explicit = normalize_country(country) if country else ""
+    resolved_country = explicit if explicit and explicit != "XX" else country_from_headers(request.headers)
+    if warm != "1":
+        _record_metrics_async("http", len(capped), area=area_label, country=resolved_country)
+        if request_actor(request.headers) == "llm":
+            metrics.record_audience(
+                area_label,
+                actor="llm",
+                visitor=request_visitor(request.headers),
+                day=normalize_day(None),
+                country=resolved_country,
+            )
     payload = await dc.check_domains(raw_parts)
+    if warm != "1":
+        checked = [
+            str(row.get("domain") or "")
+            for row in payload.get("results") or []
+            if row.get("status") in ("available", "registered")
+        ]
+        _record_endings_async(resolved_country, checked)
     payload["timing_ms"] = int((time.perf_counter() - t0) * 1000)
 
     # Short shared cache: speeds repeat keystrokes / edge hits without lying for long.

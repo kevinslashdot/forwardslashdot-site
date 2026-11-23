@@ -287,6 +287,15 @@
       text-transform: uppercase;
     }
 
+    .country-endings {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0;
+      color: var(--ink-soft);
+    }
+
     .country-metric {
       font-size: 1.05rem;
       font-weight: 600;
@@ -429,7 +438,7 @@
 
     <section class="countries" aria-labelledby="countries-heading">
       <p class="countries-label" id="countries-heading">By country</p>
-      <p class="countries-note">Coarse location from the edge (CF-IPCountry). Country codes only — never IP addresses.</p>
+      <p class="countries-note">Coarse location from the edge (CF-IPCountry). Country codes only — never IP addresses. Ending counts are checks from this site, never the names themselves.</p>
       <ul class="country-list" id="country-list"></ul>
       <p class="countries-empty" id="countries-empty" hidden>No country data yet.</p>
     </section>
@@ -539,6 +548,16 @@
               '<p class="country-metric">' + fmt(activity) + "</p></div>" +
             '<div><span class="country-metric-label">24h</span>' +
               '<p class="country-metric">' + fmt(dayActivity) + "</p></div>";
+          var endings = (data.endings_by_country && data.endings_by_country[code]) || [];
+          if (endings.length) {
+            var note = document.createElement("span");
+            note.className = "country-endings";
+            note.textContent = endings.slice(0, 4).map(function (row) {
+              return "." + row.ending + " " + fmt(row.checks);
+            }).join(" · ");
+            var name = li.querySelector(".country-name");
+            if (name) name.appendChild(note);
+          }
           countryList.appendChild(li);
         });
       }
