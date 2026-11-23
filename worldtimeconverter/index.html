@@ -1163,8 +1163,8 @@
       position: absolute;
       top: var(--map-y, -40%);
       left: var(--map-x, -50%);
-      width: 960%;
-      height: 240%;
+      width: var(--map-w, 2000%);
+      height: var(--map-h, 500%);
     }
 
     .map svg { display: block; width: 100%; height: 100%; }
@@ -1185,19 +1185,6 @@
       border-radius: 50%;
       background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), transparent 24%);
       pointer-events: none;
-    }
-
-    .pin {
-      position: absolute;
-      left: 50%;
-      top: 48%;
-      width: 0.48rem;
-      height: 0.48rem;
-      margin: -0.24rem 0 0 -0.24rem;
-      border-radius: 50%;
-      background: var(--brass);
-      box-shadow: 0 0 0 3px rgba(255, 253, 249, 0.9);
-      z-index: 2;
     }
 
     .dial-card .city-name,
@@ -2130,10 +2117,10 @@
     function globeMarkup() {
       return '<div class="globe" data-globe>'
         + '<div class="map"><svg viewBox="0 0 720 180" preserveAspectRatio="none">' + WORLD + '<g transform="translate(360)">' + WORLD + '</g></svg></div>'
-        + '<div class="night"></div><i class="pin"></i></div>';
+        + '<div class="night"></div></div>';
     }
 
-    const GLOBE_ZOOM = 2.4;
+    const GLOBE_ZOOM = 5;
 
     function lightGlobe(globe, minutes, lon, lat) {
       if (!globe) return;
@@ -2144,10 +2131,12 @@
       const safeLon = Math.max(-180, Math.min(180, lon));
       const safeLat = Math.max(-55, Math.min(72, lat));
       const mapX = 50 - widthPct * (safeLon + 180) / 720;
-      const mapY = 48 - ((90 - safeLat) / 180) * heightPct;
+      const mapY = 50 - ((90 - safeLat) / 180) * heightPct;
       const night = Math.max(0, -Math.cos(angle));
       globe.style.setProperty("--map-x", mapX.toFixed(2) + "%");
       globe.style.setProperty("--map-y", mapY.toFixed(2) + "%");
+      globe.style.setProperty("--map-w", widthPct.toFixed(2) + "%");
+      globe.style.setProperty("--map-h", heightPct.toFixed(2) + "%");
       globe.style.setProperty("--sx", (50 - Math.sin(angle) * 62).toFixed(1) + "%");
       globe.style.setProperty("--sy", (40 - Math.cos(angle) * 10).toFixed(1) + "%");
       globe.style.setProperty("--term", (angle * 180 / Math.PI).toFixed(1) + "deg");
