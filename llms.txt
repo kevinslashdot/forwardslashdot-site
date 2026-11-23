@@ -6,7 +6,8 @@
 
 - [World Time Converter](https://www.forwardslashdot.com/worldtimeconverter): Compare cities on one shared day. The page uses the IANA time zone database in the browser, including daylight saving. Drag the day or open a link.
 - [Plain text answer](https://www.forwardslashdot.com/time.txt): Same comparison as one line plus a share URL. Append the same query string as the page, or `?format=txt` on the page URL.
-- [Share card SVG](https://www.forwardslashdot.com/time.svg): 1200×630 Open Graph image for the same query.
+- [Share card PNG](https://www.forwardslashdot.com/time.png): 1200×630 preview image for the same query. SVG remains at `/time.svg`.
+- Indexed pages are the tool itself and the default city sets in `timezone-defaults.json`, without a clock time. A link that includes `at` is a share of one moment. Its canonical is the city set, or the tool if that set is not a default.
 
 Build a link with these query parameters:
 

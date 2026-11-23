@@ -62,6 +62,9 @@ const DISCOVERY = {
 };
 
 let catalogCache = null;
+let stableCache = null;
+
+const CRAWLER = /bot|crawler|spider|slurp|bingpreview|duckduckbot|baiduspider|yandex|semrush|ahrefs|petalbot|googlebot|adsbot|mediapartners|facebookexternal|embedly|quora|pinterest|redditbot|applebot/i;
 
 function areaFor(path) {
   if (path === "/instantdomainsearch" || path.startsWith("/instantdomainsearch/")) return "instant_domain_search";
@@ -376,6 +379,86 @@ async function loadCatalog(request, env) {
   return catalogCache;
 }
 
+function isBrowserDocument(request) {
+  const ua = request.headers.get("user-agent") || "";
+  if (!ua || MODEL.test(ua) || UNFURL.test(ua) || CRAWLER.test(ua)) return false;
+  if (!BROWSER.test(ua)) return false;
+  const dest = request.headers.get("sec-fetch-dest") || "";
+  const mode = request.headers.get("sec-fetch-mode") || "";
+  if (!dest && !mode && !request.headers.get("sec-fetch-site")) return false;
+  return dest === "document" || mode === "navigate";
+}
+
+async function loadStable(request, env) {
+  if (stableCache) return stableCache;
+  const catalog = await loadCatalog(request, env);
+  const asset = new URL("/timezone-defaults.json", request.url);
+  const response = await env.ASSETS.fetch(new Request(asset, request));
+  const defaults = response.ok ? await response.json() : {};
+  const zoneByCity = new Map();
+  catalog.forEach((item) => {
+    if (!zoneByCity.has(item.city)) zoneByCity.set(item.city, item.zone);
+  });
+  const sets = new Map();
+  Object.keys(defaults).forEach((zone) => {
+    const entry = defaults[zone];
+    if (!entry || !entry.city || !Array.isArray(entry.compare)) return;
+    const homeZone = zoneByCity.get(entry.city);
+    if (!homeZone) return;
+    const cities = [{ city: entry.city, zone: homeZone }];
+    let complete = true;
+    entry.compare.forEach((name) => {
+      const cityZone = zoneByCity.get(name);
+      if (!cityZone) complete = false;
+      else cities.push({ city: name, zone: cityZone });
+    });
+    if (!complete) return;
+    const key = cities.map(keyOf).join(",");
+    if (!sets.has(key)) sets.set(key, cities);
+  });
+  stableCache = sets;
+  return sets;
+}
+
+function stableUrl(origin, cities) {
+  const params = new URLSearchParams();
+  params.set("cities", cities.map(keyOf).join(","));
+  params.set("anchor", keyOf(cities[0]));
+  return origin + "/worldtimeconverter?" + params.toString();
+}
+
+function indexPolicy(origin, cities, params, sets) {
+  const bare = origin + "/worldtimeconverter";
+  if (params.get("cities") && !cities.length) return { canonical: bare, index: false };
+  if (!cities.length) return { canonical: bare, index: true };
+  const found = sets.get(cities.map(keyOf).join(","));
+  const variant = ["at", "work", "dur", "embed", "card", "format"].some((name) => params.get(name));
+  const anchor = params.get("anchor");
+  const anchorMoved = !!(found && anchor && anchor !== keyOf(found[0]));
+  if (found && !variant && !anchorMoved) return { canonical: stableUrl(origin, found), index: true };
+  if (found) return { canonical: stableUrl(origin, found), index: false };
+  return { canonical: bare, index: false };
+}
+
+function applyIndexMeta(html, policy) {
+  let next = html.replace(/rel="canonical" href="[^"]*"/, 'rel="canonical" href="' + escapeXml(policy.canonical) + '"');
+  if (policy.index) return next.replace(/\n?\s*<meta name="robots" content="noindex">/, "");
+  if (next.includes('name="robots"')) {
+    return next.replace(/name="robots" content="[^"]*"/, 'name="robots" content="noindex"');
+  }
+  return next.replace("</title>", "</title>\n  <meta name=\"robots\" content=\"noindex\">");
+}
+
+function htmlResponse(html) {
+  return new Response(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "private, no-store",
+      "vary": "sec-fetch-dest, sec-fetch-mode, user-agent"
+    }
+  });
+}
+
 function searchCopy(comparison) {
   const anchorPlace = comparison.places.find((place) => keyOf(place.city) === keyOf(comparison.anchor)) || comparison.places[0];
   const time = formatTime(anchorPlace.parts.hour, anchorPlace.parts.minute);
@@ -387,29 +470,223 @@ function searchCopy(comparison) {
   let description = time + " in " + comparison.anchor.city + ".";
   if (others.length === 1) description = time + " in " + comparison.anchor.city + " is " + others[0] + ".";
   else if (others.length > 1) description = time + " in " + comparison.anchor.city + " is " + others.slice(0, -1).join(", ") + " and " + others[others.length - 1] + ".";
-  return { title, description };
+  return { title, description, answer: answerLine(comparison) };
 }
 
-function injectPreview(html, title, description, image, canonical) {
+function answerLine(comparison) {
+  return comparison.places.filter((place) => keyOf(place.city) !== keyOf(comparison.anchor)).map((place) => {
+    const extra = place.delta === 0 ? "" : dayText(place.delta) + " ";
+    return formatTime(place.parts.hour, place.parts.minute) + " " + extra + "in " + place.city.city;
+  }).join(" · ");
+}
+
+function injectPreview(html, title, description, image, share) {
   let next = html;
   next = next.replace(/<title>[^<]*<\/title>/, "<title>" + escapeXml(title) + "</title>");
   next = next.replace(/name="description" content="[^"]*"/, 'name="description" content="' + escapeXml(description) + '"');
   next = next.replace(/property="og:title" content="[^"]*"/, 'property="og:title" content="' + escapeXml(title) + '"');
   next = next.replace(/property="og:description" content="[^"]*"/, 'property="og:description" content="' + escapeXml(description) + '"');
   next = next.replace(/property="og:image" content="[^"]*"/, 'property="og:image" content="' + escapeXml(image) + '"');
-  next = next.replace(/property="og:url" content="[^"]*"/, 'property="og:url" content="' + escapeXml(canonical) + '"');
-  next = next.replace(/rel="canonical" href="[^"]*"/, 'rel="canonical" href="' + escapeXml(canonical) + '"');
+  next = next.replace(/property="og:url" content="[^"]*"/, 'property="og:url" content="' + escapeXml(share) + '"');
   next = next.replace(/name="twitter:title" content="[^"]*"/, 'name="twitter:title" content="' + escapeXml(title) + '"');
   next = next.replace(/name="twitter:description" content="[^"]*"/, 'name="twitter:description" content="' + escapeXml(description) + '"');
   next = next.replace(/name="twitter:image" content="[^"]*"/, 'name="twitter:image" content="' + escapeXml(image) + '"');
   return next;
 }
 
+function injectBody(html, title, answer) {
+  let next = html.replace(/<h1 class="ask" id="ask">[^<]*<\/h1>/, '<h1 class="ask" id="ask">' + escapeXml(title) + "</h1>");
+  if (answer) {
+    next = next.replace(/<p class="answer" id="answer"><\/p>/, '<p class="answer" id="answer">' + escapeXml(answer) + "</p>");
+  }
+  return next;
+}
+
+function publicUrl(origin, url) {
+  const params = new URLSearchParams(url.searchParams);
+  ["format", "embed", "card"].forEach((name) => params.delete(name));
+  const query = params.toString();
+  return origin + "/worldtimeconverter" + (query ? "?" + query : "");
+}
+
+const FONT = {
+  "A": [14, 17, 17, 31, 17, 17, 17], "B": [30, 17, 17, 30, 17, 17, 30], "C": [14, 17, 16, 16, 16, 17, 14],
+  "D": [30, 17, 17, 17, 17, 17, 30], "E": [31, 16, 16, 30, 16, 16, 31], "F": [31, 16, 16, 30, 16, 16, 16],
+  "G": [14, 17, 16, 23, 17, 17, 14], "H": [17, 17, 17, 31, 17, 17, 17], "I": [14, 4, 4, 4, 4, 4, 14],
+  "J": [7, 2, 2, 2, 2, 18, 12], "K": [17, 18, 20, 24, 20, 18, 17], "L": [16, 16, 16, 16, 16, 16, 31],
+  "M": [17, 27, 21, 21, 17, 17, 17], "N": [17, 25, 21, 19, 17, 17, 17], "O": [14, 17, 17, 17, 17, 17, 14],
+  "P": [30, 17, 17, 30, 16, 16, 16], "Q": [14, 17, 17, 17, 21, 18, 13], "R": [30, 17, 17, 30, 20, 18, 17],
+  "S": [15, 16, 16, 14, 1, 1, 30], "T": [31, 4, 4, 4, 4, 4, 4], "U": [17, 17, 17, 17, 17, 17, 14],
+  "V": [17, 17, 17, 17, 17, 10, 4], "W": [17, 17, 17, 21, 21, 21, 10], "X": [17, 17, 10, 4, 10, 17, 17],
+  "Y": [17, 17, 10, 4, 4, 4, 4], "Z": [31, 1, 2, 4, 8, 16, 31],
+  "a": [0, 0, 14, 1, 15, 17, 15], "b": [16, 16, 30, 17, 17, 17, 30], "c": [0, 0, 14, 16, 16, 17, 14],
+  "d": [1, 1, 15, 17, 17, 17, 15], "e": [0, 0, 14, 17, 31, 16, 14], "f": [6, 8, 8, 28, 8, 8, 8],
+  "g": [0, 0, 15, 17, 15, 1, 14], "h": [16, 16, 30, 17, 17, 17, 17], "i": [4, 0, 12, 4, 4, 4, 14],
+  "j": [2, 0, 6, 2, 2, 18, 12], "k": [16, 16, 18, 20, 24, 20, 18], "l": [4, 4, 4, 4, 4, 4, 14],
+  "m": [0, 0, 26, 21, 21, 21, 21], "n": [0, 0, 30, 17, 17, 17, 17], "o": [0, 0, 14, 17, 17, 17, 14],
+  "p": [0, 0, 30, 17, 30, 16, 16], "q": [0, 0, 15, 17, 15, 1, 1], "r": [0, 0, 22, 24, 16, 16, 16],
+  "s": [0, 0, 15, 16, 14, 1, 30], "t": [8, 8, 28, 8, 8, 9, 6], "u": [0, 0, 17, 17, 17, 17, 15],
+  "v": [0, 0, 17, 17, 17, 10, 4], "w": [0, 0, 17, 17, 21, 21, 10], "x": [0, 0, 17, 10, 4, 10, 17],
+  "y": [0, 0, 17, 17, 15, 1, 14], "z": [0, 0, 31, 2, 4, 8, 31],
+  "0": [14, 17, 19, 21, 25, 17, 14], "1": [4, 12, 4, 4, 4, 4, 14], "2": [14, 17, 1, 2, 4, 8, 31],
+  "3": [30, 1, 1, 14, 1, 1, 30], "4": [2, 6, 10, 18, 31, 2, 2], "5": [31, 16, 16, 30, 1, 1, 30],
+  "6": [14, 16, 16, 30, 17, 17, 14], "7": [31, 1, 2, 4, 8, 8, 8], "8": [14, 17, 17, 14, 17, 17, 14],
+  "9": [14, 17, 17, 15, 1, 1, 14],
+  "/": [1, 2, 2, 4, 8, 8, 16], ".": [0, 0, 0, 0, 0, 12, 12], ":": [0, 12, 12, 0, 12, 12, 0],
+  "-": [0, 0, 0, 31, 0, 0, 0], "'": [4, 4, 8, 0, 0, 0, 0], ",": [0, 0, 0, 0, 0, 4, 8]
+};
+
+function fillRect(buf, width, height, x, y, rw, rh, color) {
+  const x0 = Math.max(0, x);
+  const y0 = Math.max(0, y);
+  const x1 = Math.min(width, x + rw);
+  const y1 = Math.min(height, y + rh);
+  for (let py = y0; py < y1; py++) {
+    let index = (py * width + x0) * 4;
+    for (let px = x0; px < x1; px++) {
+      buf[index] = color[0];
+      buf[index + 1] = color[1];
+      buf[index + 2] = color[2];
+      buf[index + 3] = 255;
+      index += 4;
+    }
+  }
+}
+
+function fillCircle(buf, width, height, cx, cy, radius, color) {
+  const r2 = radius * radius;
+  for (let py = cy - radius; py <= cy + radius; py++) {
+    for (let px = cx - radius; px <= cx + radius; px++) {
+      const dx = px - cx;
+      const dy = py - cy;
+      if (dx * dx + dy * dy <= r2) fillRect(buf, width, height, px, py, 1, 1, color);
+    }
+  }
+}
+
+function drawText(buf, width, height, x, y, text, scale, color) {
+  let cursor = x;
+  const folded = String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const ch of folded) {
+    if (ch === " ") {
+      cursor += 3 * scale;
+      continue;
+    }
+    const rows = FONT[ch];
+    if (!rows) {
+      cursor += 4 * scale;
+      continue;
+    }
+    for (let row = 0; row < rows.length; row++) {
+      const bits = rows[row];
+      for (let col = 0; col < 5; col++) {
+        if (((bits >> (4 - col)) & 1) === 0) continue;
+        fillRect(buf, width, height, cursor + col * scale, y + row * scale, scale, scale, color);
+      }
+    }
+    cursor += 6 * scale;
+  }
+}
+
+const PNG_CRC = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function pngCrc(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = PNG_CRC[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  const name = new TextEncoder().encode(type);
+  const body = new Uint8Array(name.length + data.length);
+  body.set(name, 0);
+  body.set(data, name.length);
+  const out = new Uint8Array(12 + data.length);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, data.length);
+  out.set(body, 4);
+  view.setUint32(8 + data.length, pngCrc(body));
+  return out;
+}
+
+async function cardPng(comparison) {
+  const width = 1200;
+  const height = 630;
+  const paper = [247, 241, 232];
+  const ink = [28, 25, 23];
+  const soft = [124, 115, 106];
+  const sea = [92, 151, 180];
+  const land = [243, 234, 220];
+  const buf = new Uint8Array(width * height * 4);
+  fillRect(buf, width, height, 0, 0, width, height, paper);
+  drawText(buf, width, height, 72, 48, "/. World Time Converter", 3, soft);
+  const places = (comparison ? comparison.places : []).slice(0, 4);
+  const rows = places.length
+    ? places.map((place) => ({
+      time: formatTime(place.parts.hour, place.parts.minute),
+      city: place.city.city + (dayText(place.delta) ? "  " + dayText(place.delta) : "")
+    }))
+    : [{ time: "One day", city: "across cities" }];
+  const block = rows.length * 108;
+  const top = Math.max(150, Math.round((height - block) / 2));
+  rows.forEach((row, index) => {
+    const y = top + index * 108;
+    fillCircle(buf, width, height, 92, y + 16, 16, sea);
+    fillCircle(buf, width, height, 86, y + 12, 7, land);
+    drawText(buf, width, height, 128, y, row.time, 6, ink);
+    drawText(buf, width, height, 520, y, row.city, 5, ink);
+  });
+  drawText(buf, width, height, 72, 575, "forwardslashdot.com/worldtimeconverter", 3, soft);
+  const raw = new Uint8Array((width * 4 + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const start = y * (width * 4 + 1);
+    raw[start] = 0;
+    raw.set(buf.subarray(y * width * 4, (y + 1) * width * 4), start + 1);
+  }
+  const zipped = new Uint8Array(await new Response(new Response(raw).body.pipeThrough(new CompressionStream("deflate"))).arrayBuffer());
+  const ihdr = new Uint8Array(13);
+  const view = new DataView(ihdr.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const parts = [signature, pngChunk("IHDR", ihdr), pngChunk("IDAT", zipped), pngChunk("IEND", new Uint8Array())];
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const png = new Uint8Array(total);
+  let offset = 0;
+  parts.forEach((part) => {
+    png.set(part, offset);
+    offset += part.length;
+  });
+  return png;
+}
+
 async function handleTime(request, env, url, path) {
-  const catalog = await loadCatalog(request, env);
-  const comparison = compareQuery(catalog, url.searchParams, Date.now());
   const origin = originOf(url);
+  if (path === "/time") {
+    const target = new URL(origin + "/worldtimeconverter");
+    url.searchParams.forEach((value, key) => target.searchParams.set(key, value));
+    return Response.redirect(target.toString(), 302);
+  }
+
   const wantsText = path === "/time.txt" || url.searchParams.get("format") === "txt";
+  const wantsSvg = path === "/time.svg";
+  const wantsPng = path === "/time.png";
+  const browser = isBrowserDocument(request);
+  let comparison = null;
+  if (wantsText || wantsSvg || wantsPng || !browser) {
+    const catalog = await loadCatalog(request, env);
+    comparison = compareQuery(catalog, url.searchParams, Date.now());
+  }
   if (wantsText) {
     const body = comparison
       ? comparison.line + "\n" + pageUrl(origin, comparison) + "\n"
@@ -418,31 +695,35 @@ async function handleTime(request, env, url, path) {
       headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=60" }
     });
   }
-  if (path === "/time.svg") {
+  if (wantsSvg) {
     return new Response(cardSvg(comparison), {
       headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "public, max-age=300" }
     });
   }
-  if (path === "/time") {
-    const target = new URL(origin + "/worldtimeconverter");
-    url.searchParams.forEach((value, key) => target.searchParams.set(key, value));
-    return Response.redirect(target.toString(), 302);
+  if (wantsPng) {
+    return new Response(await cardPng(comparison), {
+      headers: { "content-type": "image/png", "cache-control": "public, max-age=300" }
+    });
   }
+
   const asset = new URL("/worldtimeconverter/index.html", request.url);
   const response = await env.ASSETS.fetch(new Request(asset, { headers: request.headers }));
-  if (!comparison) return response;
-  const search = searchCopy(comparison);
-  const canonical = pageUrl(origin, comparison);
-  const html = injectPreview(
-    await response.text(),
-    search.title,
-    search.description,
-    origin + "/time.svg?" + url.searchParams.toString(),
-    canonical
-  );
-  return new Response(html, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" }
-  });
+  if (!response.ok) return response;
+  const queried = ["cities", "anchor", "at", "work", "dur", "embed", "card", "format"].some((name) => url.searchParams.has(name));
+  if (browser && !queried) return response;
+
+  const catalog = await loadCatalog(request, env);
+  const sets = await loadStable(request, env);
+  const cities = parseCityList(catalog, url.searchParams.get("cities") || "");
+  const policy = indexPolicy(origin, cities, url.searchParams, sets);
+  let html = await response.text();
+  if (!browser && comparison) {
+    const search = searchCopy(comparison);
+    const image = origin + "/time.png" + (url.search || "");
+    html = injectPreview(html, search.title, search.description, image, publicUrl(origin, url));
+    html = injectBody(html, search.title, search.answer);
+  }
+  return htmlResponse(applyIndexMeta(html, policy));
 }
 
 const STATS_COOKIE = "fwd_stats";
@@ -846,7 +1127,7 @@ export default {
     }
 
     try {
-      if (path === "/worldtimeconverter" || path === "/time" || path === "/time.txt" || path === "/time.svg") {
+      if (path === "/worldtimeconverter" || path === "/time" || path === "/time.txt" || path === "/time.svg" || path === "/time.png") {
         const area = areaFor(path);
         if (area) {
           const task = noteModel(request, area);
