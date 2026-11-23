@@ -682,7 +682,7 @@
         if (!field.contains(e.target)) field.focus();
       });
 
-      var selectedTld = TLDS[0] || ".com";
+      var selectedTld = ".com";
       var endingChosen = false;
       var timer = null;
       var warmTimer = null;
@@ -996,20 +996,20 @@
         TLDS = list.slice(0, 6);
         POPULAR = popularFrom(TLDS);
         tldGroup.innerHTML = "";
-        TLDS.forEach(function (tld, i) {
+        TLDS.forEach(function (tld) {
           var btn = document.createElement("button");
           btn.type = "button";
           btn.className = "tld-btn";
           btn.dataset.tld = tld;
           btn.textContent = tld;
-          btn.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+          btn.setAttribute("aria-pressed", tld === ".com" ? "true" : "false");
           btn.addEventListener("click", function () {
             selectTld(tld);
             nameInput.focus();
           });
           tldGroup.appendChild(btn);
         });
-        if (!endingChosen) writeEnding(TLDS[0] || ".com");
+        if (!endingChosen) writeEnding(".com");
         else syncPressed();
       }
 

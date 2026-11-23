@@ -802,10 +802,6 @@ async function personalizedSearch(request, env, url) {
     'var TLDS = [".com", ".net", ".org", ".io", ".co", ".ai"];',
     "var TLDS = " + JSON.stringify(endings) + ";"
   );
-  html = html.replace(
-    '<span id="tld-suffix-label">.com</span>',
-    '<span id="tld-suffix-label">' + endings[0] + "</span>"
-  );
   const headers = new Headers(asset.headers);
   headers.set("content-type", "text/html; charset=utf-8");
   headers.set("cache-control", "private, no-store");
