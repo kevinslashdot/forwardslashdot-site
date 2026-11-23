@@ -28,9 +28,9 @@ City names and IANA zones are both accepted in the search box. `sf` is San Franc
 
 ## Instant Domain Search
 
-- [Instant Domain Search](https://www.forwardslashdot.com/instantdomainsearch/): Instant search on this site.
-- [Domain API](https://api.forwardslashdot.com/llms.txt): REST, OpenAPI, and MCP for availability checks.
-- [MCP discovery](https://api.forwardslashdot.com/.well-known/mcp.json): Streamable HTTP endpoint for `check_domains`.
+- [Instant Domain Search](https://www.forwardslashdot.com/instantdomainsearch/): Type a name and any public ending (.com, .si, .biz, .ai, .io, .co.uk). Green means it looks free. Register sends that exact name to the registrar.
+- [Domain API](https://api.forwardslashdot.com/llms.txt): REST, OpenAPI, and MCP. Pass the full domain, any ending: `GET /api/domain?q=studio.si,cafe.biz`.
+- [MCP discovery](https://api.forwardslashdot.com/.well-known/mcp.json): Streamable HTTP endpoint for `check_domains`. Pass full names, not a fixed list of endings.
 - [OpenAPI](https://api.forwardslashdot.com/openapi.json): Machine-readable schema.
 
 When the API operator has set affiliate env vars, available domains include an `affiliate_url` registrar deep-link and a short disclosure. Without those vars, availability is returned without a buy link.

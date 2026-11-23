@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="impact-site-verification" value="1839c96a-81ef-4485-b208-492949b9b396" />
   <title>Instant Domain Search — forwardslashdot</title>
-  <meta name="description" content="Instant Domain Search by forwardslashdot — type a name, pick a TLD, see green or red live via api.forwardslashdot.com." />
+  <meta name="description" content="Instant Domain Search by forwardslashdot — type a name and any ending, from .com to .si, .biz, .ai, or .io." />
   <link rel="canonical" href="https://www.forwardslashdot.com/instantdomainsearch/" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
   <link rel="describedby" href="https://api.forwardslashdot.com/llms.txt" />
   <meta property="og:title" content="Instant Domain Search — forwardslashdot" />
-  <meta property="og:description" content="Type a name, pick a TLD — green when available, red when taken." />
+  <meta property="og:description" content="Type a name and any ending. Green when it’s free, red when it’s taken." />
   <meta property="og:url" content="https://www.forwardslashdot.com/instantdomainsearch/" />
   <meta name="theme-color" content="#f5f5f7" />
   <script type="application/ld+json">
@@ -21,7 +21,7 @@
     "url": "https://www.forwardslashdot.com/instantdomainsearch/",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Any",
-    "description": "Type a name, pick a TLD — green when available, red when taken. Powered by api.forwardslashdot.com.",
+    "description": "Type a name and any ending — .com, .si, .biz, .ai, .io, .co.uk. Green when it’s free.",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "publisher": { "@type": "Organization", "name": "forwardslashdot", "url": "https://www.forwardslashdot.com/" }
   }
@@ -244,7 +244,9 @@
       font-weight: 500;
       letter-spacing: -0.025em;
       color: var(--ink-soft);
-      user-select: none;
+      cursor: text;
+      outline: none;
+      white-space: nowrap;
       transition: color 0.35s ease;
     }
 
@@ -403,7 +405,7 @@
       <a class="back" href="/">← forwardslashdot</a>
       <span class="mark" aria-label="forwardslashdot">/.</span>
       <h1 class="headline">Instant Domain Search</h1>
-      <p class="lede">Pick an ending, type a name — green means free.</p>
+      <p class="lede">Type a name and any ending. Green means it’s free.</p>
 
       <div class="search" role="search">
         <span class="tld-label" id="tld-label">Ending</span>
@@ -426,7 +428,17 @@
             aria-describedby="result-status"
             aria-multiline="false"
           ></span>
-          <span class="tld-suffix" id="tld-suffix" aria-hidden="true">.com</span>
+          <span
+            class="tld-suffix"
+            id="tld-suffix"
+            contenteditable="true"
+            spellcheck="false"
+            autocorrect="off"
+            autocapitalize="none"
+            enterkeyhint="done"
+            role="textbox"
+            aria-label="Ending"
+          >.com</span>
         </div>
 
         <div class="result" aria-live="polite">
@@ -437,18 +449,16 @@
         </div>
       </div>
 
-      <p class="hint">Live via api.forwardslashdot.com · not a guarantee of registrability</p>
+      <p class="hint">Type a dot for any ending, such as .si or .co.uk. Not a guarantee of registrability.</p>
     </div>
   </main>
 
   <section class="dev" aria-labelledby="dev-heading">
     <h2 id="dev-heading">API</h2>
     <p>
-      Same checker over REST and MCP:
-      <code>GET /api/domain?q=</code>,
-      <code>/mcp</code>,
-      <code>/health</code>,
-      <code>/llms.txt</code>.
+      Any public ending, for people and agents.
+      <code>GET /api/domain?q=studio.si,cafe.biz</code>
+      or the MCP tool <code>check_domains</code>.
     </p>
     <p>
       <a class="api" href="https://api.forwardslashdot.com/llms.txt">api.forwardslashdot.com/llms.txt</a>
@@ -563,17 +573,91 @@
       var lastTypedAt = 0;
       var cache = new Map(); // domain -> { status, at, domain, affiliate_url, disclosure }
 
-      function normalizeLabel(raw) {
+      function sanitizeLabel(raw) {
         return String(raw || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, "")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 63);
+      }
+
+      function normalizeLabel(raw) {
+        return sanitizeLabel(String(raw || "").split(".")[0]);
+      }
+
+      function normalizeEnding(raw) {
+        var labels = String(raw || "")
+          .trim()
+          .toLowerCase()
+          .replace(/^\.+/, "")
+          .split(".")
+          .map(function (part) {
+            return part.replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "").slice(0, 63);
+          })
+          .filter(Boolean);
+        return labels.length ? "." + labels.join(".") : "";
+      }
+
+      function endingReady(ending) {
+        var last = String(ending || "").split(".").pop();
+        return /^[a-z]{2,63}$/.test(last);
+      }
+
+      function splitTyped(raw) {
+        var text = String(raw || "")
           .trim()
           .toLowerCase()
           .replace(/^https?:\/\//, "")
           .replace(/\/.*$/, "")
-          .replace(/\.+$/, "")
-          .split(".")[0]
-          .replace(/[^a-z0-9-]/g, "")
-          .replace(/^-+|-+$/g, "")
-          .slice(0, 63);
+          .replace(/\s+/g, "");
+        var dot = text.indexOf(".");
+        if (dot === -1) return { label: sanitizeLabel(text), ending: "" };
+        return {
+          label: sanitizeLabel(text.slice(0, dot)),
+          ending: normalizeEnding(text.slice(dot))
+        };
+      }
+
+      function readEnding() {
+        return normalizeEnding(tldSuffix.textContent || "");
+      }
+
+      function syncPressed() {
+        Array.prototype.forEach.call(tldGroup.querySelectorAll(".tld-btn"), function (btn) {
+          btn.setAttribute("aria-pressed", btn.dataset.tld === selectedTld ? "true" : "false");
+        });
+      }
+
+      function writeEnding(ending) {
+        var next = normalizeEnding(ending) || ".com";
+        if (tldSuffix.textContent !== next) tldSuffix.textContent = next;
+        if (endingReady(next)) selectedTld = next;
+        syncPressed();
+        return next;
+      }
+
+      function placeCaretIn(el) {
+        try {
+          if (el === tldSuffix) skipSuffixSelect = true;
+          el.focus();
+          var range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch (_) {}
+      }
+
+      function selectAll(el) {
+        try {
+          el.focus();
+          var range = document.createRange();
+          range.selectNodeContents(el);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch (_) {}
       }
 
       function clearAffiliate() {
@@ -583,12 +667,13 @@
         disclosureEl.textContent = "";
       }
 
-      function setAffiliate(row) {
-        if (row && row.status === "available" && row.affiliate_url) {
-          registerLink.href = row.affiliate_url;
-          registerLink.textContent = "Register at registrar";
+      function setAffiliate(domain, row) {
+        if (row && row.status === "available" && domain) {
+          registerLink.href = row.affiliate_url
+            || ("https://www.namecheap.com/domains/registration/results/?domain=" + encodeURIComponent(domain));
+          registerLink.textContent = "Register";
           registerEl.classList.add("is-on");
-          if (row.disclosure) {
+          if (row.affiliate_url && row.disclosure) {
             disclosureEl.textContent = row.disclosure;
             disclosureEl.classList.add("is-on");
           } else {
@@ -612,11 +697,7 @@
         if (status === "available") setState("available", domain, "Available");
         else if (status === "registered") setState("taken", domain, "Taken");
         else setState("invalid", domain, status === "invalid" ? "Invalid" : "Unknown");
-        setAffiliate(row);
-      }
-
-      function fullDomain(label) {
-        return label + selectedTld;
+        setAffiliate(domain, row);
       }
 
       function cacheGet(domain) {
@@ -648,24 +729,27 @@
       }
 
       function selectTld(tld) {
-        selectedTld = tld;
-        tldSuffix.textContent = tld;
-        Array.prototype.forEach.call(tldGroup.querySelectorAll(".tld-btn"), function (btn) {
-          btn.setAttribute("aria-pressed", btn.dataset.tld === tld ? "true" : "false");
-        });
+        writeEnding(tld);
         scheduleCheck();
       }
 
       function scheduleCheck() {
         lastTypedAt = Date.now();
-        var label = normalizeLabel(nameInput.value);
-        if (nameInput.value !== label) {
-          nameInput.value = label;
+        var split = splitTyped(readField());
+        if (split.ending) {
+          var typingName = shadow.activeElement === field;
+          nameInput.value = split.label;
+          writeEnding(split.ending);
+          if (typingName && !endingReady(split.ending)) placeCaretIn(tldSuffix);
+          else placeCaretEnd();
+        } else if (readField() !== split.label) {
+          nameInput.value = split.label;
           placeCaretEnd();
         }
-        ghost.hidden = !!label;
+        ghost.hidden = !!split.label;
 
-        if (!label) {
+        var ending = readEnding() || selectedTld;
+        if (!split.label) {
           if (abortController) abortController.abort();
           clearTimeout(timer);
           clearTimeout(warmTimer);
@@ -673,26 +757,36 @@
           return;
         }
 
-        var domain = fullDomain(label);
+        if (!endingReady(ending)) {
+          if (abortController) abortController.abort();
+          clearTimeout(timer);
+          clearTimeout(warmTimer);
+          setState("", split.label + (ending || ""), "");
+          return;
+        }
+
+        selectedTld = ending;
+        syncPressed();
+        var domain = split.label + ending;
         // Optimistic: show the composed name immediately; status fills in when ready.
         var cached = cacheGet(domain);
         if (cached) {
           applyRow(cached.domain || domain, cached.status, cached);
           clearTimeout(timer);
           if (abortController) abortController.abort();
-          warmOtherTlds(label);
+          warmOtherTlds(split.label);
           return;
         }
 
         clearAffiliate();
         setState("checking", domain, "");
         clearTimeout(timer);
-        var wait = debounceMs(label);
+        var wait = debounceMs(split.label);
         timer = setTimeout(function () {
           // If another key landed during the wait, scheduleCheck already reset the timer.
           runCheck(domain);
         }, wait);
-        warmOtherTlds(label);
+        warmOtherTlds(split.label);
       }
 
       function warmOtherTlds(label) {
@@ -803,13 +897,65 @@
         tldGroup.appendChild(btn);
       });
 
-      field.addEventListener("input", scheduleCheck);
-      field.addEventListener("keydown", function (e) {
+      var skipSuffixSelect = false;
+      try {
+        tldSuffix.contentEditable = "plaintext-only";
+      } catch (_) {}
+      tldSuffix.addEventListener("focus", function () {
+        if (skipSuffixSelect) {
+          skipSuffixSelect = false;
+          return;
+        }
+        selectAll(tldSuffix);
+      });
+      tldSuffix.addEventListener("pointerup", function () {
+        selectAll(tldSuffix);
+      });
+      tldSuffix.addEventListener("input", function () {
+        var next = normalizeEnding(tldSuffix.textContent) || ".";
+        if (tldSuffix.textContent !== next) {
+          tldSuffix.textContent = next;
+          placeCaretIn(tldSuffix);
+        }
+        if (endingReady(next)) selectedTld = next;
+        syncPressed();
+        scheduleCheck();
+      });
+      tldSuffix.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
           e.preventDefault();
           clearTimeout(timer);
           var label = normalizeLabel(nameInput.value);
-          if (label) runCheck(fullDomain(label));
+          var ending = readEnding();
+          if (label && endingReady(ending)) runCheck(label + ending);
+        }
+      });
+      tldSuffix.addEventListener("paste", function (e) {
+        e.preventDefault();
+        var text = "";
+        try {
+          text = (e.clipboardData || window.clipboardData).getData("text") || "";
+        } catch (_) {}
+        writeEnding(text);
+        scheduleCheck();
+      });
+      tldSuffix.addEventListener("blur", function () {
+        if (!endingReady(readEnding())) writeEnding(selectedTld || ".com");
+      });
+
+      field.addEventListener("input", scheduleCheck);
+      field.addEventListener("keydown", function (e) {
+        if (e.key === "." ) {
+          e.preventDefault();
+          selectAll(tldSuffix);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          clearTimeout(timer);
+          var label = normalizeLabel(nameInput.value);
+          var ending = readEnding();
+          if (label && endingReady(ending)) runCheck(label + ending);
         }
       });
       field.addEventListener("paste", function (e) {
@@ -818,24 +964,21 @@
         try {
           text = (e.clipboardData || window.clipboardData).getData("text") || "";
         } catch (_) {}
-        nameInput.value = normalizeLabel(text);
+        var split = splitTyped(text);
+        nameInput.value = split.label;
+        if (split.ending) writeEnding(split.ending);
         scheduleCheck();
       });
 
-      // Deep-link: ?q=name or ?q=name.com
+      // Deep-link: ?q=name or ?q=studio.si
       try {
         var params = new URLSearchParams(window.location.search);
         var q = params.get("q") || params.get("domain") || "";
         if (q) {
-          var cleaned = String(q).trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-          var match = cleaned.match(/^([a-z0-9-]+)(\.[a-z0-9.-]+)?$/i);
-          if (match) {
-            if (match[2] && TLDS.indexOf(match[2]) !== -1) {
-              selectTld(match[2]);
-            }
-            nameInput.value = match[1];
-            scheduleCheck();
-          }
+          var split = splitTyped(q);
+          if (split.ending) writeEnding(split.ending);
+          nameInput.value = split.label;
+          scheduleCheck();
         }
       } catch (_) {}
 

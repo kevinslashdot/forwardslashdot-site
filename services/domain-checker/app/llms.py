@@ -32,7 +32,7 @@ This service is part of the forwardslashdot.com project. The marketing site rema
 - [Health]({u("/health")}): Liveness probe — JSON `{{"status":"ok"}}`.
 - [Stats]({u("/stats")}): Aggregate counts by site area. Password-protected when STATS_PASSWORD is set (`Authorization: Bearer`). No query logs or PII.
 - [Hit]({u("/api/hit")}): `GET /api/hit?area=&actor=human|llm&visitor=&day=` — one non-PII visit. The same visitor counts once per calendar day.
-- [Domain API]({u("/api/domain")}): `GET /api/domain?q=&area=` — comma-separated domains, batch capped (~25). Optional `area` for stats. Shared logic with the MCP tool.
+- [Domain API]({u("/api/domain")}): `GET /api/domain?q=&area=` — one or more full domains, any public ending (`.com`, `.si`, `.biz`, `.ai`, `.io`, `.co.uk`), comma-separated, batch capped (~25). Optional `area` for stats. Shared logic with the MCP tool.
 - [OpenAPI]({u("/openapi.json")}): Machine-readable HTTP API schema.
 - [API catalog]({u("/.well-known/api-catalog")}): RFC 9727 linkset pointing at OpenAPI.
 - [MCP]({u("/mcp")}): FastMCP Streamable HTTP endpoint. Tool: `check_domains`.
@@ -41,7 +41,7 @@ This service is part of the forwardslashdot.com project. The marketing site rema
 
 ## MCP tool: check_domains
 
-Accepts a list (or comma-separated string) of domain names. Returns availability using RDAP first (IANA dns.json bootstrap / rdap.org), with DNS NS/SOA fallback. Optional affiliate/referral fields appear only when `AFFILIATE_*` env vars are set.
+Accepts a list (or comma-separated string) of full domain names. Any public ending works: `.com`, `.si`, `.biz`, `.ai`, `.io`, `.co.uk`, and the rest. Returns availability using RDAP first (IANA dns.json bootstrap / rdap.org), with DNS NS/SOA fallback. Optional affiliate/referral fields appear only when `AFFILIATE_*` env vars are set.
 
 ## Notes
 
@@ -54,8 +54,9 @@ Accepts a list (or comma-separated string) of domain names. Returns availability
 MCP_DISCOVERY = {
     "name": "forwardslashdot domain checker",
     "description": (
-        "Check domain availability via RDAP (with DNS fallback). "
-        "Tool: check_domains. Brand: forwardslashdot.com."
+        "Check any public domain ending via RDAP (with DNS fallback). "
+        "Pass full names such as studio.si or cafe.biz to check_domains. "
+        "Brand: forwardslashdot.com."
     ),
     "endpoint": "/mcp",
 }
