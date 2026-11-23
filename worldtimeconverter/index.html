@@ -305,12 +305,11 @@
 
     .summary {
       margin-top: 0.45rem;
-      min-height: calc(2 * 1.4em);
-      max-width: 38rem;
       font-size: 1.02rem;
-      line-height: 1.4;
+      line-height: 1.35;
       color: var(--ink-soft);
-      letter-spacing: -0.015em;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
     }
 
     .summary.is-good { color: var(--link); }
@@ -892,7 +891,7 @@
       grid-row: 1 / span 12;
       background: #fffdf9;
       box-shadow: 0 16px 40px rgba(70, 48, 24, 0.08);
-      cursor: default;
+      cursor: grab;
     }
 
     .dial-card.is-home .globe { width: min(10.5rem, 78%); }
@@ -1016,7 +1015,8 @@
       text-align: left;
     }
 
-    body:not(.embed) .dial-card.is-home { cursor: default; }
+    body:not(.embed) .dial-card,
+    body:not(.embed) .dial-card.is-home { cursor: grab; }
 
     body:not(.embed) .globe-slot { grid-area: globe; }
 
@@ -1605,6 +1605,7 @@
       duration: 60,
       detected: "",
       followDevice: true,
+      customOrder: false,
       replaceKey: ""
     };
 
@@ -1798,6 +1799,22 @@
       }).join(" ");
     }
 
+    function fitSummary() {
+      const el = document.getElementById("summary");
+      if (!el || !el.clientWidth) return;
+      el.style.fontSize = "";
+      el.style.whiteSpace = "nowrap";
+      let size = 1.02;
+      while (el.scrollWidth > el.clientWidth + 1 && size > 0.9) {
+        size = Math.round((size - 0.015) * 1000) / 1000;
+        el.style.fontSize = size + "rem";
+      }
+      if (el.scrollWidth > el.clientWidth + 1) {
+        el.style.whiteSpace = "";
+        el.style.fontSize = "";
+      }
+    }
+
     function anchorCity() {
       return state.cities.find(function (city) { return keyOf(city) === state.anchorKey; }) || state.cities[0];
     }
@@ -1902,6 +1919,7 @@
       const summaryEl = document.getElementById("summary");
       summaryEl.textContent = summary;
       summaryEl.classList.toggle("is-good", snap.places.every(function (place) { return place.period === "work"; }));
+      fitSummary();
       const line = fillChatLine(snap);
       const question = fillAsk(snap);
 
@@ -2148,9 +2166,7 @@
 
     function renderRows() {
       rowsEl.innerHTML = "";
-      const ordered = state.cities.filter(function (city) { return keyOf(city) === state.anchorKey; })
-        .concat(state.cities.filter(function (city) { return keyOf(city) !== state.anchorKey; }));
-      ordered.forEach(function (city) {
+      state.cities.forEach(function (city) {
         const home = keyOf(city) === state.anchorKey;
         const card = document.createElement("article");
         card.className = "dial-card " + (home ? "is-home" : "is-chip");
@@ -2211,10 +2227,12 @@
         card.setAttribute("aria-label", city.city + ". Drag to reorder.");
         card.addEventListener("keydown", function (event) {
           if (event.target !== card) return;
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          const up = event.key === "ArrowLeft" || event.key === "ArrowUp";
+          const down = event.key === "ArrowRight" || event.key === "ArrowDown";
+          if (!up && !down) return;
           event.preventDefault();
           event.stopPropagation();
-          moveCity(card.dataset.key, event.key === "ArrowLeft" ? -1 : 1);
+          moveCity(card.dataset.key, up ? -1 : 1);
         });
         card.append(more, menu, dial, band, name, time, meta, when);
         rowsEl.append(card);
@@ -2348,6 +2366,7 @@
           cities: state.cities,
           anchorKey: state.anchorKey,
           followDevice: state.followDevice === true,
+          customOrder: state.customOrder === true,
           workStart: state.workStart,
           workEnd: state.workEnd,
           duration: state.duration
@@ -2446,13 +2465,54 @@
       return hour * 60 + minute;
     }
 
+    let ZONE_SETS = {};
+
+    function cityRecord(name) {
+      const row = CITIES.find(function (item) { return item.city === name; });
+      if (!row) return null;
+      return { city: row.city, region: row.region, zone: row.zone };
+    }
+
+    function zoneEntry(zone) {
+      const seen = {};
+      let current = zone;
+      while (current && ZONE_SETS[current] && ZONE_SETS[current].same && !seen[current]) {
+        seen[current] = true;
+        current = ZONE_SETS[current].same;
+      }
+      return (current && ZONE_SETS[current]) || null;
+    }
+
+    function largestForZone(zone) {
+      const entry = zoneEntry(zone);
+      if (entry && entry.city) {
+        const known = cityRecord(entry.city);
+        if (known) return known;
+      }
+      const rows = CITIES.filter(function (item) { return item.zone === zone; }).sort(byPopular);
+      if (rows[0]) return { city: rows[0].city, region: rows[0].region, zone: rows[0].zone };
+      let off = null;
+      try { off = tzOffset(Date.now(), zone); } catch (err) { off = null; }
+      if (off == null) return null;
+      const match = CITIES.filter(function (item) {
+        try { return tzOffset(Date.now(), item.zone) === off; } catch (err) { return false; }
+      }).sort(byPopular);
+      if (match[0]) return { city: match[0].city, region: match[0].region, zone: match[0].zone };
+      return null;
+    }
+
     function seed(detected) {
-      const order = [detected, "America/New_York", "Europe/London", "Asia/Tokyo", "America/Los_Angeles", "Australia/Sydney"];
+      const home = largestForZone(detected) || cityRecord("London");
+      const entry = zoneEntry(detected);
+      const names = ((entry && entry.compare) || ["New York", "London", "Los Angeles", "Tokyo"]).concat(["New York", "London", "Los Angeles", "Tokyo", "Sydney"]);
       const cities = [];
-      order.forEach(function (zone) {
-        if (cities.length >= 3 || !zone || cities.some(function (city) { return city.zone === zone; })) return;
-        const city = parseToken(zone);
-        if (city) cities.push(city);
+      if (home) cities.push(home);
+      names.forEach(function (name) {
+        if (cities.length >= 3) return;
+        const city = cityRecord(name) || largestForZone(name);
+        if (!city) return;
+        if (cities.some(function (item) { return item.city === city.city || item.zone === city.zone; })) return;
+        cities.push(city);
       });
       return cities;
     }
@@ -2478,12 +2538,13 @@
       if (params.get("cities")) {
         cities = parseCityList(params.get("cities"));
         state.followDevice = false;
-      } else if (fromStore && fromStore.followDevice === false && Array.isArray(fromStore.cities)) {
+      } else if (fromStore && Array.isArray(fromStore.cities) && (fromStore.followDevice === false || fromStore.customOrder)) {
         cities = fromStore.cities.map(function (city) {
           return city && safeZone(city.zone) ? { city: city.city, region: city.region, zone: city.zone } : null;
         }).filter(Boolean);
         state.anchorKey = fromStore.anchorKey || "";
-        state.followDevice = false;
+        state.followDevice = fromStore.followDevice === true;
+        state.customOrder = fromStore.customOrder === true;
       }
       if (!cities.length) cities = seed(state.detected);
       state.cities = cities.slice(0, 8);
@@ -2708,6 +2769,7 @@
       const index = state.cities.findIndex(function (city) { return keyOf(city) === key; });
       const next = index + dir;
       if (index < 0 || next < 0 || next >= state.cities.length) return;
+      state.customOrder = true;
       const cities = state.cities.slice();
       const moved = cities[index];
       cities[index] = cities[next];
@@ -2771,6 +2833,7 @@
       if (!order) return;
       const same = order.every(function (key, index) { return state.cities[index] && key === keyOf(state.cities[index]); });
       if (same) return;
+      state.customOrder = true;
       suppressClick = true;
       state.cities.sort(function (a, b) { return order.indexOf(keyOf(a)) - order.indexOf(keyOf(b)); });
       renderAll();
@@ -2796,7 +2859,7 @@
       const card = reorder.card;
       const prev = card.previousElementSibling;
       const next = card.nextElementSibling;
-      if (prev && prev.classList.contains("dial-card") && !prev.classList.contains("is-home") && crossed(card, prev, -1)) shiftLayout(card, -1);
+      if (prev && prev.classList.contains("dial-card") && crossed(card, prev, -1)) shiftLayout(card, -1);
       else if (next && next.classList.contains("dial-card") && crossed(card, next, 1)) shiftLayout(card, 1);
     }
 
@@ -2824,6 +2887,7 @@
           closeList();
           return;
         }
+        state.customOrder = true;
         const instant = currentInstant();
         const wasAnchor = state.anchorKey === state.replaceKey;
         state.cities[index] = place;
@@ -2846,6 +2910,7 @@
         return;
       }
       if (state.cities.length >= 8) return;
+      state.customOrder = true;
       state.cities.push(place);
       closeComposer();
       renderAll();
@@ -2853,6 +2918,7 @@
 
     function removeCity(key) {
       if (state.cities.length === 1) return;
+      state.customOrder = true;
       const instant = currentInstant();
       state.cities = state.cities.filter(function (city) { return keyOf(city) !== key; });
       if (!state.cities.some(function (city) { return keyOf(city) === state.anchorKey; })) {
@@ -2948,15 +3014,16 @@
       } catch (err) {}
     }
     noteVisit("world_time_converter");
-    fetch("/cities.json").then(function (res) {
-      if (!res.ok) return null;
-      return res.json();
-    }).then(function (data) {
-      if (Array.isArray(data) && data.length) CITIES = data;
-    }).catch(function () {}).then(function () {
+    Promise.all([
+      fetch("/cities.json").then(function (res) { return res.ok ? res.json() : null; }).catch(function () { return null; }),
+      fetch("/timezone-defaults.json").then(function (res) { return res.ok ? res.json() : null; }).catch(function () { return null; })
+    ]).then(function (pair) {
+      if (Array.isArray(pair[0]) && pair[0].length) CITIES = pair[0];
+      if (pair[1] && typeof pair[1] === "object") ZONE_SETS = pair[1];
       restore();
       renderAll();
     });
+    window.addEventListener("resize", fitSummary);
 
     document.getElementById("prev-day").addEventListener("click", function () { shiftDay(-1); });
     document.getElementById("next-day").addEventListener("click", function () { shiftDay(1); });
@@ -3013,7 +3080,7 @@
       if (document.body.classList.contains("embed")) return;
       if (event.button) return;
       const card = event.target.closest(".dial-card");
-      if (!card || card.classList.contains("is-home") || event.target.closest(".more, .card-menu")) return;
+      if (!card || event.target.closest(".more, .card-menu")) return;
       reorder = {
         card: card,
         pointerId: event.pointerId,
