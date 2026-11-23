@@ -965,19 +965,115 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      padding: 0.4rem 0.55rem 0.15rem;
     }
 
     body:not(.embed) .dials {
       order: 1;
       flex: 1;
       min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+      align-items: stretch;
+      padding: 0.05rem 0 0.1rem;
       overflow: auto;
       scrollbar-gutter: stable;
+      position: relative;
+      z-index: 2;
+    }
+
+    body:not(.embed) .dial-card,
+    body:not(.embed) .dial-card.is-home {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        "globe name time"
+        "globe meta time"
+        "band band band";
+      column-gap: 0.7rem;
+      row-gap: 0;
+      align-items: center;
+      grid-column: auto;
+      grid-row: auto;
+      padding: 0.38rem 0.85rem 0.32rem;
+      text-align: left;
+    }
+
+    body:not(.embed) .dial-card.is-chip {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "name time"
+        "meta time"
+        "band band";
+    }
+
+    body:not(.embed) .dial-card.is-home { cursor: default; }
+
+    body:not(.embed) .globe-slot { grid-area: globe; }
+
+    body:not(.embed) .dial-card .globe {
+      width: 2.35rem;
+      margin: 0;
+    }
+
+    body:not(.embed) .dial-card.is-chip .globe-slot { display: none; }
+
+    body:not(.embed) .dial-card .city-name,
+    body:not(.embed) .dial-card.is-chip .city-name {
+      grid-area: name;
+      min-width: 0;
+      margin: 0;
+      text-align: left;
+      font-size: 0.98rem;
+    }
+
+    body:not(.embed) .dial-card .who-time,
+    body:not(.embed) .dial-card.is-home .who-time,
+    body:not(.embed) .dial-card.is-chip .who-time {
+      grid-area: time;
+      margin: 0;
+      text-align: right;
+      font-size: 1.35rem;
+      line-height: 1;
+      align-self: center;
+    }
+
+    body:not(.embed) .dial-card .who-meta,
+    body:not(.embed) .dial-card.is-chip .who-meta {
+      grid-area: meta;
+      margin: 0;
+      text-align: left;
+      justify-self: start;
+    }
+
+    body:not(.embed) .dial-card .when,
+    body:not(.embed) .dial-card.is-chip .when {
+      grid-area: meta;
+      margin: 0 0 0 0.4rem;
+      justify-self: end;
+      text-align: right;
+    }
+
+    body:not(.embed) .dial-card .dayband,
+    body:not(.embed) .dial-card.is-chip .dayband {
+      grid-area: band;
+      height: 0.24rem;
+      margin: 0.12rem 0 0;
+    }
+
+    body:not(.embed) .band-time { display: none; }
+
+    body:not(.embed) .add-chip {
+      grid-column: auto;
+      min-height: 2rem;
+      padding: 0.2rem 0.8rem;
+      flex: none;
     }
 
     body:not(.embed) .adder { order: 2; flex: none; }
 
-    body:not(.embed) .scrub { order: 3; flex: none; }
+    body:not(.embed) .scrub { order: 3; flex: none; z-index: 1; }
 
     body:not(.embed) footer { flex: none; margin-top: 0.65rem; }
 
@@ -2056,6 +2152,7 @@
         card.className = "dial-card " + (home ? "is-home" : "is-chip");
         card.dataset.key = keyOf(city);
         const dial = document.createElement("div");
+        dial.className = "globe-slot";
         dial.innerHTML = globeMarkup();
         const name = document.createElement("button");
         name.type = "button";
