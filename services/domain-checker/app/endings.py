@@ -9,50 +9,36 @@ the domain that was typed.
 
 from __future__ import annotations
 
+import json
 import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Mapping
 
 # The row everyone sees when we have no local default.
 GLOBAL = ["com", "net", "org", "io", "co", "ai"]
 
-# Local name first. The rest of the row is what people there register next.
-# UK visitors arrive as GB (Cloudflare’s code).
+# Local name first, and only endings Namecheap sells. UK visitors arrive as GB.
+# Countries whose local ending Namecheap does not sell use GLOBAL.
 SEED: dict[str, list[str]] = {
     "CA": ["ca", "com", "net", "org", "io", "ai"],
-    "AU": ["au", "com.au", "com", "net", "io", "org"],
+    "AU": ["com.au", "net.au", "org.au", "com", "net", "io"],
     "GB": ["uk", "co.uk", "com", "org", "io", "ai"],
     "DE": ["de", "com", "net", "org", "eu", "io"],
     "FR": ["fr", "com", "eu", "net", "org", "io"],
     "NL": ["nl", "com", "eu", "net", "org", "io"],
     "ES": ["es", "com", "net", "org", "eu", "io"],
-    "IT": ["it", "com", "net", "org", "eu", "io"],
     "MX": ["mx", "com.mx", "com", "net", "org", "io"],
     "IN": ["in", "co.in", "com", "net", "org", "io"],
     "SG": ["sg", "com.sg", "com", "net", "org", "io"],
-    "NZ": ["nz", "co.nz", "com", "net", "org", "io"],
-    "IE": ["ie", "com", "net", "org", "eu", "io"],
-    "SE": ["se", "com", "net", "org", "eu", "io"],
-    "NO": ["no", "com", "net", "org", "eu", "io"],
-    "DK": ["dk", "com", "net", "org", "eu", "io"],
-    "FI": ["fi", "com", "net", "org", "eu", "io"],
     "CH": ["ch", "com", "net", "org", "io", "ai"],
-    "AT": ["at", "com", "net", "org", "eu", "io"],
-    "BE": ["be", "com", "net", "org", "eu", "io"],
-    "PL": ["pl", "com", "net", "org", "eu", "io"],
-    "PT": ["pt", "com", "net", "org", "eu", "io"],
-    "BR": ["br", "com.br", "com", "net", "org", "io"],
-    "JP": ["jp", "com", "net", "org", "io", "ai"],
-    "KR": ["kr", "com", "net", "org", "io", "ai"],
-    "CN": ["cn", "com", "net", "org", "io", "ai"],
-    "HK": ["hk", "com", "net", "org", "io", "ai"],
-    "TW": ["tw", "com", "net", "org", "io", "ai"],
     "ID": ["id", "com", "net", "org", "io", "ai"],
     "PH": ["ph", "com.ph", "com", "net", "org", "io"],
     "MY": ["my", "com", "net", "org", "io", "ai"],
-    "ZA": ["co.za", "com", "net", "org", "io", "ai"],
-    "AE": ["ae", "com", "net", "org", "io", "ai"],
     "PE": ["pe", "com.pe", "com", "net", "org", "io"],
 }
+
+_CATALOG_PATH = Path(__file__).resolve().parent / "namecheap_tlds.json"
 
 # Two-label endings. A check of shop.co.uk counts as co.uk, not uk.
 SECOND_LEVELS = frozenset(
@@ -79,6 +65,28 @@ ROW = 6
 PRIOR = 24
 
 _ENDING_RE = re.compile(r"^(?:[a-z0-9-]{2,24}\.)?[a-z]{2,24}$")
+
+
+@lru_cache(maxsize=1)
+def sold_endings() -> tuple[str, ...]:
+    """Endings Namecheap sells, bare, sorted. Empty if the catalog is missing."""
+    try:
+        raw = json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ()
+    endings = raw.get("endings") if isinstance(raw, dict) else raw
+    if not isinstance(endings, list):
+        return ()
+    cleaned = []
+    for item in endings:
+        key = normalize_ending(str(item))
+        if key:
+            cleaned.append(key)
+    return tuple(sorted(set(cleaned)))
+
+
+def sold_set() -> set[str]:
+    return set(sold_endings())
 
 
 def canonical_country(raw: str | None) -> str:
@@ -126,17 +134,23 @@ def _seed_index(seed: list[str], item: str) -> int:
 def row_for(
     country: str | None,
     observed: Mapping[str, int] | None = None,
+    allowed: set[str] | None = None,
 ) -> tuple[list[str], str]:
     """Six endings for this country, local name pinned first.
 
     Returns dotted endings and ``seed`` or ``live``. ``live`` means at least
-    one check from this country was counted.
+    one check from this country was counted. Endings Namecheap does not sell
+    are left out, including ones people in that country have checked.
     """
     code = canonical_country(country)
-    seed = list(SEED.get(code) or GLOBAL)
+    catalog = sold_set() if allowed is None else set(allowed)
+    if not catalog:
+        catalog = set(GLOBAL)
+    preferred = [item for item in SEED.get(code, []) if item in catalog]
+    base = preferred or [item for item in GLOBAL if item in catalog] or list(GLOBAL)
     scores: dict[str, int] = {}
     weight = PRIOR
-    for item in seed:
+    for item in base:
         scores[item] = scores.get(item, 0) + weight
         weight = max(2, weight // 2)
     total = 0
@@ -146,16 +160,16 @@ def row_for(
             n = int(count or 0)
         except (TypeError, ValueError):
             n = 0
-        if not key or n <= 0:
+        if not key or n <= 0 or key not in catalog:
             continue
         scores[key] = scores.get(key, 0) + n
         total += n
-    ranked = sorted(scores, key=lambda item: (-scores[item], _seed_index(seed, item), item))
+    ranked = sorted(scores, key=lambda item: (-scores[item], _seed_index(base, item), item))
     picked: list[str] = []
-    if code in SEED and seed:
-        picked.append(seed[0])
+    if preferred:
+        picked.append(preferred[0])
     for item in ranked:
-        if item in picked:
+        if item not in catalog or item in picked:
             continue
         picked.append(item)
         if len(picked) >= ROW:
@@ -163,7 +177,7 @@ def row_for(
     for item in GLOBAL:
         if len(picked) >= ROW:
             break
-        if item not in picked:
+        if item in catalog and item not in picked:
             picked.append(item)
     dotted = ["." + item for item in picked[:ROW]]
     return dotted, ("live" if total else "seed")

@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastmcp import FastMCP
 
 from app.domain_checker import DomainChecker
-from app.endings import ending_of, row_for
+from app.endings import ending_of, row_for, sold_endings
 from app.llms import MCP_DISCOVERY, api_catalog, build_llms_txt
 from app.metrics import (
     country_from_headers,
@@ -304,6 +304,16 @@ async def api_hit(
             "recorded": recorded,
         },
         headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/api/tlds", tags=["domains"])
+async def api_tlds() -> JSONResponse:
+    """Endings Namecheap currently sells. Refreshed nightly; unchanged nights write nothing."""
+    endings = list(sold_endings())
+    return JSONResponse(
+        {"count": len(endings), "endings": endings, "source": "namecheap"},
+        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 

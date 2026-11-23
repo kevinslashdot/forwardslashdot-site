@@ -26,38 +26,19 @@ const API_ORIGIN = "https://api.forwardslashdot.com";
 const ENDING_GLOBAL = [".com", ".net", ".org", ".io", ".co", ".ai"];
 const ENDING_SEED = {
   CA: [".ca", ".com", ".net", ".org", ".io", ".ai"],
-  AU: [".au", ".com.au", ".com", ".net", ".io", ".org"],
+  AU: [".com.au", ".net.au", ".org.au", ".com", ".net", ".io"],
   GB: [".uk", ".co.uk", ".com", ".org", ".io", ".ai"],
   DE: [".de", ".com", ".net", ".org", ".eu", ".io"],
   FR: [".fr", ".com", ".eu", ".net", ".org", ".io"],
   NL: [".nl", ".com", ".eu", ".net", ".org", ".io"],
   ES: [".es", ".com", ".net", ".org", ".eu", ".io"],
-  IT: [".it", ".com", ".net", ".org", ".eu", ".io"],
   MX: [".mx", ".com.mx", ".com", ".net", ".org", ".io"],
   IN: [".in", ".co.in", ".com", ".net", ".org", ".io"],
   SG: [".sg", ".com.sg", ".com", ".net", ".org", ".io"],
-  NZ: [".nz", ".co.nz", ".com", ".net", ".org", ".io"],
-  IE: [".ie", ".com", ".net", ".org", ".eu", ".io"],
-  SE: [".se", ".com", ".net", ".org", ".eu", ".io"],
-  NO: [".no", ".com", ".net", ".org", ".eu", ".io"],
-  DK: [".dk", ".com", ".net", ".org", ".eu", ".io"],
-  FI: [".fi", ".com", ".net", ".org", ".eu", ".io"],
   CH: [".ch", ".com", ".net", ".org", ".io", ".ai"],
-  AT: [".at", ".com", ".net", ".org", ".eu", ".io"],
-  BE: [".be", ".com", ".net", ".org", ".eu", ".io"],
-  PL: [".pl", ".com", ".net", ".org", ".eu", ".io"],
-  PT: [".pt", ".com", ".net", ".org", ".eu", ".io"],
-  BR: [".br", ".com.br", ".com", ".net", ".org", ".io"],
-  JP: [".jp", ".com", ".net", ".org", ".io", ".ai"],
-  KR: [".kr", ".com", ".net", ".org", ".io", ".ai"],
-  CN: [".cn", ".com", ".net", ".org", ".io", ".ai"],
-  HK: [".hk", ".com", ".net", ".org", ".io", ".ai"],
-  TW: [".tw", ".com", ".net", ".org", ".io", ".ai"],
   ID: [".id", ".com", ".net", ".org", ".io", ".ai"],
   PH: [".ph", ".com.ph", ".com", ".net", ".org", ".io"],
   MY: [".my", ".com", ".net", ".org", ".io", ".ai"],
-  ZA: [".co.za", ".com", ".net", ".org", ".io", ".ai"],
-  AE: [".ae", ".com", ".net", ".org", ".io", ".ai"],
   PE: [".pe", ".com.pe", ".com", ".net", ".org", ".io"]
 };
 
@@ -791,6 +772,37 @@ async function handleEndings(request, url, ctx) {
   return response;
 }
 
+async function handleTlds(url, ctx) {
+  let cache = null;
+  try { cache = caches.default; } catch (_) { cache = null; }
+  const cacheKey = new Request(url.origin + "/api/tlds", { method: "GET" });
+  if (cache) {
+    try {
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+    } catch (_) {}
+  }
+  let data = null;
+  try {
+    const upstream = await fetch(API_ORIGIN + "/api/tlds", { cf: { cacheTtl: 0 } });
+    if (upstream.ok) data = await upstream.json();
+  } catch (_) {}
+  if (!data || !Array.isArray(data.endings) || data.endings.length < 100) {
+    return new Response(JSON.stringify({ count: 0, endings: [], source: "namecheap" }), {
+      status: 503,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+    });
+  }
+  const response = new Response(JSON.stringify(data), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=3600"
+    }
+  });
+  if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(function () {}));
+  return response;
+}
+
 async function personalizedSearch(request, env, url) {
   const asset = await env.ASSETS.fetch(request);
   if (!asset.ok || !asset.headers.get("content-type") || asset.headers.get("content-type").indexOf("text/html") === -1) {
@@ -819,6 +831,10 @@ export default {
 
     if (request.method === "GET" && path === "/api/endings") {
       return handleEndings(request, url, ctx);
+    }
+
+    if (request.method === "GET" && path === "/api/tlds") {
+      return handleTlds(url, ctx);
     }
 
     if (path === "/stats" || path.startsWith("/stats/")) {

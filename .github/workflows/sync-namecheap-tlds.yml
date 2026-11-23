@@ -1,0 +1,46 @@
+name: Sync Namecheap endings
+
+on:
+  schedule:
+    # 08:00 UTC every night. A matching catalog does not commit or deploy.
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: sync catalog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Namecheap's current endings
+        id: sync
+        run: python3 services/domain-checker/scripts/sync_namecheap_tlds.py | tee /tmp/namecheap-sync.txt
+      - name: Commit when the set changed
+        id: commit
+        run: |
+          if git diff --quiet -- services/domain-checker/app/namecheap_tlds.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "forwardslashdot"
+          git config user.email "noreply@forwardslashdot.com"
+          git add services/domain-checker/app/namecheap_tlds.json
+          git commit -m "$(cat <<EOF
+          Sync Namecheap endings.
+
+          $(cat /tmp/namecheap-sync.txt)
+          EOF
+          )"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.commit.outputs.changed == 'true'
+      - name: Deploy the API
+        if: steps.commit.outputs.changed == 'true'
+        working-directory: services/domain-checker
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
