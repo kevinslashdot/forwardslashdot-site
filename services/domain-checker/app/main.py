@@ -83,19 +83,20 @@ mcp = FastMCP(
     name=SERVICE_TITLE,
     instructions=(
         "Use check_domains to see whether domain names are available or already "
-        "registered. Pass a list of domains (batch capped). Optional affiliate "
-        "links appear only when the server operator configured AFFILIATE_* env vars."
+        "registered. Pass full domains with any public ending (.si, .biz, .ai, "
+        ".io, .com, .co.uk). Batch capped. Optional affiliate links appear only "
+        "when the server operator configured AFFILIATE_* env vars."
     ),
 )
 
 
 @mcp.tool
 async def check_domains(domains: list[str] | str) -> dict[str, Any]:
-    """Check domain availability (RDAP first, DNS NS/SOA fallback).
+    """Check any public domain ending (RDAP first, DNS NS/SOA fallback).
 
     Args:
-        domains: List of domain names, or a single comma-separated string.
-                 Batch is capped (~25 names per call).
+        domains: Full names such as studio.si or cafe.biz, as a list or one
+                 comma-separated string. Batch is capped (~25 names per call).
     """
     if checker is None:
         return {"error": "service not ready", "results": []}
@@ -296,8 +297,8 @@ async def api_domain(
     q: str = Query(
         ...,
         min_length=1,
-        description="Comma-separated domain names (batch capped at ~25).",
-        examples=["example.com,available-test-xyz123.com"],
+        description="Full domain names, any public ending (.com, .si, .biz, .ai, .io, .co.uk). Comma-separated. Batch capped at ~25.",
+        examples=["studio.si,cafe.biz"],
     ),
     area: str | None = Query(
         None,
