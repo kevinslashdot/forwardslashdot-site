@@ -16,11 +16,6 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.forwardslashdot.com/stats/</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://www.forwardslashdot.com/llms.txt</loc>
     <changefreq>weekly</changefreq>
     <priority>0.4</priority>

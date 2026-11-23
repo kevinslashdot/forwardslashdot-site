@@ -10,6 +10,7 @@ passed into FastAPI so the session manager initializes correctly.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
 import re
 import threading
@@ -18,7 +19,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastmcp import FastMCP
@@ -162,9 +163,27 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "domain-checker"}
 
 
+def stats_authorized(authorization: str | None) -> bool:
+    """Open unless STATS_PASSWORD is set. Then require Authorization: Bearer."""
+    expected = (os.getenv("STATS_PASSWORD") or "").strip()
+    if not expected:
+        return True
+    presented = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        presented = authorization[7:].strip()
+    if len(presented) != len(expected):
+        return False
+    return hmac.compare_digest(presented, expected)
+
+
 @app.get("/stats", tags=["ops"])
-async def stats() -> dict[str, Any]:
-    """Aggregate counts by area and country. No query logs, IPs, or PII."""
+async def stats(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    """Aggregate counts by area and country. No query logs, IPs, or PII.
+
+    When STATS_PASSWORD is set, callers must send Authorization: Bearer.
+    """
+    if not stats_authorized(authorization):
+        raise HTTPException(status_code=401, detail="Stats password required")
     return metrics.snapshot()
 
 

@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Stats — forwardslashdot</title>
-  <meta name="description" content="Public forwardslashdot stats by site area and country — Instant Domain Search and World Time Converter. Aggregates only; country codes, never IPs." />
+  <meta name="description" content="Password-protected forwardslashdot stats by site area and country. Aggregates only; country codes, never IPs." />
   <link rel="canonical" href="https://www.forwardslashdot.com/stats/" />
   <meta property="og:title" content="Stats — forwardslashdot" />
-  <meta property="og:description" content="Apple-clean public aggregates by site area and country. Codes only — no IPs." />
+  <meta property="og:description" content="Password-protected aggregates by site area and country. Codes only — no IPs." />
   <meta property="og:url" content="https://www.forwardslashdot.com/stats/" />
   <meta name="theme-color" content="#f5f5f7" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -427,7 +427,7 @@
 
     <p class="foot">
       Raw JSON at
-      <a href="https://api.forwardslashdot.com/stats">api.forwardslashdot.com/stats</a>.
+      <a href="/stats/data">/stats/data</a>.
       Transport mix (<span id="src-http">—</span> HTTP · <span id="src-mcp">—</span> MCP).
       Started <span id="started">—</span>.
     </p>
@@ -436,7 +436,7 @@
 
   <script>
     (function () {
-      var API = "https://api.forwardslashdot.com/stats";
+      var API = "/stats/data";
       var statusEl = document.getElementById("status");
       var countryList = document.getElementById("country-list");
       var countriesEmpty = document.getElementById("countries-empty");
@@ -565,12 +565,18 @@
       }
 
       function load() {
-        fetch(API, { credentials: "omit", cache: "no-store" })
+        fetch(API, { credentials: "same-origin", cache: "no-store" })
           .then(function (res) {
+            if (res.status === 401) {
+              window.location.assign("/stats/");
+              return null;
+            }
             if (!res.ok) throw new Error("HTTP " + res.status);
             return res.json();
           })
-          .then(render)
+          .then(function (data) {
+            if (data) render(data);
+          })
           .catch(function () {
             fail("Could not load stats. Try again shortly.");
           });

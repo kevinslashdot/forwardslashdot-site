@@ -411,10 +411,157 @@ async function handleTime(request, env, url, path) {
   });
 }
 
+const STATS_COOKIE = "fwd_stats";
+const STATS_MESSAGE = "fwd-stats-v1";
+
+async function statsSignature(password) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(STATS_MESSAGE));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function cookieValue(header, name) {
+  const parts = String(header || "").split(";");
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(name + "=")) return trimmed.slice(name.length + 1);
+  }
+  return "";
+}
+
+function sameSecret(left, right) {
+  if (!left || !right || left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
+  return diff === 0;
+}
+
+function statsPage(wrong) {
+  const message = wrong
+    ? "<p class=\"err\">Wrong password.</p>"
+    : "<p class=\"lede\">Aggregates for this site. Enter the password to continue.</p>";
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Stats — forwardslashdot</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f5f5f7; color: #1d1d1f; font-family: "SF Pro Display", "Helvetica Neue", Helvetica, sans-serif; }
+    form { width: min(22rem, calc(100% - 2rem)); }
+    h1 { font-size: 1.6rem; letter-spacing: -0.03em; margin: 0 0 0.4rem; }
+    .lede, .err { color: #6e6e73; font-size: 0.95rem; line-height: 1.4; margin: 0 0 1rem; }
+    .err { color: #c41e3a; }
+    input { width: 100%; font: inherit; font-size: 1rem; padding: 0.75rem 0.85rem; border-radius: 0.7rem; border: 1px solid rgba(29,29,31,0.16); background: #fff; }
+    button { margin-top: 0.75rem; font: inherit; font-weight: 600; border: 0; border-radius: 0.7rem; background: #1d1d1f; color: #fff; padding: 0.75rem 1rem; cursor: pointer; }
+    a { color: #6e6e73; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/stats/login">
+    <h1>Stats</h1>
+    ${message}
+    <input type="password" name="password" autocomplete="current-password" autofocus required />
+    <button type="submit">Continue</button>
+    <p><a href="/">← forwardslashdot</a></p>
+  </form>
+</body>
+</html>`;
+  return new Response(html, {
+    status: wrong ? 401 : 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-robots-tag": "noindex"
+    }
+  });
+}
+
+async function statsUnlocked(request, password) {
+  if (!password) return false;
+  const expected = await statsSignature(password);
+  const got = cookieValue(request.headers.get("cookie"), STATS_COOKIE);
+  return sameSecret(got, expected);
+}
+
+function statsCookie(value) {
+  return STATS_COOKIE + "=" + value + "; HttpOnly; Secure; SameSite=Lax; Path=/stats; Max-Age=1209600";
+}
+
+async function handleStats(request, env) {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const password = (env.STATS_PASSWORD || "").trim();
+  if (!password) {
+    return new Response("Stats is locked.", {
+      status: 503,
+      headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
+    });
+  }
+
+  if (request.method === "POST" && path === "/stats/login") {
+    const form = await request.formData();
+    const given = String(form.get("password") || "");
+    if (!sameSecret(given, password)) return statsPage(true);
+    const token = await statsSignature(password);
+    return new Response(null, {
+      status: 303,
+      headers: { location: "/stats/", "set-cookie": statsCookie(token), "cache-control": "no-store" }
+    });
+  }
+
+  if (request.method === "GET" && path === "/stats/logout") {
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: "/stats/",
+        "set-cookie": STATS_COOKIE + "=; HttpOnly; Secure; SameSite=Lax; Path=/stats; Max-Age=0",
+        "cache-control": "no-store"
+      }
+    });
+  }
+
+  const unlocked = await statsUnlocked(request, password);
+  if (request.method === "GET" && path === "/stats/data") {
+    if (!unlocked) return new Response(JSON.stringify({ detail: "Stats password required" }), {
+      status: 401,
+      headers: { "content-type": "application/json", "cache-control": "no-store" }
+    });
+    const upstream = await fetch("https://api.forwardslashdot.com/stats", {
+      headers: { authorization: "Bearer " + password, accept: "application/json" },
+      cf: { cacheTtl: 0 }
+    });
+    const body = await upstream.arrayBuffer();
+    return new Response(body, {
+      status: upstream.status,
+      headers: { "content-type": "application/json", "cache-control": "no-store" }
+    });
+  }
+
+  if (!unlocked) return statsPage(false);
+
+  const asset = await env.ASSETS.fetch(request);
+  const headers = new Headers(asset.headers);
+  headers.set("cache-control", "private, no-store");
+  headers.set("x-robots-tag", "noindex");
+  return new Response(asset.body, { status: asset.status, headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, "") : url.pathname;
+
+    if (path === "/stats" || path.startsWith("/stats/")) {
+      return handleStats(request, env);
+    }
 
     if (request.method === "GET" && DISCOVERY[path]) {
       return Response.redirect(DISCOVERY[path], 302);
