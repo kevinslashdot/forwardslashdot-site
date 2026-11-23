@@ -166,9 +166,14 @@
       margin-bottom: 0.55rem;
     }
 
+    .tld-label {
+      text-align: center;
+    }
+
     .tld-row {
       display: flex;
       flex-wrap: wrap;
+      justify-content: center;
       gap: 0.4rem;
       margin-bottom: 1.35rem;
     }
@@ -586,7 +591,8 @@
       var tldSearch = document.getElementById("tld-search");
       var tldOptions = document.getElementById("tld-options");
       var tldPop = document.getElementById("tld-pop");
-      var POPULAR = ["com", "net", "org", "io", "co", "ai", "dev", "app", "me", "xyz", "info", "biz", "us", "uk", "ca", "de"];
+      var POPULAR = ["com", "net", "org", "io", "co", "ai", "dev", "app", "me", "xyz", "info", "biz"];
+      var REGIONS = ["ca", "us", "uk", "co.uk", "org.uk", "me.uk", "de", "fr", "es", "nl", "eu", "ch", "com.au", "net.au", "org.au", "mx", "com.mx", "in", "co.in", "sg", "com.sg", "cn", "id", "ph", "pe", "is", "si"];
       var ALL = "ac,academy,accountant,accountants,actor,adult,africa,agency,ai,airforce,apartments,app,archi,army,art,asia,associates,attorney,auction,audio,auto,autos,baby,band,bar,bargains,beauty,beer,berlin,best,bet,bid,bike,bingo,bio,biz,black,blackfriday,blog,blue,boats,bond,boo,boston,bot,boutique,broker,build,builders,business,buzz,bz,ca,cab,cafe,cam,camera,camp,capital,car,cards,care,careers,cars,casa,cash,casino,catering,cc,center,ceo,cfd,ch,charity,chat,cheap,christmas,church,city,claims,cleaning,click,clinic,clothing,cloud,club,cm,cn,co,coach,codes,coffee,college,com,community,company,computer,condos,construction,consulting,contact,contractors,cooking,cool,country,coupons,courses,credit,creditcard,cricket,cruises,cx,cymru,cyou,dad,dance,date,dating,day,de,dealer,deals,degree,delivery,democrat,dental,dentist,desi,design,dev,diamonds,diet,digital,direct,directory,discount,diy,doctor,dog,domains,download,earth,eco,education,email,energy,engineer,engineering,enterprises,equipment,es,esq,estate,eu,events,exchange,expert,exposed,express,fail,faith,family,fan,fans,farm,fashion,feedback,film,finance,financial,fish,fishing,fit,fitness,flights,florist,flowers,fm,foo,food,football,forex,forsale,forum,foundation,fr,fun,fund,furniture,futbol,fyi,gallery,game,games,garden,gay,gdn,gg,gift,gifts,gives,giving,glass,global,gmbh,gold,golf,graphics,gratis,green,gripe,group,guide,guitars,guru,hair,hamburg,haus,health,healthcare,help,hiphop,hockey,holdings,holiday,homes,horse,hospital,host,hosting,house,how,icu,id,immo,immobilien,in,inc,industries,info,ing,ink,institute,insure,international,investments,io,irish,is,jetzt,jewelry,juegos,kaufen,kids,kim,kitchen,kiwi,krd,kyoto,la,land,lat,law,lawyer,lease,legal,lgbt,li,life,lifestyle,lighting,limited,limo,link,live,living,llc,loan,loans,lol,london,love,ltd,ltda,luxury,maison,makeup,management,market,marketing,markets,mba,me,media,melbourne,meme,memorial,men,menu,miami,mobi,moda,moe,mom,money,monster,mortgage,motorcycles,mov,movie,mx,nagoya,name,navy,net,network,new,news,nexus,ngo,ninja,nl,nu,nyc,observer,okinawa,one,ong,onl,online,org,osaka,page,paris,partners,parts,party,pe,pet,ph,phd,photo,photography,photos,pics,pictures,pink,pizza,place,plumbing,plus,poker,porn,press,pro,productions,prof,promo,properties,property,protection,pub,pw,quest,racing,realty,recipes,red,rehab,reise,reisen,rent,rentals,repair,report,republican,rest,restaurant,review,reviews,rip,rocks,rodeo,rsvp,run,ryukyu,sale,salon,sarl,sbs,school,schule,science,security,services,sex,sexy,sg,sh,shiksha,shoes,shop,shopping,show,si,singles,site,ski,skin,so,soccer,social,software,solar,solutions,soy,space,storage,store,stream,studio,study,style,sucks,supplies,supply,support,surf,surgery,sydney,systems,tattoo,tax,taxi,team,tech,technology,tel,tennis,theater,theatre,tickets,tienda,tips,tires,to,today,tokyo,tools,top,tours,town,toys,trade,trading,training,travel,tube,tv,uk,university,uno,us,vacations,vana,vc,vegas,ventures,vet,viajes,video,villas,vin,vip,vision,vodka,vote,voting,voto,voyage,wales,watch,webcam,website,wedding,wiki,win,wine,work,works,world,ws,wtf,xxx,xyz,yachts,yoga,yokohama,zip,zone,ae.org,br.com,cn.com,co.bz,co.com,co.in,co.uk,com.au,com.cn,com.co,com.de,com.es,com.mx,com.pe,com.ph,com.se,com.sg,com.vc,de.com,eu.com,gb.net,gr.com,hu.net,in.net,jp.net,jpn.com,me.uk,mex.com,net.au,net.cn,net.pe,net.ph,net.vc,nom.es,org.au,org.cn,org.es,org.mx,org.pe,org.ph,org.uk,org.vc,ru.com,sa.com,se.net,uk.com,uk.net,us.com,us.org,za.com".split(",");
       var preview = document.getElementById("preview");
       var statusEl = document.getElementById("result-status");
@@ -991,9 +997,13 @@
       function menuGroups(query) {
         var q = String(query || "").toLowerCase().replace(/^\./, "").replace(/[^a-z0-9.-]/g, "");
         if (!q) {
+          var regions = REGIONS.filter(function (item) { return ALL.indexOf(item) !== -1; });
+          var pinned = {};
+          POPULAR.concat(regions).forEach(function (item) { pinned[item] = true; });
           return [
             { label: "Common", items: POPULAR },
-            { label: "All endings", items: ALL.filter(function (item) { return POPULAR.indexOf(item) === -1; }) }
+            { label: "Regions", items: regions },
+            { label: "All endings", items: ALL.filter(function (item) { return !pinned[item]; }) }
           ];
         }
         var items = ALL.filter(function (item) { return item.indexOf(q) !== -1; });
