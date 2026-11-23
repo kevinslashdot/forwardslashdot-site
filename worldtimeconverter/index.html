@@ -35,38 +35,6 @@
     "publisher": { "@type": "Organization", "name": "forwardslashdot", "url": "https://www.forwardslashdot.com/" }
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Which clock does World Time Converter follow?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "The home clock follows this device until you switch it."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is British Columbia on daylight saving time?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "British Columbia stays on Pacific Time (PCT, UTC−7) all year."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What does Share copy?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Share puts a one-line comparison and this link on the clipboard, which is the form to paste into a chat."
-        }
-      }
-    ]
-  }
-  </script>
   <style>
     :root {
       --bg-top: #f7f1e8;
@@ -262,10 +230,9 @@
       top: -0.85em;
     }
 
-    .where-wrap {
-      position: relative;
-      margin-top: 0.55rem;
-    }
+    .where-wrap { position: relative; }
+
+    .moment-actions .home-menu { left: auto; right: 0; }
 
     .where {
       display: inline-flex;
@@ -336,13 +303,15 @@
     }
 
     .summary {
-      margin-top: 0.45rem;
+      margin-top: 0.55rem;
       font-size: 1.02rem;
       line-height: 1.35;
       color: var(--ink-soft);
       letter-spacing: -0.02em;
       white-space: nowrap;
     }
+
+    .summary[hidden] { display: none; }
 
     .summary.is-good { color: var(--link); }
 
@@ -774,7 +743,7 @@
     .slot .dot.good { background: var(--work); }
 
     footer {
-      margin-top: 2.5rem;
+      margin-top: 0.8rem;
       color: var(--ink-soft);
       font-size: 0.8rem;
       line-height: 1.5;
@@ -1034,20 +1003,32 @@
 
     body:not(.embed) .dial-card,
     body:not(.embed) .dial-card.is-home {
+      display: block;
+      overflow: hidden;
+      padding: 0;
+      grid-column: auto;
+      grid-row: auto;
+      text-align: left;
+    }
+
+    body:not(.embed) .row-face {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      grid-template-columns: auto minmax(6.5rem, 1fr) max-content;
       grid-template-areas:
-        "globe name time remove"
-        "globe meta time remove"
-        "band band band band";
+        "globe name time"
+        "globe meta time"
+        "band band band";
       column-gap: 0.7rem;
       row-gap: 0;
       align-items: center;
-      grid-column: auto;
-      grid-row: auto;
-      padding: 0.38rem 0.55rem 0.32rem 0.85rem;
-      text-align: left;
+      padding: 0.38rem 0.85rem 0.32rem;
+      background: #fffdf9;
+      position: relative;
+      z-index: 1;
+      transition: transform 200ms ease;
     }
+
+    body:not(.embed) .dial-card.is-swiped .row-face { transform: translateX(-8.8rem); }
 
     body:not(.embed) .dial-card,
     body:not(.embed) .dial-card.is-home { cursor: grab; }
@@ -1057,7 +1038,7 @@
     body:not(.embed) .dial-card .globe,
     body:not(.embed) .dial-card.is-chip .globe {
       display: block;
-      width: 2.35rem;
+      width: 2.15rem;
       margin: 0;
     }
 
@@ -1140,9 +1121,11 @@
 
     body:not(.embed) .adder { order: 2; flex: none; }
 
-    body:not(.embed) .scrub { order: 3; flex: none; z-index: 1; }
+    body:not(.embed) .moment .scrub { margin: 0.95rem 0.15rem 0.15rem; }
 
-    body:not(.embed) footer { flex: none; margin-top: 0.65rem; }
+    body:not(.embed) .workday { order: 3; flex: none; margin: 0.35rem 0.15rem 0; }
+
+    body:not(.embed) footer { flex: none; margin-top: 0.4rem; }
 
     .dial-card.is-dragging {
       z-index: 6;
@@ -1264,46 +1247,6 @@
       font-size: 0.78rem;
       letter-spacing: -0.01em;
     }
-    .row-remove,
-    .row-confirm { display: none; }
-
-    body:not(.embed) .row-remove {
-      display: grid;
-      grid-area: remove;
-      place-items: center;
-      width: 1.65rem;
-      height: 1.65rem;
-      padding: 0;
-      border: 0;
-      border-radius: 50%;
-      background: rgba(72, 64, 58, 0.42);
-      color: #fff;
-      align-self: center;
-    }
-
-    body:not(.embed) .row-remove svg { width: 1.65rem; height: 1.65rem; display: block; }
-
-    body:not(.embed) .row-remove:hover { background: rgba(72, 64, 58, 0.56); }
-    body:not(.embed) .row-remove:active { transform: scale(0.94); }
-
-    body:not(.embed) .row-remove:focus-visible,
-    body:not(.embed) .row-confirm button:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 4px var(--focus);
-    }
-
-    body:not(.embed) .dial-card.is-confirm {
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      grid-template-areas:
-        "globe name actions"
-        "globe meta actions"
-        "band band band";
-    }
-
-    body:not(.embed) .dial-card.is-confirm .row-remove,
-    body:not(.embed) .dial-card.is-confirm .who-time { display: none; }
-
-    body:not(.embed) .dial-card .city-name,
     body:not(.embed) .dial-card .who-meta,
     body:not(.embed) .dial-card .when {
       min-width: 0;
@@ -1313,48 +1256,48 @@
       white-space: nowrap;
     }
 
-    body:not(.embed) .row-confirm {
-      grid-area: actions;
-      align-self: center;
-      display: none;
-      align-items: center;
-      gap: 0.35rem;
+    body:not(.embed) .dial-card .city-name {
+      min-width: 0;
+      white-space: nowrap;
     }
 
-    body:not(.embed) .dial-card.is-confirm .row-confirm { display: flex; }
+    body:not(.embed) .row-confirm {
+      position: absolute;
+      z-index: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+    }
+
+    body:not(.embed) .row-confirm[hidden] { display: none; }
 
     body:not(.embed) .row-confirm button {
       border: 0;
-      border-radius: 999px;
-      padding: 0.4rem 0.8rem;
-      font-size: 0.84rem;
+      border-radius: 0;
+      padding: 0 0.95rem;
+      font-size: 0.92rem;
       font-weight: 600;
       letter-spacing: -0.02em;
-      line-height: 1.1;
-    }
-
-    body:not(.embed) .row-confirm [data-action="change"] {
-      background: rgba(28, 25, 23, 0.08);
-      color: var(--ink);
-    }
-
-    body:not(.embed) .row-confirm [data-action="remove"] {
-      background: #ff3b30;
       color: #fff;
     }
 
+    body:not(.embed) .row-confirm [data-action="change"] { background: #8e8e93; }
+
+    body:not(.embed) .row-confirm [data-action="remove"] { background: #ff3b30; }
+
     body:not(.embed) .row-confirm button:disabled {
-      background: rgba(28, 25, 23, 0.08);
-      color: rgba(28, 25, 23, 0.32);
+      background: #d2d2d7;
+      color: rgba(255, 255, 255, 0.85);
     }
 
-    @media (prefers-reduced-motion: no-preference) {
-      body:not(.embed) .dial-card.is-confirm .row-confirm { animation: row-actions-in 180ms ease; }
+    body:not(.embed) .row-confirm button:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 3px var(--focus);
     }
 
-    @keyframes row-actions-in {
-      from { opacity: 0; transform: translateX(8px); }
-      to { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      body:not(.embed) .row-face { transition: none; }
     }
 
     .add-tile {
@@ -1443,6 +1386,8 @@
     body.is-scrubbing .adder,
     body.is-scrubbing footer { pointer-events: none; }
 
+    body.is-scrubbing .scrub { pointer-events: auto; }
+
     .scrub-track {
       position: absolute;
       left: 0;
@@ -1481,7 +1426,6 @@
     body.embed .meet-note,
     body.embed .scrub,
     body.embed .adder,
-    body.embed .row-remove,
     body.embed .row-confirm,
     body.embed .ask,
     body.embed .answer,
@@ -1590,7 +1534,10 @@
             </button>
           </div>
           <div class="moment-actions">
-            <button class="text-btn" id="today" type="button">Today</button>
+            <div class="where-wrap">
+              <button class="where" id="where" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-menu"></button>
+              <ul class="home-menu" id="home-menu" role="listbox" hidden></ul>
+            </div>
             <button class="text-btn" id="now" type="button">Now</button>
           </div>
         </div>
@@ -1598,12 +1545,28 @@
         <h1 class="ask" id="ask">What time is it?</h1>
         <p class="answer" id="answer"></p>
         <p class="chat-line" id="chat-line"></p>
-        <div class="where-wrap">
-          <button class="where" id="where" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-menu"></button>
-          <ul class="home-menu" id="home-menu" role="listbox" hidden></ul>
+        <div class="scrub track-wrap" id="slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439" aria-label="Time of day" aria-describedby="chat-line">
+          <div class="scrub-readout" id="scrub-readout" aria-hidden="true">12:00 AM</div>
+          <div class="scrub-track"></div>
+          <div class="scrub-pearl" aria-hidden="true"></div>
         </div>
-        <p class="summary" id="summary"></p>
+        <p class="summary" id="summary" hidden></p>
         <button class="best" id="best" type="button" hidden></button>
+        <p class="meet-note" id="meet-note" hidden></p>
+        <p class="card-open-row"><a class="card-open" id="card-open" href="">Open the day</a></p>
+      </section>
+
+      <section class="board" id="board" aria-label="Cities on one day">
+        <div class="dials" id="rows"></div>
+        <div class="adder" id="adder">
+          <p class="adder-title" id="adder-title">Add a city</p>
+          <div class="search">
+            <label class="sr" for="city-search">Add a city</label>
+            <input id="city-search" type="text" placeholder="Add a place" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <ul class="results" id="city-list" role="listbox" hidden></ul>
+          </div>
+          <div class="chips" id="chips"></div>
+        </div>
         <details class="workday" id="workday">
           <summary id="workday-summary">Workday 9:00 AM – 5:00 PM · 1 hour</summary>
           <div class="workday-body">
@@ -1617,33 +1580,12 @@
             <span class="work-note" id="work-note" role="status"></span>
           </div>
         </details>
-        <p class="meet-note" id="meet-note" hidden></p>
-        <p class="card-open-row"><a class="card-open" id="card-open" href="">Open the day</a></p>
-      </section>
-
-      <section class="board" id="board" aria-label="Cities on one day">
-        <div class="dials" id="rows"></div>
-        <div class="scrub track-wrap" id="slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439" aria-label="Time of day" aria-describedby="chat-line">
-          <div class="scrub-readout" id="scrub-readout" aria-hidden="true">12:00 AM</div>
-          <div class="scrub-track"></div>
-          <div class="scrub-pearl" aria-hidden="true"></div>
-        </div>
-        <div class="adder" id="adder">
-          <p class="adder-title" id="adder-title">Add a city</p>
-          <div class="search">
-            <label class="sr" for="city-search">Add a city</label>
-            <input id="city-search" type="text" placeholder="Add a place" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
-            <ul class="results" id="city-list" role="listbox" hidden></ul>
-          </div>
-          <div class="chips" id="chips"></div>
-        </div>
       </section>
 
       <p class="sr" id="live" aria-live="polite"></p>
     </main>
 
     <footer>
-      <p>The home clock follows this device until you switch it. British Columbia stays on Pacific Time (PCT, UTC−7) all year. Share puts a one-line comparison and this link on the clipboard, which is the form to paste into a chat.</p>
       <p class="foot-links">
         <a href="/llms.txt">llms.txt</a>
         <a href="/time.txt">plain text</a>
@@ -1852,36 +1794,12 @@
       return parts.weekday.slice(0, 3) + ", " + MONTHS_SHORT[parts.month - 1] + " " + parts.day;
     }
 
-    function clause(names, phrase) {
-      if (names.length === 1) return names[0] + " is " + phrase;
-      if (names.length === 2) return names[0] + " and " + names[1] + " are " + phrase;
-      return names.slice(0, -1).join(", ") + ", and " + names[names.length - 1] + " are " + phrase;
-    }
-
-    function summarize(places) {
-      if (places.length === 1) {
-        const only = places[0];
-        const label = only.period === "work" ? "workday" : only.period === "early" ? "early" : only.period === "late" ? "evening" : "night";
-        return "It is " + formatTime(only.parts.hour, only.parts.minute).text + " in " + only.city.city + " — " + label + ".";
-      }
-      const grouped = { work: [], early: [], late: [], night: [] };
-      places.forEach(function (place) { grouped[place.period].push(place.city.city); });
-      if (grouped.work.length === places.length) return "Everyone is in their workday.";
-      if (places.length >= 4) {
-        const verb = grouped.work.length === 1 ? "is" : "are";
-        return grouped.work.length + " of " + places.length + " " + verb + " in their workday.";
-      }
-      const phrases = {
-        work: "in the workday",
-        early: "just starting the day",
-        late: "past the workday",
-        night: "on night hours"
-      };
-      return ["work", "early", "late", "night"].filter(function (key) {
-        return grouped[key].length;
-      }).map(function (key) {
-        return clause(grouped[key], phrases[key]) + ".";
-      }).join(" ");
+    function summaryLine(places) {
+      if (places.length < 4) return "";
+      const working = places.filter(function (place) { return place.period === "work"; }).length;
+      if (!working || working === places.length) return "";
+      const verb = working === 1 ? "is" : "are";
+      return working + " of " + places.length + " " + verb + " in their workday.";
     }
 
     function fitSummary() {
@@ -1993,18 +1911,19 @@
       const yours = snap.anchor.zone === state.detected;
       where.setAttribute("aria-label", (yours ? "Your location, " : "Home city, ") + snap.anchor.city + " " + snap.anchorParts.abbr + ". Change home city.");
 
-      const today = partsInZone(Date.now(), snap.anchor.zone);
+      const live = partsInZone(Date.now(), snap.anchor.zone);
       const noon = partsInZone(civilToInstant(state.year, state.month, state.day, 12 * 60, snap.anchor.zone), snap.anchor.zone);
       const dateCore = noon.weekday + ", " + MONTHS[state.month - 1] + " " + state.day;
-      document.getElementById("date-text").textContent = state.year === today.year ? dateCore : dateCore + ", " + state.year;
+      document.getElementById("date-text").textContent = state.year === live.year ? dateCore : dateCore + ", " + state.year;
       document.getElementById("date-input").value = stampDate();
-      document.getElementById("today").setAttribute("aria-pressed", sameDay(today, state) ? "true" : "false");
+      const atNow = sameDay(live, state) && state.minutes === live.hour * 60 + live.minute;
+      document.getElementById("now").setAttribute("aria-pressed", atNow ? "true" : "false");
 
-      const summary = summarize(snap.places);
+      const summary = summaryLine(snap.places);
       const summaryEl = document.getElementById("summary");
+      summaryEl.hidden = !summary;
       summaryEl.textContent = summary;
-      summaryEl.classList.toggle("is-good", snap.places.every(function (place) { return place.period === "work"; }));
-      fitSummary();
+      if (summary) fitSummary();
       const line = fillChatLine(snap);
       const question = fillAsk(snap);
 
@@ -2045,8 +1964,15 @@
           wday.textContent = place.parts.weekday.slice(0, 3);
         }
         const yours = place.city.zone === state.detected;
-        const meta = (yours ? "Your location" : place.offsetLabel) + " · " + place.parts.abbr;
-        row.querySelector("[data-meta]").textContent = meta;
+        let metaText = (yours ? "Your location" : place.offsetLabel) + " · " + place.parts.abbr;
+        if (BC_PCT_ZONES[place.city.zone]) {
+          metaText = (yours ? "" : place.offsetLabel + " · ") + "UTC−7 all year";
+        }
+        const metaEl = row.querySelector("[data-meta]");
+        metaEl.textContent = metaText;
+        metaEl.title = BC_PCT_ZONES[place.city.zone]
+          ? "British Columbia stays on Pacific Time (PCT, UTC−7) all year."
+          : metaText;
         const when = row.querySelector("[data-when]");
         when.textContent = place.delta === 0 ? "" : dayText(place.delta, place.parts);
         when.hidden = place.delta === 0;
@@ -2057,10 +1983,12 @@
       });
 
       const best = document.getElementById("best");
-      if (!best.hidden) {
-        const start = Number(best.dataset.start);
+      const start = Number(best.dataset.start);
+      if (Number.isFinite(start)) {
         const inside = state.minutes >= start && state.minutes < start + state.duration;
-        best.setAttribute("aria-pressed", inside ? "true" : "false");
+        const already = snap.places.every(function (place) { return place.period === "work"; });
+        best.hidden = inside || already;
+        best.setAttribute("aria-pressed", inside && !already ? "true" : "false");
       }
       const workOpen = formatTime(Math.floor(state.workStart / 60), state.workStart % 60).text;
       const workClose = formatTime(Math.floor(state.workEnd / 60) % 24, state.workEnd % 60).text;
@@ -2285,15 +2213,11 @@
         const band = document.createElement("div");
         band.className = "dayband";
         band.dataset.band = "1";
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "row-remove";
-        remove.dataset.remove = keyOf(city);
-        remove.setAttribute("aria-label", "Remove " + city.city);
-        remove.setAttribute("aria-expanded", "false");
-        remove.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><rect x="5" y="10" width="12" height="2.2" rx="1.1" fill="currentColor"/></svg>';
+        const face = document.createElement("div");
+        face.className = "row-face";
         const confirm = document.createElement("div");
         confirm.className = "row-confirm";
+        confirm.hidden = true;
         [
           { action: "change", label: "Change" },
           { action: "remove", label: "Delete", disabled: state.cities.length === 1 }
@@ -2302,14 +2226,20 @@
           choice.type = "button";
           choice.dataset.action = item.action;
           choice.textContent = item.label;
+          choice.tabIndex = -1;
           choice.setAttribute("aria-label", item.label + " " + city.city);
           if (item.disabled) choice.disabled = true;
           confirm.append(choice);
         });
         card.tabIndex = 0;
-        card.setAttribute("aria-label", city.city + ". Drag to reorder.");
+        card.setAttribute("aria-label", city.city + ". Drag to reorder, or swipe left to change or delete.");
         card.addEventListener("keydown", function (event) {
           if (event.target !== card) return;
+          if (event.key === "Delete" || event.key === "Backspace") {
+            event.preventDefault();
+            openCardMenu(card, true);
+            return;
+          }
           const up = event.key === "ArrowLeft" || event.key === "ArrowUp";
           const down = event.key === "ArrowRight" || event.key === "ArrowDown";
           if (!up && !down) return;
@@ -2317,7 +2247,8 @@
           event.stopPropagation();
           moveCity(card.dataset.key, up ? -1 : 1);
         });
-        card.append(remove, confirm, dial, band, name, time, meta, when);
+        face.append(dial, band, name, time, meta, when);
+        card.append(confirm, face);
         rowsEl.append(card);
       });
       if (state.cities.length < 8) {
@@ -2347,9 +2278,12 @@
       const good = windows.find(function (item) { return item.all; });
       if (good) {
         const startText = formatTime(Math.floor(good.start / 60), good.start % 60).text;
-        best.hidden = false;
+        const snap = snapshot();
+        const already = snap.places.every(function (place) { return place.period === "work"; });
+        const inside = state.minutes >= good.start && state.minutes < good.start + state.duration;
         best.dataset.start = String(good.start);
         best.textContent = startText + " " + anchorCity().city + ", everyone is in their workday";
+        best.hidden = already || inside;
         note.hidden = true;
       } else {
         best.hidden = true;
@@ -2408,7 +2342,14 @@
     function announce() {
       const snap = snapshot();
       const time = formatTime(snap.anchorParts.hour, snap.anchorParts.minute);
-      live.textContent = time.text + " in " + snap.anchor.city + ". " + summarize(snap.places);
+      const others = snap.places.filter(function (place) {
+        return keyOf(place.city) !== state.anchorKey;
+      }).map(placeLine);
+      const extra = summaryLine(snap.places);
+      let text = time.text + " in " + snap.anchor.city;
+      if (others.length) text += ". " + others.join(", ");
+      if (extra) text += ". " + extra;
+      live.textContent = text + ".";
     }
 
     function stampDate() {
@@ -2959,20 +2900,31 @@
     }
 
     function closeCardMenus() {
-      rowsEl.querySelectorAll(".dial-card.is-confirm").forEach(function (card) {
-        card.classList.remove("is-confirm");
-        const button = card.querySelector(".row-remove");
-        if (button) button.setAttribute("aria-expanded", "false");
+      const active = document.activeElement;
+      rowsEl.querySelectorAll(".dial-card.is-swiped").forEach(function (card) {
+        card.classList.remove("is-swiped");
+        const face = card.querySelector(".row-face");
+        if (face) face.style.transform = "";
+        const actions = card.querySelector(".row-confirm");
+        if (actions) {
+          actions.hidden = true;
+          actions.querySelectorAll("button").forEach(function (button) { button.tabIndex = -1; });
+        }
+        if (active && card.contains(active) && active !== card) card.focus();
       });
     }
 
-    function openCardMenu(card) {
+    function openCardMenu(card, focusAction) {
       if (!card) return;
       closeCardMenus();
       closeComposer();
-      card.classList.add("is-confirm");
-      const button = card.querySelector(".row-remove");
-      if (button) button.setAttribute("aria-expanded", "true");
+      card.classList.add("is-swiped");
+      const actions = card.querySelector(".row-confirm");
+      if (actions) {
+        actions.hidden = false;
+        actions.querySelectorAll("button").forEach(function (button) { button.tabIndex = 0; });
+      }
+      if (!focusAction) return;
       const next = card.querySelector("[data-action='remove']:not(:disabled)") || card.querySelector("[data-action='change']");
       if (next) next.focus();
     }
@@ -3055,6 +3007,24 @@
       if (!reorder || event.pointerId !== reorder.pointerId) return;
       const dx = event.clientX - reorder.originX;
       const dy = event.clientY - reorder.originY;
+      if (!reorder.gesture) {
+        if (Math.hypot(dx, dy) < 8) return;
+        reorder.gesture = Math.abs(dx) > Math.abs(dy) + 2 && dx < 0 ? "swipe" : "reorder";
+        if (reorder.gesture === "swipe") {
+          clearTimeout(reorder.timer);
+          reorder.armed = false;
+        }
+      }
+      if (reorder.gesture === "swipe") {
+        const face = reorder.card.querySelector(".row-face");
+        const actions = reorder.card.querySelector(".row-confirm");
+        if (actions) actions.hidden = false;
+        if (face) {
+          const shift = Math.max(-148, Math.min(0, dx));
+          face.style.transform = "translateX(" + shift.toFixed(0) + "px)";
+        }
+        return;
+      }
       if (!reorder.armed) {
         if (Math.hypot(dx, dy) > 12) finishReorder(false);
         return;
@@ -3077,6 +3047,22 @@
 
     function onReorderEnd(event) {
       if (!reorder || event.pointerId !== reorder.pointerId) return;
+      if (reorder.gesture === "swipe") {
+        const dx = event.clientX - reorder.originX;
+        const card = reorder.card;
+        const face = card.querySelector(".row-face");
+        if (face) face.style.transform = "";
+        clearTimeout(reorder.timer);
+        reorder = null;
+        suppressClick = true;
+        if (event.type !== "pointercancel" && dx < -56) openCardMenu(card);
+        else {
+          card.classList.remove("is-swiped");
+          const actions = card.querySelector(".row-confirm");
+          if (actions) actions.hidden = true;
+        }
+        return;
+      }
       const moved = reorder.moved;
       const held = reorder.pointerType !== "mouse" && reorder.armed && !reorder.moved && event.type !== "pointercancel";
       const card = reorder.card;
@@ -3243,13 +3229,6 @@
 
     document.getElementById("prev-day").addEventListener("click", function () { shiftDay(-1); });
     document.getElementById("next-day").addEventListener("click", function () { shiftDay(1); });
-    document.getElementById("today").addEventListener("click", function () {
-      const now = partsInZone(Date.now(), anchorCity().zone);
-      state.year = now.year;
-      state.month = now.month;
-      state.day = now.day;
-      renderAll();
-    });
     document.getElementById("now").addEventListener("click", function () {
       const now = partsInZone(Date.now(), anchorCity().zone);
       state.year = now.year;
@@ -3296,7 +3275,7 @@
       if (document.body.classList.contains("embed")) return;
       if (event.button) return;
       const card = event.target.closest(".dial-card");
-      if (!card || event.target.closest(".row-remove, .row-confirm")) return;
+      if (!card || event.target.closest(".row-confirm")) return;
       reorder = {
         card: card,
         pointerId: event.pointerId,
@@ -3325,7 +3304,12 @@
         event.stopPropagation();
         return;
       }
-      if (event.target.closest("[data-action], [data-remove], [data-add]")) {
+      const swiped = event.target.closest(".dial-card.is-swiped");
+      if (swiped && !event.target.closest(".row-confirm")) {
+        closeCardMenus();
+        return;
+      }
+      if (event.target.closest("[data-action], [data-add]")) {
         event.stopPropagation();
         closeHome();
       }
@@ -3335,15 +3319,6 @@
         closeCardMenus();
         if (action.dataset.action === "change") openComposer(key);
         else if (action.dataset.action === "remove") removeCity(key);
-        return;
-      }
-      const remover = event.target.closest("[data-remove]");
-      if (remover) {
-        const card = remover.closest(".dial-card");
-        const willOpen = !card.classList.contains("is-confirm");
-        closeCardMenus();
-        closeComposer();
-        if (willOpen) openCardMenu(card);
         return;
       }
       if (event.target.closest("[data-add]")) {
@@ -3359,21 +3334,19 @@
       }
     });
 
-    board.addEventListener("pointerdown", function (event) {
-      if (event.target.closest("button, input, a, select, summary")) return;
-      const lane = event.target.closest(".track-wrap");
-      if (!lane) return;
+    slider.addEventListener("pointerdown", function (event) {
+      if (event.button) return;
       event.preventDefault();
       const selection = window.getSelection();
       if (selection) selection.removeAllRanges();
-      dragLane = lane;
+      dragLane = slider;
       document.body.classList.add("is-scrubbing");
       state.minutes = minutesFromEvent(event);
       paint();
-      board.setPointerCapture(event.pointerId);
+      slider.setPointerCapture(event.pointerId);
     });
     slider.addEventListener("selectstart", function (event) { event.preventDefault(); });
-    board.addEventListener("pointermove", function (event) {
+    slider.addEventListener("pointermove", function (event) {
       if (!dragLane) return;
       state.minutes = minutesFromEvent(event);
       paint();
@@ -3385,8 +3358,8 @@
       commit();
       announce();
     }
-    board.addEventListener("pointerup", endDrag);
-    board.addEventListener("pointercancel", endDrag);
+    slider.addEventListener("pointerup", endDrag);
+    slider.addEventListener("pointercancel", endDrag);
 
     slider.addEventListener("keydown", function (event) {
       const step = event.shiftKey ? 60 : 15;
@@ -3517,7 +3490,7 @@
     });
     document.addEventListener("click", function (event) {
       if (!event.target.closest(".where-wrap")) closeHome();
-      if (!event.target.closest(".row-remove, .row-confirm")) closeCardMenus();
+      if (!event.target.closest(".row-confirm")) closeCardMenus();
       if (!event.target.closest("#adder, #add-city, [data-add]")) closeComposer();
     });
     document.addEventListener("keydown", function (event) {
