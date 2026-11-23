@@ -457,11 +457,11 @@
 
   <script>
     (function () {
-      var API = "https://api.forwardslashdot.com/api/domain";
+      var API = "/api/domain";
       var TLDS = [".com", ".net", ".org", ".io", ".dev", ".app", ".ai", ".co", ".xyz"];
-      // Adaptive debounce: short once the label looks intentional; longer while still short.
-      var DEBOUNCE_SHORT_MS = 120;
-      var DEBOUNCE_LONG_MS = 200;
+      // The edge answers on the same connection. Wait only while a 1-character label is still a typo.
+      var DEBOUNCE_SHORT_MS = 0;
+      var DEBOUNCE_LONG_MS = 40;
       var CACHE_TTL_MS = 10 * 60 * 1000;
       var CACHE_MAX = 200;
 
@@ -557,6 +557,7 @@
 
       var selectedTld = ".com";
       var timer = null;
+      var warmTimer = null;
       var abortController = null;
       var requestSeq = 0;
       var lastTypedAt = 0;
@@ -667,6 +668,7 @@
         if (!label) {
           if (abortController) abortController.abort();
           clearTimeout(timer);
+          clearTimeout(warmTimer);
           setState("", "", "");
           return;
         }
@@ -678,6 +680,7 @@
           applyRow(cached.domain || domain, cached.status, cached);
           clearTimeout(timer);
           if (abortController) abortController.abort();
+          warmOtherTlds(label);
           return;
         }
 
@@ -689,6 +692,37 @@
           // If another key landed during the wait, scheduleCheck already reset the timer.
           runCheck(domain);
         }, wait);
+        warmOtherTlds(label);
+      }
+
+      function warmOtherTlds(label) {
+        clearTimeout(warmTimer);
+        if (label.length < 3) return;
+        warmTimer = setTimeout(function () {
+          if (normalizeLabel(nameInput.value) !== label) return;
+          TLDS.forEach(function (tld) {
+            if (tld === selectedTld) return;
+            var other = label + tld;
+            if (cacheGet(other)) return;
+            fetch(
+              API + "?q=" + encodeURIComponent(other) + "&area=instant_domain_search&warm=1",
+              { credentials: "omit", cache: "default" }
+            ).then(function (res) {
+              if (!res.ok) return null;
+              return res.json();
+            }).then(function (data) {
+              var row = data && data.results && data.results[0];
+              if (!row) return;
+              if (row.status === "available" || row.status === "registered" || row.status === "invalid") {
+                cacheSet(other, row.status, row.domain, {
+                  affiliate_url: row.affiliate_url || "",
+                  disclosure: row.disclosure || "",
+                  status: row.status
+                });
+              }
+            }).catch(function () {});
+          });
+        }, 160);
       }
 
       function runCheck(domain) {

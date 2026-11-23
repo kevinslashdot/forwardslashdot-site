@@ -554,10 +554,164 @@ async function handleStats(request, env) {
   return new Response(asset.body, { status: asset.status, headers });
 }
 
+const DOMAIN_RE = /^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/i;
+const DOMAIN_AREAS = new Set(["instant_domain_search", "world_time_converter", "other"]);
+const EDGE_CACHE_SECONDS = 120;
+
+function hasDnsAnswer(msg) {
+  return !!(msg && Array.isArray(msg.Answer) && msg.Answer.length);
+}
+
+// NS NXDOMAIN means the TLD has no such name. An NS answer means it is delegated.
+// Anything else is inconclusive and the origin RDAP check should decide.
+export function statusFromDns(ns, soa) {
+  if (!ns || typeof ns.Status !== "number") return null;
+  if (ns.Status === 3) return "available";
+  if (ns.Status === 0 && hasDnsAnswer(ns)) return "registered";
+  if (ns.Status !== 0) return null;
+  if (!soa || typeof soa.Status !== "number") return null;
+  if (soa.Status === 3) return "available";
+  if (soa.Status === 0 && hasDnsAnswer(soa)) return "registered";
+  return null;
+}
+
+function domainArea(raw) {
+  const area = String(raw || "").trim();
+  return DOMAIN_AREAS.has(area) ? area : "instant_domain_search";
+}
+
+async function dnsQuery(name, type) {
+  const res = await fetch(
+    "https://cloudflare-dns.com/dns-query?name=" + encodeURIComponent(name) + "&type=" + type,
+    { headers: { accept: "application/dns-json" } }
+  );
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function edgeStatus(domain) {
+  const ns = await dnsQuery(domain, "NS");
+  if (ns && ns.Status === 3) return "available";
+  if (ns && ns.Status === 0 && hasDnsAnswer(ns)) return "registered";
+  const soa = ns && ns.Status === 0 ? await dnsQuery(domain, "SOA") : null;
+  return statusFromDns(ns, soa);
+}
+
+function affiliateFields(env, domain, status) {
+  if (status !== "available") return {};
+  const base = String((env && env.AFFILIATE_BASE_URL) || "").trim();
+  const param = String((env && env.AFFILIATE_PARAM_NAME) || "").trim();
+  const id = String((env && env.AFFILIATE_ID) || "").trim();
+  if (!base || !param || !id) return {};
+  const query = new URLSearchParams({ domain: domain });
+  query.set(param, id);
+  const joiner = base.endsWith("?") || base.endsWith("&") ? "" : (base.includes("?") ? "&" : "?");
+  return {
+    affiliate_url: base + joiner + query.toString(),
+    link_type: "affiliate",
+    disclosure: "Affiliate disclosure: forwardslashdot.com may earn a commission if you register a domain through this link."
+  };
+}
+
+function domainResponse(body, cacheSeconds) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": cacheSeconds ? "public, max-age=15, s-maxage=" + cacheSeconds : "no-store",
+      "x-domain-edge": "1"
+    }
+  });
+}
+
+function domainCacheKey(origin, domain) {
+  return new Request(origin + "/api/domain?q=" + encodeURIComponent(domain), { method: "GET" });
+}
+
+function tallyDomain(ctx, domain, area) {
+  const task = fetch(
+    API_ORIGIN + "/api/domain?q=" + encodeURIComponent(domain) + "&area=" + encodeURIComponent(area),
+    { cf: { cacheTtl: 0 } }
+  ).catch(function () {});
+  if (ctx && ctx.waitUntil) ctx.waitUntil(task);
+}
+
+async function proxyDomain(url) {
+  const upstream = await fetch(API_ORIGIN + "/api/domain?" + url.searchParams.toString(), {
+    cf: { cacheTtl: 0 }
+  });
+  const headers = new Headers(upstream.headers);
+  headers.set("x-domain-edge", "origin");
+  return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+async function handleDomain(request, env, ctx) {
+  const url = new URL(request.url);
+  const raw = (url.searchParams.get("q") || "").trim().toLowerCase();
+  if (!raw || raw.includes(",")) return proxyDomain(url);
+  if (!DOMAIN_RE.test(raw)) {
+    return domainResponse({
+      count: 1,
+      results: [{ domain: raw, status: "invalid", source: null, cached: false }],
+      batch_cap: 25,
+      timing_ms: 0
+    }, 0);
+  }
+
+  const started = Date.now();
+  const area = domainArea(url.searchParams.get("area") || url.searchParams.get("source"));
+  const warm = url.searchParams.get("warm") === "1";
+  let cache = null;
+  try { cache = caches.default; } catch (_) { cache = null; }
+  const key = domainCacheKey(url.origin, raw);
+  if (cache) {
+    try {
+      const hit = await cache.match(key);
+      if (hit) {
+        const data = await hit.json();
+        if (data.results && data.results[0]) data.results[0].cached = true;
+        data.timing_ms = 0;
+        if (!warm) tallyDomain(ctx, raw, area);
+        return domainResponse(data, EDGE_CACHE_SECONDS);
+      }
+    } catch (_) {}
+  }
+
+  let status = null;
+  try {
+    status = await edgeStatus(raw);
+  } catch (_) {
+    status = null;
+  }
+  if (status !== "available" && status !== "registered") return proxyDomain(url);
+
+  const body = {
+    count: 1,
+    results: [Object.assign({
+      domain: raw,
+      status: status,
+      source: "dns",
+      cached: false
+    }, affiliateFields(env, raw, status))],
+    batch_cap: 25,
+    timing_ms: Date.now() - started
+  };
+  const response = domainResponse(body, EDGE_CACHE_SECONDS);
+  if (cache && ctx && ctx.waitUntil) {
+    ctx.waitUntil(cache.put(key, response.clone()).catch(function () {}));
+  }
+  if (!warm) tallyDomain(ctx, raw, area);
+  return response;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, "") : url.pathname;
+
+    if (request.method === "GET" && path === "/api/domain") {
+      return handleDomain(request, env, ctx);
+    }
 
     if (path === "/stats" || path.startsWith("/stats/")) {
       return handleStats(request, env);
