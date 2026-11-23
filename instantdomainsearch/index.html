@@ -12,7 +12,7 @@
   <meta property="og:title" content="Instant Domain Search — forwardslashdot" />
   <meta property="og:description" content="Type a name and any ending. Green when it’s free, red when it’s taken." />
   <meta property="og:url" content="https://www.forwardslashdot.com/instantdomainsearch/" />
-  <meta name="theme-color" content="#f5f5f7" />
+  <meta name="theme-color" content="#ffffff" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -32,20 +32,20 @@
       --bg-mid: #ececf1;
       --bg-bottom: #e4e4ea;
       --ink: #1d1d1f;
-      --ink-soft: #6e6e73;
+      --ink-soft: #86868b;
       --mark: #1d1d1f;
-      --link: #0071e3;
-      --hairline: rgba(29, 29, 31, 0.12);
-      --field: rgba(255, 255, 255, 0.72);
-      --field-border: rgba(29, 29, 31, 0.14);
-      --focus: rgba(0, 113, 227, 0.28);
-      --ok: #1f7a3f;
-      --ok-soft: rgba(31, 122, 63, 0.12);
-      --taken: #c41e3a;
+      --link: #0066cc;
+      --hairline: rgba(0, 0, 0, 0.08);
+      --field: #f5f5f7;
+      --field-border: transparent;
+      --focus: rgba(0, 0, 0, 0.12);
+      --ok: #248a3d;
+      --ok-soft: rgba(36, 138, 61, 0.12);
+      --taken: #86868b;
       --taken-soft: rgba(196, 30, 58, 0.1);
       --idle: var(--ink-soft);
       --glow: rgba(255, 255, 255, 0.55);
-      --font: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     }
 
     * {
@@ -62,7 +62,7 @@
       min-height: 100vh;
       font-family: var(--font);
       color: var(--ink);
-      background: #f5f5f7;
+      background: #fff;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
@@ -122,10 +122,10 @@
     }
 
     .brand-name {
-      font-size: 1.02rem;
-      font-weight: 560;
-      letter-spacing: -0.03em;
-      color: var(--ink-soft);
+      font-size: 1.05rem;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+      color: var(--ink);
     }
 
     .search {
@@ -145,18 +145,14 @@
       margin: 0;
       color: var(--ink);
       border: 0;
-      border-radius: 14px;
-      background: #fff;
-      box-shadow:
-        0 0 0 0.5px rgba(0, 0, 0, 0.08),
-        0 1px 3px rgba(0, 0, 0, 0.04);
-      transition: box-shadow 0.2s ease;
+      border-radius: 22px;
+      background: var(--field);
+      box-shadow: none;
+      transition: background 0.2s ease;
     }
 
     .compose:focus-within {
-      box-shadow:
-        0 0 0 4px var(--focus),
-        0 0 0 0.5px rgba(0, 113, 227, 0.55);
+      background: #efeff1;
     }
 
     .name-host {
@@ -175,9 +171,9 @@
       border: 0;
       background: transparent;
       font: inherit;
-      font-size: clamp(1.15rem, 3.5vw, 1.35rem);
-      font-weight: 500;
-      letter-spacing: -0.025em;
+      font-size: clamp(1.35rem, 4vw, 1.7rem);
+      font-weight: 560;
+      letter-spacing: -0.045em;
       color: var(--ink-soft);
       padding: 0 0.85rem 0 0.35rem;
       cursor: pointer;
@@ -281,11 +277,8 @@
 
     .answers {
       list-style: none;
-      margin-top: 1.15rem;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06);
-      overflow: hidden;
+      margin-top: 1.75rem;
+      background: transparent;
     }
 
     .answers[hidden] { display: none; }
@@ -294,15 +287,14 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto 5.75rem;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.78rem 1rem;
-      border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+      gap: 0.85rem;
+      padding: 0.45rem 0.2rem;
+      border: 0;
     }
 
     .answer.is-primary {
-      border-top: 0;
-      padding-top: 0.95rem;
-      padding-bottom: 0.95rem;
+      padding-top: 0.15rem;
+      padding-bottom: 0.85rem;
     }
 
     .answer-name {
@@ -310,11 +302,11 @@
       border: 0;
       background: transparent;
       font: inherit;
-      font-size: 1.02rem;
+      font-size: 1.05rem;
       font-weight: 500;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.04em;
       text-align: left;
-      color: var(--ink-soft);
+      color: var(--ink);
       padding: 0;
       cursor: pointer;
       min-width: 0;
@@ -324,13 +316,13 @@
     }
 
     .answer.is-primary .answer-name {
-      font-size: clamp(1.35rem, 4vw, 1.7rem);
+      font-size: clamp(1.7rem, 5vw, 2.15rem);
       font-weight: 600;
+      letter-spacing: -0.048em;
     }
 
-    .answer.is-available .answer-name { color: var(--ok); }
-    .answer.is-taken .answer-name { color: var(--ink); }
-    .answer.is-invalid .answer-name { color: var(--taken); }
+    .answer.is-checking .answer-name { color: var(--ink-soft); }
+    .answer.is-invalid .answer-name { color: var(--ink); }
 
     .answer-name:hover { opacity: 0.72; }
 
@@ -348,8 +340,8 @@
     }
 
     .answer.is-available .answer-status { color: var(--ok); }
-    .answer.is-taken .answer-status { color: var(--ink-soft); }
-    .answer.is-invalid .answer-status { color: var(--taken); }
+    .answer.is-taken .answer-status,
+    .answer.is-invalid .answer-status { color: var(--ink-soft); }
 
     .answer-action {
       display: flex;
@@ -360,21 +352,21 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 1.9rem;
-      padding: 0.28rem 0.8rem;
+      min-height: 2rem;
+      padding: 0.32rem 0.95rem;
       border-radius: 980px;
-      background: var(--link);
+      background: #1d1d1f;
       color: #fff;
-      font-size: 0.82rem;
-      font-weight: 560;
-      letter-spacing: -0.01em;
+      font-size: 0.84rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
       text-decoration: none;
     }
 
     .register:hover {
       color: #fff;
       text-decoration: none;
-      filter: brightness(1.08);
+      background: #424245;
     }
 
     .register:focus-visible {
@@ -396,8 +388,8 @@
       width: min(34rem, 100%);
       margin: 0 auto;
       padding: 0 1.35rem 4.5rem;
-      border-top: 1px solid var(--hairline);
-      padding-top: 2.5rem;
+      border-top: 0;
+      padding-top: 4.5rem;
     }
 
     .dev h2 {
@@ -547,11 +539,11 @@
         ':host{display:block;width:100%;min-width:0;outline:none;}' +
         '.shell{position:relative;width:100%;min-height:3.2rem;}' +
         '.ghost{position:absolute;inset:0;pointer-events:none;font:inherit;' +
-        'font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:400;letter-spacing:-0.025em;' +
-        'color:rgba(110,110,115,0.7);padding:1rem 0.35rem 1rem 1.1rem;white-space:nowrap;overflow:hidden;}' +
+        'font-size:clamp(1.35rem,4vw,1.7rem);font-weight:500;letter-spacing:-0.045em;' +
+        'color:#aeaeb2;padding:1.05rem 0.35rem 1.05rem 1.2rem;white-space:nowrap;overflow:hidden;}' +
         '.field{display:block;width:100%;border:0;background:transparent;outline:none;cursor:text;' +
-        'caret-color:#1d1d1f;font-family:inherit;font-size:clamp(1.15rem,3.5vw,1.35rem);font-weight:500;' +
-        'letter-spacing:-0.025em;color:inherit;padding:1rem 0.35rem 1rem 1.1rem;min-width:0;' +
+        'caret-color:#1d1d1f;font-family:inherit;font-size:clamp(1.35rem,4vw,1.7rem);font-weight:560;' +
+        'letter-spacing:-0.045em;color:inherit;padding:1.05rem 0.35rem 1.05rem 1.2rem;min-width:0;' +
         'white-space:nowrap;overflow-x:auto;overflow-y:hidden;line-height:1.25;}' +
         '.field:empty:before{content:"";}' +
         '.field br{display:none;}';
