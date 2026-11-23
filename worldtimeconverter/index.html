@@ -319,17 +319,17 @@
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      margin-top: 0.7rem;
-      max-width: 100%;
+      max-width: min(28rem, calc(100% - 1.5rem));
       padding: 0.42rem 0.9rem 0.42rem 0.72rem;
       border-radius: 999px;
       border: 1px solid rgba(141, 106, 62, 0.28);
-      background: rgba(141, 106, 62, 0.1);
+      background: #fffdf9;
       color: var(--ink);
       font-size: 0.9rem;
       font-weight: 560;
       letter-spacing: -0.02em;
       text-align: left;
+      box-shadow: 0 10px 28px rgba(70, 48, 24, 0.14);
     }
 
     .best[hidden] { display: none; }
@@ -856,10 +856,16 @@
     }
 
     .meet-note {
-      margin-top: 0.55rem;
+      margin: 0;
+      max-width: min(28rem, calc(100% - 1.5rem));
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      background: #fffdf9;
       color: var(--ink-soft);
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       letter-spacing: -0.01em;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(70, 48, 24, 0.14);
     }
 
     .meet-note[hidden] { display: none; }
@@ -978,12 +984,37 @@
     body:not(.embed) .moment { flex: none; margin-bottom: 0.75rem; }
 
     body:not(.embed) .board {
+      position: relative;
       flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       padding: 0.4rem 0.55rem 0.15rem;
+    }
+
+    body:not(.embed) .best,
+    body:not(.embed) .meet-note {
+      position: absolute;
+      z-index: 6;
+      left: 50%;
+      bottom: 2.7rem;
+      width: max-content;
+      max-width: calc(100% - 2rem);
+      transform: translateX(-50%);
+      margin: 0;
+      pointer-events: auto;
+      white-space: nowrap;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      body:not(.embed) .best,
+      body:not(.embed) .meet-note { animation: toast-in 180ms ease; }
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translate(-50%, 8px); }
+      to { opacity: 1; transform: translateX(-50%); }
     }
 
     body:not(.embed) .dials {
@@ -1388,6 +1419,9 @@
 
     body.is-scrubbing .scrub { pointer-events: auto; }
 
+    body.is-scrubbing .best,
+    body.is-scrubbing .meet-note { pointer-events: none; }
+
     .scrub-track {
       position: absolute;
       left: 0;
@@ -1551,8 +1585,6 @@
           <div class="scrub-pearl" aria-hidden="true"></div>
         </div>
         <p class="summary" id="summary" hidden></p>
-        <button class="best" id="best" type="button" hidden></button>
-        <p class="meet-note" id="meet-note" hidden></p>
         <p class="card-open-row"><a class="card-open" id="card-open" href="">Open the day</a></p>
       </section>
 
@@ -1580,6 +1612,8 @@
             <span class="work-note" id="work-note" role="status"></span>
           </div>
         </details>
+        <button class="best" id="best" type="button" hidden></button>
+        <p class="meet-note" id="meet-note" hidden></p>
       </section>
 
       <p class="sr" id="live" aria-live="polite"></p>
