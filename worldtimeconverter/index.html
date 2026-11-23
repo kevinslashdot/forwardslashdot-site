@@ -891,7 +891,7 @@
 
     .dial-card.is-chip .globe { display: none; }
     .dial-card.is-chip .who-time { margin-top: 0; font-size: 1.2rem; }
-    .dial-card.is-chip .dayband { margin: 0.55rem 0 0; }
+    .dial-card.is-chip .dayband { margin: 1.2rem 0 0; }
     .dial-card.is-chip .city-name,
     .dial-card.is-chip .who-time,
     .dial-card.is-chip .who-meta,
@@ -991,10 +991,27 @@
     .dayband {
       position: relative;
       height: 0.38rem;
-      margin: 0.15rem 0.45rem 0.7rem;
+      margin: 1.2rem 0.45rem 0.7rem;
       border-radius: 99px;
       background: rgba(42, 49, 66, 0.16);
     }
+
+    .band-time {
+      position: absolute;
+      left: clamp(1.55rem, var(--mark), calc(100% - 1.55rem));
+      bottom: calc(100% + 0.22rem);
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.is-scrubbing .band-time { opacity: 1; }
 
     .dayband i { position: absolute; top: 0; bottom: 0; }
     .band-early, .band-late { background: rgba(196, 123, 98, 0.55); }
@@ -1197,13 +1214,39 @@
 
     .scrub {
       position: relative;
-      height: 2.75rem;
+      height: 3.55rem;
       margin: 0.05rem 0.35rem 0.15rem;
       touch-action: none;
       cursor: ew-resize;
       user-select: none;
       -webkit-user-select: none;
       -webkit-user-drag: none;
+    }
+
+    .scrub-readout {
+      position: absolute;
+      left: var(--x);
+      top: 0;
+      transform: translateX(-50%);
+      min-width: 4.4rem;
+      padding: 0.16rem 0.5rem 0.18rem;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fffdf9;
+      font-size: 0.72rem;
+      font-weight: 620;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 8px 18px rgba(28, 25, 23, 0.16);
+    }
+
+    body.is-scrubbing .scrub-readout {
+      font-size: 0.95rem;
+      padding: 0.28rem 0.62rem 0.3rem;
     }
 
     body.is-scrubbing,
@@ -1396,6 +1439,7 @@
       <section class="board" id="board" aria-label="Cities on one day">
         <div class="dials" id="rows"></div>
         <div class="scrub track-wrap" id="slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439" aria-label="Time of day" aria-describedby="chat-line">
+          <div class="scrub-readout" id="scrub-readout" aria-hidden="true">12:00 AM</div>
           <div class="scrub-track"></div>
           <div class="scrub-pearl" aria-hidden="true"></div>
         </div>
@@ -1763,6 +1807,15 @@
 
       const ratio = (state.minutes / 1440) * 100;
       slider.style.setProperty("--x", ratio + "%");
+      const readout = document.getElementById("scrub-readout");
+      readout.textContent = time.text;
+      readout.style.transform = "translateX(-50%)";
+      const bounds = slider.getBoundingClientRect();
+      const box = readout.getBoundingClientRect();
+      let shift = 0;
+      if (box.left < bounds.left) shift = bounds.left - box.left;
+      else if (box.right > bounds.right) shift = bounds.right - box.right;
+      if (shift) readout.style.transform = "translateX(calc(-50% + " + shift.toFixed(1) + "px))";
       slider.setAttribute("aria-valuenow", String(state.minutes));
       slider.setAttribute("aria-valuetext", line);
       document.title = question;
@@ -1908,10 +1961,16 @@
       add("band-early", state.workStart - 120, state.workStart);
       add("band-work", state.workStart, state.workEnd);
       add("band-late", state.workEnd, state.workEnd + 120);
+      const mark = (Math.max(0, Math.min(1439, localMinutes)) / 1440 * 100) + "%";
+      el.style.setProperty("--mark", mark);
       const now = document.createElement("i");
       now.className = "band-now";
-      now.style.left = (Math.max(0, Math.min(1439, localMinutes)) / 1440 * 100) + "%";
+      now.style.left = mark;
       el.append(now);
+      const label = document.createElement("span");
+      label.className = "band-time";
+      label.textContent = formatTime(Math.floor(localMinutes / 60) % 24, localMinutes % 60).text;
+      el.append(label);
       const open = formatTime(Math.floor(state.workStart / 60), state.workStart % 60).text;
       const close = formatTime(Math.floor(state.workEnd / 60) % 24, state.workEnd % 60).text;
       const clock = formatTime(Math.floor(localMinutes / 60), localMinutes % 60).text;
