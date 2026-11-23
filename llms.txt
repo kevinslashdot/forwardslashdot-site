@@ -28,7 +28,7 @@ City names and IANA zones are both accepted in the search box. `sf` is San Franc
 
 ## Instant Domain Search
 
-- [Instant Domain Search](https://www.forwardslashdot.com/instantdomainsearch/): Type a name and any public ending (.com, .si, .biz, .ai, .io, .co.uk). Green means it looks free. The ending row starts from what’s common in your country (Canada `.ca`, Australia `.au`) and shifts as people there check names. Register sends that exact name to the registrar.
+- [Instant Domain Search](https://www.forwardslashdot.com/instantdomainsearch/): Type a name and any public ending (.com, .si, .biz, .ai, .io, .co.uk). Green means it looks free. The ending row starts from what’s common in your country and only lists endings Namecheap sells (Canada `.ca`, Australia `.com.au`). It shifts as people there check names. Register sends that exact name to the registrar.
 - [Domain API](https://api.forwardslashdot.com/llms.txt): REST, OpenAPI, and MCP. Pass the full domain, any ending: `GET /api/domain?q=studio.si,cafe.biz`.
 - [MCP discovery](https://api.forwardslashdot.com/.well-known/mcp.json): Streamable HTTP endpoint for `check_domains`. Pass full names, not a fixed list of endings.
 - [OpenAPI](https://api.forwardslashdot.com/openapi.json): Machine-readable schema.
