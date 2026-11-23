@@ -289,7 +289,7 @@
 
     .summary {
       margin-top: 0.45rem;
-      min-height: 1.4em;
+      min-height: calc(2 * 1.4em);
       max-width: 38rem;
       font-size: 1.02rem;
       line-height: 1.4;
@@ -928,6 +928,7 @@
     }
 
     @media (max-width: 720px) {
+      .answer { min-height: calc(2 * 1.35em); }
       .dials { grid-template-columns: 1fr 1fr; }
       .dial-card.is-home { grid-column: 1 / -1; grid-row: auto; }
       .dial-card.is-chip { grid-column: auto; }
@@ -971,6 +972,7 @@
       flex: 1;
       min-height: 0;
       overflow: auto;
+      scrollbar-gutter: stable;
     }
 
     body:not(.embed) .adder { order: 2; flex: none; }
