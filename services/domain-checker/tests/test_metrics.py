@@ -213,6 +213,17 @@ async def test_stats_and_http_counting(api_client_metrics: AsyncClient):
     assert "/stats" in paths
     assert "/api/hit" in paths
 
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setenv("STATS_PASSWORD", "secret-stats")
+    try:
+        locked = await api_client_metrics.get("/stats")
+        assert locked.status_code == 401
+        opened = await api_client_metrics.get("/stats", headers={"Authorization": "Bearer secret-stats"})
+        assert opened.status_code == 200
+        assert opened.json()["total_checks"] == 1
+    finally:
+        monkeypatch.undo()
+
     day = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).date().isoformat()
     first = await api_client_metrics.get(
         "/api/hit",

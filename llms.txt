@@ -1,6 +1,6 @@
 # forwardslashdot
 
-> Utilities on https://www.forwardslashdot.com. World Time Converter is a page on this origin. Domain availability is a separate API. Public aggregates live at /stats/. Prefer absolute API URLs for agents.
+> Utilities on https://www.forwardslashdot.com. World Time Converter is a page on this origin. Domain availability is a separate API. Prefer absolute API URLs for agents.
 
 ## World Time Converter
 
@@ -37,8 +37,7 @@ When the API operator has set affiliate env vars, available domains include an `
 
 ## Stats
 
-- [Stats page](https://www.forwardslashdot.com/stats/): Public aggregates by site area.
-- [Stats API](https://api.forwardslashdot.com/stats): JSON totals for Instant Domain Search and World Time Converter. People and models are separate. A device counts once per day. No query logs or PII.
+- [Stats page](https://www.forwardslashdot.com/stats/): Password-protected aggregates by site area. People and models are separate. A device counts once per day. No query logs or PII.
 
 ## Discovery on this origin
 

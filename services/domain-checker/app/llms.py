@@ -30,7 +30,7 @@ This service is part of the forwardslashdot.com project. The marketing site rema
 ## Endpoints
 
 - [Health]({u("/health")}): Liveness probe — JSON `{{"status":"ok"}}`.
-- [Stats]({u("/stats")}): Aggregate counts by site area, with people and models kept apart. A device counts once per day. No query logs or PII.
+- [Stats]({u("/stats")}): Aggregate counts by site area. Password-protected when STATS_PASSWORD is set (`Authorization: Bearer`). No query logs or PII.
 - [Hit]({u("/api/hit")}): `GET /api/hit?area=&actor=human|llm&visitor=&day=` — one non-PII visit. The same visitor counts once per calendar day.
 - [Domain API]({u("/api/domain")}): `GET /api/domain?q=&area=` — comma-separated domains, batch capped (~25). Optional `area` for stats. Shared logic with the MCP tool.
 - [OpenAPI]({u("/openapi.json")}): Machine-readable HTTP API schema.
