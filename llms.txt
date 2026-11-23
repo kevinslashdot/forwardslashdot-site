@@ -25,7 +25,7 @@ https://www.forwardslashdot.com/time.txt?cities=Los%20Angeles~America/Los_Angele
 
 Blue on the page is the workday in that city. Gold is the two hours on either side. Gray is night. A suggested meeting is only "everyone" when every city stays inside the workday for the whole duration. Otherwise the page shows the closest windows and says who is outside.
 
-City names and IANA zones are both accepted in the search box. `sf` is San Francisco, `nyc` is New York. British Columbia stays on Pacific Time (PCT, UTC−7) year-round.
+City names and IANA zones are both accepted in the search box. `sf` is San Francisco, `nyc` is New York. A town that is not in the city list, such as Deerfield, Illinois, is looked up and added in its own time zone. The opening three cities stay the largest city in the device time zone plus two common comparisons. British Columbia stays on Pacific Time (PCT, UTC−7) year-round.
 
 ## Instant Domain Search
 
@@ -35,6 +35,10 @@ City names and IANA zones are both accepted in the search box. `sf` is San Franc
 - [OpenAPI](https://api.forwardslashdot.com/openapi.json): Machine-readable schema.
 
 When the API operator has set affiliate env vars, available domains include an `affiliate_url` registrar deep-link and a short disclosure. Without those vars, availability is returned without a buy link.
+
+## Panorama
+
+- [Panorama](https://www.forwardslashdot.com/panorama/): Drop a 360 photo and look around. A photo stays in the browser until you sign in and share a link. Sign-in is a code and a button in an email, with no password.
 
 ## Stats
 

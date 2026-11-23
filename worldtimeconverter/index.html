@@ -1579,7 +1579,7 @@
           <p class="adder-title" id="adder-title">Add a city</p>
           <div class="search">
             <label class="sr" for="city-search">Add a city</label>
-            <input id="city-search" type="text" placeholder="Add a city" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <input id="city-search" type="text" placeholder="Add a place" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
             <ul class="results" id="city-list" role="listbox" hidden></ul>
           </div>
           <div class="chips" id="chips"></div>
@@ -2159,6 +2159,7 @@
     };
 
     function cityGeo(city, instant) {
+      if (typeof city.lat === "number" && typeof city.lon === "number") return { lat: city.lat, lon: city.lon };
       const known = CITY_GEO[city.city];
       if (known) return { lat: known[0], lon: known[1] };
       return { lat: 28, lon: Math.max(-180, Math.min(175, tzOffset(instant, city.zone) / 4)) };
@@ -2334,7 +2335,7 @@
     function syncChrome() {
       const full = state.cities.length >= 8;
       searchInput.disabled = full;
-      searchInput.placeholder = full ? "Eight cities is enough to compare" : "Add a city";
+      searchInput.placeholder = full ? "Eight places is enough to compare" : "Add a place";
       document.getElementById("work-start").value = String(Math.floor(state.workStart / 60));
       document.getElementById("work-end").value = String(Math.floor(state.workEnd / 60) === 24 ? 24 : Math.floor(state.workEnd / 60));
     }
@@ -2366,7 +2367,7 @@
 
     function syncUrl() {
       const params = new URLSearchParams();
-      params.set("cities", state.cities.map(keyOf).join(","));
+      params.set("cities", state.cities.map(linkToken).join(","));
       params.set("anchor", state.anchorKey);
       const hh = String(Math.floor(state.minutes / 60)).padStart(2, "0");
       const mm = String(state.minutes % 60).padStart(2, "0");
@@ -2425,18 +2426,48 @@
       return [start, end];
     }
 
+    function peelCoords(token) {
+      const at = token.lastIndexOf("@");
+      if (at < 1) return { token: token, lat: null, lon: null };
+      const bits = token.slice(at + 1).split("_");
+      const lat = Number(bits[0]);
+      const lon = Number(bits[1]);
+      if (bits.length !== 2 || !isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        return { token: token, lat: null, lon: null };
+      }
+      return { token: token.slice(0, at), lat: lat, lon: lon };
+    }
+
+    function withCoords(place, peeled) {
+      if (!place || peeled.lat == null) return place;
+      place.lat = peeled.lat;
+      place.lon = peeled.lon;
+      return place;
+    }
+
+    function linkToken(city) {
+      let token = keyOf(city);
+      if (typeof city.lat === "number" && typeof city.lon === "number") {
+        token += "@" + city.lat.toFixed(2) + "_" + city.lon.toFixed(2);
+      }
+      return token;
+    }
+
     function parseToken(token) {
       token = token.trim();
       if (!token) return null;
+      const peeled = peelCoords(token);
+      token = peeled.token;
       if (token.includes("~")) {
         const index = token.indexOf("~");
         const city = token.slice(0, index);
         const zone = token.slice(index + 1);
         if (!safeZone(zone)) return null;
         const known = CITIES.find(function (item) { return item.city === city && item.zone === zone; });
-        return known
+        const place = known
           ? { city: known.city, region: known.region, zone: known.zone }
           : { city: city, region: zoneLabel(zone), zone: zone };
+        return withCoords(place, peeled);
       }
       const folded = token.toLowerCase();
       const byCity = CITIES.find(function (item) { return item.city.toLowerCase() === folded; });
@@ -2572,7 +2603,13 @@
         state.followDevice = false;
       } else if (fromStore && Array.isArray(fromStore.cities) && (fromStore.followDevice === false || fromStore.customOrder)) {
         cities = fromStore.cities.map(function (city) {
-          return city && safeZone(city.zone) ? { city: city.city, region: city.region, zone: city.zone } : null;
+          if (!city || !safeZone(city.zone)) return null;
+          const place = { city: city.city, region: city.region, zone: city.zone };
+          if (typeof city.lat === "number" && typeof city.lon === "number") {
+            place.lat = city.lat;
+            place.lon = city.lon;
+          }
+          return place;
         }).filter(Boolean);
         state.anchorKey = fromStore.anchorKey || "";
         state.followDevice = fromStore.followDevice === true;
@@ -2701,6 +2738,97 @@
       return scored.slice(0, 8).map(function (item) { return item.row; });
     }
 
+    const REGION_HINT = {
+      al: "alabama", ak: "alaska", az: "arizona", ar: "arkansas", ca: "california",
+      co: "colorado", ct: "connecticut", de: "delaware", fl: "florida", ga: "georgia",
+      hi: "hawaii", id: "idaho", il: "illinois", "in": "indiana", ia: "iowa",
+      ks: "kansas", ky: "kentucky", la: "louisiana", me: "maine", md: "maryland",
+      ma: "massachusetts", mi: "michigan", mn: "minnesota", ms: "mississippi", mo: "missouri",
+      mt: "montana", ne: "nebraska", nv: "nevada", nh: "new hampshire", nj: "new jersey",
+      nm: "new mexico", ny: "new york", nc: "north carolina", nd: "north dakota", oh: "ohio",
+      ok: "oklahoma", or: "oregon", pa: "pennsylvania", ri: "rhode island", sc: "south carolina",
+      sd: "south dakota", tn: "tennessee", tx: "texas", ut: "utah", vt: "vermont",
+      va: "virginia", wa: "washington", wv: "west virginia", wi: "wisconsin", wy: "wyoming",
+      dc: "district of columbia",
+      bc: "british columbia", ab: "alberta", sk: "saskatchewan", mb: "manitoba",
+      on: "ontario", qc: "quebec", nb: "new brunswick", ns: "nova scotia",
+      pe: "prince edward island", nl: "newfoundland and labrador",
+      usa: "united states", us: "united states", uk: "united kingdom", uae: "united arab emirates",
+      canada: "canada", australia: "australia", mexico: "mexico", france: "france",
+      japan: "japan", india: "india", china: "china", germany: "germany", italy: "italy",
+      spain: "spain", brazil: "brazil", ireland: "ireland"
+    };
+
+    let placeTimer = 0;
+    let placeQuery = 0;
+
+    function placeQueryParts(raw) {
+      const words = foldQuery(raw).split(" ").filter(Boolean);
+      const hints = [];
+      const name = [];
+      words.forEach(function (word) {
+        if (REGION_HINT[word]) hints.push(REGION_HINT[word]);
+        else name.push(word);
+      });
+      return { name: name.join(" "), hints: hints };
+    }
+
+    function placeFromGeo(row) {
+      if (!row || !row.name || !row.timezone || !safeZone(row.timezone)) return null;
+      if (typeof row.latitude !== "number" || typeof row.longitude !== "number") return null;
+      const region = [];
+      if (row.admin1 && foldQuery(row.admin1) !== foldQuery(row.name)) region.push(row.admin1);
+      if (row.country) region.push(row.country);
+      return {
+        city: row.name,
+        region: region.join(", ") || row.country || zoneLabel(row.timezone),
+        zone: row.timezone,
+        lat: row.latitude,
+        lon: row.longitude
+      };
+    }
+
+    function rankPlaces(rows, hints) {
+      const populated = rows.filter(function (row) { return String(row.feature_code || "").indexOf("PPL") === 0; });
+      const pool = populated.length ? populated : rows;
+      return pool.map(function (row) {
+        const place = placeFromGeo(row);
+        if (!place) return null;
+        const blob = foldQuery([row.name, row.admin1, row.admin2, row.country, row.country_code].filter(Boolean).join(" "));
+        let score = Math.min(row.population || 0, 2000000) / 100000;
+        hints.forEach(function (hint) { score += blob.includes(hint) ? 40 : -25; });
+        return { score: score, place: place };
+      }).filter(Boolean).sort(function (a, b) { return b.score - a.score; });
+    }
+
+    function searchPlaces(query) {
+      const parts = placeQueryParts(query);
+      if (parts.name.length < 2) {
+        const local = search(query);
+        openResults(local, local.length ? "" : "No matching place");
+        return;
+      }
+      const id = ++placeQuery;
+      const url = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(parts.name) + "&count=10&language=en&format=json";
+      fetch(url).then(function (res) { return res.ok ? res.json() : null; }).then(function (data) {
+        if (id !== placeQuery || searchInput.value.trim() !== query) return;
+        const local = search(query);
+        const seen = {};
+        local.forEach(function (city) { seen[keyOf(city)] = true; });
+        const merged = local.slice();
+        rankPlaces((data && data.results) || [], parts.hints).forEach(function (item) {
+          if (merged.length >= 8 || seen[keyOf(item.place)]) return;
+          seen[keyOf(item.place)] = true;
+          merged.push(item.place);
+        });
+        openResults(merged, "No matching place");
+      }).catch(function () {
+        if (id !== placeQuery || searchInput.value.trim() !== query) return;
+        const local = search(query);
+        openResults(local, "No matching place");
+      });
+    }
+
     function openResults(items, emptyNote) {
       cityList.innerHTML = "";
       activeOption = 0;
@@ -2769,7 +2897,7 @@
       state.replaceKey = key || "";
       const current = state.cities.find(function (city) { return keyOf(city) === key; });
       document.getElementById("adder-title").textContent = current ? "Change " + current.city : "Add a city";
-      searchInput.placeholder = current ? "Search for a different city" : "City or time zone";
+      searchInput.placeholder = current ? "Search for a different place" : "Town, city, or time zone";
       searchInput.value = "";
       document.getElementById("adder").classList.add("is-open");
       const addBtn = document.getElementById("add-city");
@@ -2911,6 +3039,10 @@
     function addCity(city) {
       const key = keyOf(city);
       const place = { city: city.city, region: city.region, zone: city.zone };
+      if (typeof city.lat === "number" && typeof city.lon === "number") {
+        place.lat = city.lat;
+        place.lon = city.lon;
+      }
       if (state.replaceKey) {
         const index = state.cities.findIndex(function (item) { return keyOf(item) === state.replaceKey; });
         if (index < 0) return;
@@ -3238,6 +3370,8 @@
       const query = searchInput.value.trim();
       renderChips();
       if (!query) {
+        clearTimeout(placeTimer);
+        placeQuery += 1;
         closeList();
         return;
       }
@@ -3246,7 +3380,9 @@
         openResults([{ city: zoneLabel(query), region: "IANA time zone", zone: query }]);
         return;
       }
-      openResults(found, "No matching city");
+      openResults(found, found.length ? "" : "Looking…");
+      clearTimeout(placeTimer);
+      placeTimer = setTimeout(function () { searchPlaces(query); }, 280);
     });
     searchInput.addEventListener("keydown", function (event) {
       if (event.key === "ArrowDown") {

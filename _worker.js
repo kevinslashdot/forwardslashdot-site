@@ -1,3 +1,4 @@
+import { handlePanorama } from "./panorama/server.js";
 const MODEL = /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Anthropic|Perplexity|Google-Extended|Bytespider|Amazonbot|meta-externalagent|cohere|YouBot|Phind|DuckAssist|CCBot|Applebot-Extended/i;
 const UNFURL = /Slackbot|Twitterbot|facebookexternalhit|Facebot|Discordbot|TelegramBot|WhatsApp|LinkedInBot|Iframely|embedly|Pinterest|vkShare/i;
 const BROWSER = /Mozilla\/|AppleWebKit|Chrome\/|Firefox\/|Safari\//i;
@@ -200,6 +201,13 @@ function zoneLabel(zone) {
 function parseToken(catalog, token) {
   token = token.trim();
   if (!token) return null;
+  const at = token.lastIndexOf("@");
+  if (at > 0) {
+    const bits = token.slice(at + 1).split("_");
+    const lat = Number(bits[0]);
+    const lon = Number(bits[1]);
+    if (bits.length === 2 && isFinite(lat) && isFinite(lon)) token = token.slice(0, at);
+  }
   if (token.includes("~")) {
     const index = token.indexOf("~");
     const city = token.slice(0, index);
@@ -1103,6 +1111,8 @@ async function personalizedSearch(request, env, url) {
 
 export default {
   async fetch(request, env, ctx) {
+    const panoramaResponse = await handlePanorama(request, env);
+    if (panoramaResponse) return panoramaResponse;
     const url = new URL(request.url);
     const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, "") : url.pathname;
 
