@@ -932,22 +932,52 @@
       .dial-card.is-home { grid-column: 1 / -1; grid-row: auto; }
       .dial-card.is-chip { grid-column: auto; }
       .add-chip { grid-column: 1 / -1; }
-      body:not(.embed) { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
-      #city-search, .chip, .option, #adder { scroll-margin-bottom: 6.5rem; }
-      body:not(.embed) .scrub {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 8;
-        margin: 0;
-        height: auto;
-        min-height: 3.4rem;
-        padding: 0.7rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom));
-        background: rgba(247, 241, 232, 0.94);
-        box-shadow: 0 -1px 0 rgba(28, 25, 23, 0.06);
-      }
+      #city-search, .chip, .option, #adder { scroll-margin-bottom: 1rem; }
     }
+
+    body:not(.embed) {
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    body:not(.embed) .wrap {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 0.9rem 1.25rem 0.7rem;
+    }
+
+    body:not(.embed) header { flex: none; margin-bottom: 0.85rem; }
+
+    body:not(.embed) main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body:not(.embed) .moment { flex: none; margin-bottom: 0.75rem; }
+
+    body:not(.embed) .board {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    body:not(.embed) .dials {
+      order: 1;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    body:not(.embed) .adder { order: 2; flex: none; }
+
+    body:not(.embed) .scrub { order: 3; flex: none; }
+
+    body:not(.embed) footer { flex: none; margin-top: 0.65rem; }
 
     .dial-card.is-dragging {
       z-index: 6;
@@ -1173,9 +1203,16 @@
       cursor: ew-resize;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-user-drag: none;
     }
 
-    body.is-scrubbing { overflow: hidden; }
+    body.is-scrubbing,
+    body.is-scrubbing * {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body.is-scrubbing { overflow: hidden; cursor: ew-resize; }
 
     body.is-scrubbing .scrub-pearl { transform: scale(1.32); }
 
@@ -2884,12 +2921,16 @@
       if (event.target.closest("button, input, a, select, summary")) return;
       const lane = event.target.closest(".track-wrap");
       if (!lane) return;
+      event.preventDefault();
+      const selection = window.getSelection();
+      if (selection) selection.removeAllRanges();
       dragLane = lane;
       document.body.classList.add("is-scrubbing");
       state.minutes = minutesFromEvent(event);
       paint();
       board.setPointerCapture(event.pointerId);
     });
+    slider.addEventListener("selectstart", function (event) { event.preventDefault(); });
     board.addEventListener("pointermove", function (event) {
       if (!dragLane) return;
       state.minutes = minutesFromEvent(event);
