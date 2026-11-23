@@ -17,6 +17,7 @@
   <meta name="twitter:title" content="World Time Converter — forwardslashdot" />
   <meta name="twitter:description" content="Compare cities on one day and find a meeting that lands in everyone's workday." />
   <meta name="twitter:image" content="https://www.forwardslashdot.com/time.svg" />
+  <link rel="stylesheet" href="/assets/mh-motion.css" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
   <link rel="alternate" type="text/plain" href="/time.txt" title="Plain-text comparison" />
   <link rel="describedby" href="/llms.txt" />
@@ -145,6 +146,21 @@
       font-weight: 560;
       letter-spacing: -0.01em;
     }
+
+    .share {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .share svg {
+      width: 1.05rem;
+      height: 1.05rem;
+      display: block;
+      flex: none;
+    }
+
+    .share.is-copied { color: var(--link); }
 
     #add-city[aria-expanded="true"] {
       color: var(--link);
@@ -1475,7 +1491,14 @@
         <span class="brand-name">Time</span>
       </a>
       <div class="header-actions">
-        <button class="share" id="share" type="button">Copy</button>
+        <button class="share" id="share" type="button" aria-label="Share this comparison">
+          <svg class="share-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3.5v11.5" />
+            <path d="m7.5 8 4.5-4.5L16.5 8" />
+            <path d="M5.5 12.5v6a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-6" />
+          </svg>
+          <span class="share-label">Share</span>
+        </button>
       </div>
     </header>
 
@@ -1548,7 +1571,7 @@
     </main>
 
     <footer>
-      <p>The home clock follows this device until you switch it. British Columbia stays on Pacific Time (PCT, UTC−7) all year. Copy puts a one-line comparison and this link on the clipboard, which is the form to paste into a chat.</p>
+      <p>The home clock follows this device until you switch it. British Columbia stays on Pacific Time (PCT, UTC−7) all year. Share puts a one-line comparison and this link on the clipboard, which is the form to paste into a chat.</p>
       <p class="foot-links">
         <a href="/llms.txt">llms.txt</a>
         <a href="/time.txt">plain text</a>
@@ -3241,19 +3264,57 @@
       announce();
     });
 
+    const SHARE_GLYPH = '<path d="M12 3.5v11.5" /><path d="m7.5 8 4.5-4.5L16.5 8" /><path d="M5.5 12.5v6a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-6" />';
+    const CHECK_GLYPH = '<path d="m5 12.5 4.5 4.5L19 7.5" />';
+
+    function playBounce(el) {
+      if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      el.classList.remove("mh-bounce");
+      void el.offsetWidth;
+      el.classList.add("mh-bounce");
+      el.addEventListener("animationend", function () { el.classList.remove("mh-bounce"); }, { once: true });
+    }
+
     document.getElementById("share").addEventListener("click", function () {
       const button = document.getElementById("share");
+      const glyph = button.querySelector("svg");
+      const label = button.querySelector(".share-label");
       syncUrl();
-      const text = document.getElementById("chat-line").textContent + "\n" + location.href;
-      const done = function (label) {
-        button.textContent = label;
-        setTimeout(function () { button.textContent = "Copy"; }, 1600);
+      const line = document.getElementById("chat-line").textContent;
+      const url = location.href;
+      const title = document.title;
+      playBounce(glyph);
+      const touch = window.matchMedia("(pointer: coarse)").matches;
+      const payload = touch ? { text: line, url: url } : { title: title, text: line, url: url };
+      const markCopied = function () {
+        glyph.innerHTML = CHECK_GLYPH;
+        label.textContent = "Copied";
+        button.classList.add("is-copied");
+        button.setAttribute("aria-label", "Link copied");
+        setTimeout(function () {
+          glyph.innerHTML = SHARE_GLYPH;
+          label.textContent = "Share";
+          button.classList.remove("is-copied");
+          button.setAttribute("aria-label", "Share this comparison");
+        }, 1600);
       };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Copy the link"); });
-      } else {
-        done("Copy the link");
+      const copy = function () {
+        const text = line + "\n" + url;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(markCopied, function () {});
+        }
+      };
+      if (typeof navigator.share === "function") {
+        const data = typeof navigator.canShare === "function" && !navigator.canShare(payload) ? { url: url } : payload;
+        if (typeof navigator.canShare !== "function" || navigator.canShare(data)) {
+          navigator.share(data).then(function () {}, function (err) {
+            if (err && err.name === "AbortError") return;
+            copy();
+          });
+          return;
+        }
       }
+      copy();
     });
 
     window.addEventListener("resize", paint);
