@@ -21,6 +21,59 @@ const ABBR_ZONES = {
 };
 
 const API_ORIGIN = "https://api.forwardslashdot.com";
+// Same rows as services/domain-checker/app/endings.py. First paint uses this.
+// /api/endings then replaces it once stored checks from that country are enough to move the row.
+const ENDING_GLOBAL = [".com", ".net", ".org", ".io", ".co", ".ai"];
+const ENDING_SEED = {
+  CA: [".ca", ".com", ".net", ".org", ".io", ".ai"],
+  AU: [".au", ".com.au", ".com", ".net", ".io", ".org"],
+  GB: [".uk", ".co.uk", ".com", ".org", ".io", ".ai"],
+  DE: [".de", ".com", ".net", ".org", ".eu", ".io"],
+  FR: [".fr", ".com", ".eu", ".net", ".org", ".io"],
+  NL: [".nl", ".com", ".eu", ".net", ".org", ".io"],
+  ES: [".es", ".com", ".net", ".org", ".eu", ".io"],
+  IT: [".it", ".com", ".net", ".org", ".eu", ".io"],
+  MX: [".mx", ".com.mx", ".com", ".net", ".org", ".io"],
+  IN: [".in", ".co.in", ".com", ".net", ".org", ".io"],
+  SG: [".sg", ".com.sg", ".com", ".net", ".org", ".io"],
+  NZ: [".nz", ".co.nz", ".com", ".net", ".org", ".io"],
+  IE: [".ie", ".com", ".net", ".org", ".eu", ".io"],
+  SE: [".se", ".com", ".net", ".org", ".eu", ".io"],
+  NO: [".no", ".com", ".net", ".org", ".eu", ".io"],
+  DK: [".dk", ".com", ".net", ".org", ".eu", ".io"],
+  FI: [".fi", ".com", ".net", ".org", ".eu", ".io"],
+  CH: [".ch", ".com", ".net", ".org", ".io", ".ai"],
+  AT: [".at", ".com", ".net", ".org", ".eu", ".io"],
+  BE: [".be", ".com", ".net", ".org", ".eu", ".io"],
+  PL: [".pl", ".com", ".net", ".org", ".eu", ".io"],
+  PT: [".pt", ".com", ".net", ".org", ".eu", ".io"],
+  BR: [".br", ".com.br", ".com", ".net", ".org", ".io"],
+  JP: [".jp", ".com", ".net", ".org", ".io", ".ai"],
+  KR: [".kr", ".com", ".net", ".org", ".io", ".ai"],
+  CN: [".cn", ".com", ".net", ".org", ".io", ".ai"],
+  HK: [".hk", ".com", ".net", ".org", ".io", ".ai"],
+  TW: [".tw", ".com", ".net", ".org", ".io", ".ai"],
+  ID: [".id", ".com", ".net", ".org", ".io", ".ai"],
+  PH: [".ph", ".com.ph", ".com", ".net", ".org", ".io"],
+  MY: [".my", ".com", ".net", ".org", ".io", ".ai"],
+  ZA: [".co.za", ".com", ".net", ".org", ".io", ".ai"],
+  AE: [".ae", ".com", ".net", ".org", ".io", ".ai"],
+  PE: [".pe", ".com.pe", ".com", ".net", ".org", ".io"]
+};
+
+function visitorCountry(request, url) {
+  const query = String((url && url.searchParams.get("region")) || (url && url.searchParams.get("country")) || "").trim().toUpperCase();
+  const code = query === "UK" ? "GB" : query;
+  if (/^[A-Z]{2}$/.test(code)) return code;
+  const header = String((request.headers.get("cf-ipcountry") || "")).trim().toUpperCase();
+  if (header === "UK") return "GB";
+  if (/^[A-Z]{2}$/.test(header)) return header;
+  return "";
+}
+
+function seededRow(country) {
+  return (ENDING_SEED[country] || ENDING_GLOBAL).slice();
+}
 const DISCOVERY = {
   "/.well-known/mcp.json": API_ORIGIN + "/.well-known/mcp.json",
   "/.well-known/api-catalog": API_ORIGIN + "/.well-known/api-catalog",
@@ -628,11 +681,10 @@ function domainCacheKey(origin, domain) {
   return new Request(origin + "/api/domain?q=" + encodeURIComponent(domain), { method: "GET" });
 }
 
-function tallyDomain(ctx, domain, area) {
-  const task = fetch(
-    API_ORIGIN + "/api/domain?q=" + encodeURIComponent(domain) + "&area=" + encodeURIComponent(area),
-    { cf: { cacheTtl: 0 } }
-  ).catch(function () {});
+function tallyDomain(ctx, domain, area, country) {
+  let target = API_ORIGIN + "/api/domain?q=" + encodeURIComponent(domain) + "&area=" + encodeURIComponent(area);
+  if (country) target += "&country=" + encodeURIComponent(country);
+  const task = fetch(target, { cf: { cacheTtl: 0 } }).catch(function () {});
   if (ctx && ctx.waitUntil) ctx.waitUntil(task);
 }
 
@@ -647,6 +699,8 @@ async function proxyDomain(url) {
 
 async function handleDomain(request, env, ctx) {
   const url = new URL(request.url);
+  const country = visitorCountry(request, url);
+  if (country && !url.searchParams.get("country")) url.searchParams.set("country", country);
   const raw = (url.searchParams.get("q") || "").trim().toLowerCase();
   if (!raw || raw.includes(",")) return proxyDomain(url);
   if (!DOMAIN_RE.test(raw)) {
@@ -671,7 +725,7 @@ async function handleDomain(request, env, ctx) {
         const data = await hit.json();
         if (data.results && data.results[0]) data.results[0].cached = true;
         data.timing_ms = 0;
-        if (!warm) tallyDomain(ctx, raw, area);
+        if (!warm) tallyDomain(ctx, raw, area, country);
         return domainResponse(data, EDGE_CACHE_SECONDS);
       }
     } catch (_) {}
@@ -700,8 +754,62 @@ async function handleDomain(request, env, ctx) {
   if (cache && ctx && ctx.waitUntil) {
     ctx.waitUntil(cache.put(key, response.clone()).catch(function () {}));
   }
-  if (!warm) tallyDomain(ctx, raw, area);
+  if (!warm) tallyDomain(ctx, raw, area, country);
   return response;
+}
+
+async function handleEndings(request, url, ctx) {
+  const country = visitorCountry(request, url);
+  const seed = seededRow(country);
+  let cache = null;
+  try { cache = caches.default; } catch (_) { cache = null; }
+  const cacheKey = new Request(url.origin + "/api/endings?country=" + encodeURIComponent(country || "XX"), { method: "GET" });
+  if (cache) {
+    try {
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+    } catch (_) {}
+  }
+  let body = { country: country || "XX", endings: seed, source: "seed" };
+  try {
+    const upstream = await fetch(
+      API_ORIGIN + "/api/endings?country=" + encodeURIComponent(country || "XX"),
+      { cf: { cacheTtl: 0 } }
+    );
+    if (upstream.ok) {
+      const data = await upstream.json();
+      if (data && Array.isArray(data.endings) && data.endings.length) body = data;
+    }
+  } catch (_) {}
+  const response = new Response(JSON.stringify(body), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=60"
+    }
+  });
+  if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(function () {}));
+  return response;
+}
+
+async function personalizedSearch(request, env, url) {
+  const asset = await env.ASSETS.fetch(request);
+  if (!asset.ok || !asset.headers.get("content-type") || asset.headers.get("content-type").indexOf("text/html") === -1) {
+    return asset;
+  }
+  const endings = seededRow(visitorCountry(request, url));
+  let html = await asset.text();
+  html = html.replace(
+    'var TLDS = [".com", ".net", ".org", ".io", ".co", ".ai"];',
+    "var TLDS = " + JSON.stringify(endings) + ";"
+  );
+  html = html.replace(
+    '<span id="tld-suffix-label">.com</span>',
+    '<span id="tld-suffix-label">' + endings[0] + "</span>"
+  );
+  const headers = new Headers(asset.headers);
+  headers.set("content-type", "text/html; charset=utf-8");
+  headers.set("cache-control", "private, no-store");
+  return new Response(html, { status: asset.status, headers });
 }
 
 export default {
@@ -711,6 +819,10 @@ export default {
 
     if (request.method === "GET" && path === "/api/domain") {
       return handleDomain(request, env, ctx);
+    }
+
+    if (request.method === "GET" && path === "/api/endings") {
+      return handleEndings(request, url, ctx);
     }
 
     if (path === "/stats" || path.startsWith("/stats/")) {
@@ -740,6 +852,9 @@ export default {
       const task = noteModel(request, area);
       if (ctx && ctx.waitUntil) ctx.waitUntil(task);
       else await task;
+    }
+    if (request.method === "GET" && path === "/instantdomainsearch") {
+      return personalizedSearch(request, env, url);
     }
     return env.ASSETS.fetch(request);
   }
