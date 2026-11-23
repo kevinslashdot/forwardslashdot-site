@@ -608,8 +608,9 @@
     .chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.4rem;
-      padding-bottom: 0.35rem;
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+      padding-bottom: 0.15rem;
     }
 
     .chip {
@@ -1151,6 +1152,11 @@
     body:not(.embed) .add-chip[aria-expanded="true"] .round-add { background: var(--link); }
 
     body:not(.embed) .adder { order: 2; flex: none; }
+
+    body:not(.embed) .board:has(.best:not([hidden])) .adder.is-open,
+    body:not(.embed) .board:has(.meet-note:not([hidden])) .adder.is-open {
+      margin-bottom: 4.15rem;
+    }
 
     body:not(.embed) .moment .scrub { margin: 0.95rem 0.15rem 0.15rem; }
 
