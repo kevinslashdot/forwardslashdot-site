@@ -239,15 +239,113 @@
     .tld-suffix {
       display: flex;
       align-items: center;
-      padding: 0 1.1rem 0 0.35rem;
+      gap: 0.28rem;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      font: inherit;
       font-size: clamp(1.15rem, 3.5vw, 1.35rem);
       font-weight: 500;
       letter-spacing: -0.025em;
       color: var(--ink-soft);
-      cursor: text;
-      outline: none;
+      padding: 0 0.85rem 0 0.35rem;
+      cursor: pointer;
       white-space: nowrap;
-      transition: color 0.35s ease;
+    }
+
+    .tld-suffix .chevron {
+      width: 0.72rem;
+      height: 0.72rem;
+      opacity: 0.55;
+    }
+
+    .tld-pop {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .tld-menu {
+      position: absolute;
+      top: calc(100% + 0.4rem);
+      right: 0;
+      z-index: 30;
+      width: min(17rem, calc(100vw - 2rem));
+      padding: 0.3rem;
+      border-radius: 0.9rem;
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(24px) saturate(1.6);
+      -webkit-backdrop-filter: blur(24px) saturate(1.6);
+      box-shadow:
+        0 18px 50px rgba(29, 29, 31, 0.16),
+        0 0 0 0.5px rgba(29, 29, 31, 0.08);
+    }
+
+    .tld-menu[hidden] { display: none; }
+
+    .tld-search {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      border: 0;
+      border-bottom: 1px solid var(--hairline);
+      background: transparent;
+      font: inherit;
+      font-size: 0.95rem;
+      color: var(--ink);
+      padding: 0.5rem 0.65rem 0.55rem;
+      outline: none;
+    }
+
+    .tld-options {
+      max-height: 16.5rem;
+      overflow: auto;
+      padding-top: 0.2rem;
+    }
+
+    .tld-group-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      padding: 0.55rem 0.7rem 0.2rem;
+    }
+
+    .tld-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 0.98rem;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      text-align: left;
+      padding: 0.42rem 0.7rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+    }
+
+    .tld-option.is-active,
+    .tld-option:hover {
+      background: rgba(29, 29, 31, 0.06);
+    }
+
+    .tld-mark {
+      font-size: 0.85rem;
+      opacity: 0;
+    }
+
+    .tld-option[aria-selected="true"] .tld-mark { opacity: 1; }
+
+    .tld-empty {
+      margin: 0;
+      padding: 0.7rem;
+      font-size: 0.9rem;
+      color: var(--ink-soft);
     }
 
     .result {
@@ -428,17 +526,23 @@
             aria-describedby="result-status"
             aria-multiline="false"
           ></span>
-          <span
-            class="tld-suffix"
-            id="tld-suffix"
-            contenteditable="true"
-            spellcheck="false"
-            autocorrect="off"
-            autocapitalize="none"
-            enterkeyhint="done"
-            role="textbox"
-            aria-label="Ending"
-          >.com</span>
+          <div class="tld-pop" id="tld-pop">
+            <button
+              type="button"
+              class="tld-suffix"
+              id="tld-suffix"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-controls="tld-menu"
+            >
+              <span id="tld-suffix-label">.com</span>
+              <svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="tld-menu" id="tld-menu" hidden>
+              <input class="tld-search" id="tld-search" type="text" placeholder="Search" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search endings" />
+              <div class="tld-options" id="tld-options" role="listbox" aria-label="Domain endings"></div>
+            </div>
+          </div>
         </div>
 
         <div class="result" aria-live="polite">
@@ -449,7 +553,7 @@
         </div>
       </div>
 
-      <p class="hint">Type a dot for any ending, such as .si or .co.uk. Not a guarantee of registrability.</p>
+      <p class="hint">The row is the usual set. Open the ending for every one you can register. Availability isn’t a guarantee.</p>
     </div>
   </main>
 
@@ -468,7 +572,7 @@
   <script>
     (function () {
       var API = "/api/domain";
-      var TLDS = [".com", ".net", ".org", ".io", ".dev", ".app", ".ai", ".co", ".xyz"];
+      var TLDS = [".com", ".net", ".org", ".io", ".co", ".ai"];
       // The edge answers on the same connection. Wait only while a 1-character label is still a typo.
       var DEBOUNCE_SHORT_MS = 0;
       var DEBOUNCE_LONG_MS = 40;
@@ -477,6 +581,13 @@
 
       var tldGroup = document.getElementById("tld-group");
       var tldSuffix = document.getElementById("tld-suffix");
+      var suffixLabel = document.getElementById("tld-suffix-label");
+      var tldMenu = document.getElementById("tld-menu");
+      var tldSearch = document.getElementById("tld-search");
+      var tldOptions = document.getElementById("tld-options");
+      var tldPop = document.getElementById("tld-pop");
+      var POPULAR = ["com", "net", "org", "io", "co", "ai", "dev", "app", "me", "xyz", "info", "biz", "us", "uk", "ca", "de"];
+      var ALL = "ac,academy,accountant,accountants,actor,adult,africa,agency,ai,airforce,apartments,app,archi,army,art,asia,associates,attorney,auction,audio,auto,autos,baby,band,bar,bargains,beauty,beer,berlin,best,bet,bid,bike,bingo,bio,biz,black,blackfriday,blog,blue,boats,bond,boo,boston,bot,boutique,broker,build,builders,business,buzz,bz,ca,cab,cafe,cam,camera,camp,capital,car,cards,care,careers,cars,casa,cash,casino,catering,cc,center,ceo,cfd,ch,charity,chat,cheap,christmas,church,city,claims,cleaning,click,clinic,clothing,cloud,club,cm,cn,co,coach,codes,coffee,college,com,community,company,computer,condos,construction,consulting,contact,contractors,cooking,cool,country,coupons,courses,credit,creditcard,cricket,cruises,cx,cymru,cyou,dad,dance,date,dating,day,de,dealer,deals,degree,delivery,democrat,dental,dentist,desi,design,dev,diamonds,diet,digital,direct,directory,discount,diy,doctor,dog,domains,download,earth,eco,education,email,energy,engineer,engineering,enterprises,equipment,es,esq,estate,eu,events,exchange,expert,exposed,express,fail,faith,family,fan,fans,farm,fashion,feedback,film,finance,financial,fish,fishing,fit,fitness,flights,florist,flowers,fm,foo,food,football,forex,forsale,forum,foundation,fr,fun,fund,furniture,futbol,fyi,gallery,game,games,garden,gay,gdn,gg,gift,gifts,gives,giving,glass,global,gmbh,gold,golf,graphics,gratis,green,gripe,group,guide,guitars,guru,hair,hamburg,haus,health,healthcare,help,hiphop,hockey,holdings,holiday,homes,horse,hospital,host,hosting,house,how,icu,id,immo,immobilien,in,inc,industries,info,ing,ink,institute,insure,international,investments,io,irish,is,jetzt,jewelry,juegos,kaufen,kids,kim,kitchen,kiwi,krd,kyoto,la,land,lat,law,lawyer,lease,legal,lgbt,li,life,lifestyle,lighting,limited,limo,link,live,living,llc,loan,loans,lol,london,love,ltd,ltda,luxury,maison,makeup,management,market,marketing,markets,mba,me,media,melbourne,meme,memorial,men,menu,miami,mobi,moda,moe,mom,money,monster,mortgage,motorcycles,mov,movie,mx,nagoya,name,navy,net,network,new,news,nexus,ngo,ninja,nl,nu,nyc,observer,okinawa,one,ong,onl,online,org,osaka,page,paris,partners,parts,party,pe,pet,ph,phd,photo,photography,photos,pics,pictures,pink,pizza,place,plumbing,plus,poker,porn,press,pro,productions,prof,promo,properties,property,protection,pub,pw,quest,racing,realty,recipes,red,rehab,reise,reisen,rent,rentals,repair,report,republican,rest,restaurant,review,reviews,rip,rocks,rodeo,rsvp,run,ryukyu,sale,salon,sarl,sbs,school,schule,science,security,services,sex,sexy,sg,sh,shiksha,shoes,shop,shopping,show,si,singles,site,ski,skin,so,soccer,social,software,solar,solutions,soy,space,storage,store,stream,studio,study,style,sucks,supplies,supply,support,surf,surgery,sydney,systems,tattoo,tax,taxi,team,tech,technology,tel,tennis,theater,theatre,tickets,tienda,tips,tires,to,today,tokyo,tools,top,tours,town,toys,trade,trading,training,travel,tube,tv,uk,university,uno,us,vacations,vana,vc,vegas,ventures,vet,viajes,video,villas,vin,vip,vision,vodka,vote,voting,voto,voyage,wales,watch,webcam,website,wedding,wiki,win,wine,work,works,world,ws,wtf,xxx,xyz,yachts,yoga,yokohama,zip,zone,ae.org,br.com,cn.com,co.bz,co.com,co.in,co.uk,com.au,com.cn,com.co,com.de,com.es,com.mx,com.pe,com.ph,com.se,com.sg,com.vc,de.com,eu.com,gb.net,gr.com,hu.net,in.net,jp.net,jpn.com,me.uk,mex.com,net.au,net.cn,net.pe,net.ph,net.vc,nom.es,org.au,org.cn,org.es,org.mx,org.pe,org.ph,org.uk,org.vc,ru.com,sa.com,se.net,uk.com,uk.net,us.com,us.org,za.com".split(",");
       var preview = document.getElementById("preview");
       var statusEl = document.getElementById("result-status");
       var registerEl = document.getElementById("register");
@@ -619,7 +730,7 @@
       }
 
       function readEnding() {
-        return normalizeEnding(tldSuffix.textContent || "");
+        return normalizeEnding(suffixLabel.textContent || "");
       }
 
       function syncPressed() {
@@ -630,34 +741,10 @@
 
       function writeEnding(ending) {
         var next = normalizeEnding(ending) || ".com";
-        if (tldSuffix.textContent !== next) tldSuffix.textContent = next;
+        suffixLabel.textContent = next;
         if (endingReady(next)) selectedTld = next;
         syncPressed();
         return next;
-      }
-
-      function placeCaretIn(el) {
-        try {
-          if (el === tldSuffix) skipSuffixSelect = true;
-          el.focus();
-          var range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          var sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        } catch (_) {}
-      }
-
-      function selectAll(el) {
-        try {
-          el.focus();
-          var range = document.createRange();
-          range.selectNodeContents(el);
-          var sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        } catch (_) {}
       }
 
       function clearAffiliate() {
@@ -730,6 +817,7 @@
 
       function selectTld(tld) {
         writeEnding(tld);
+        closeMenu();
         scheduleCheck();
       }
 
@@ -740,7 +828,7 @@
           var typingName = shadow.activeElement === field;
           nameInput.value = split.label;
           writeEnding(split.ending);
-          if (typingName && !endingReady(split.ending)) placeCaretIn(tldSuffix);
+          if (typingName && !endingReady(split.ending)) openMenu();
           else placeCaretEnd();
         } else if (readField() !== split.label) {
           nameInput.value = split.label;
@@ -897,57 +985,122 @@
         tldGroup.appendChild(btn);
       });
 
-      var skipSuffixSelect = false;
-      try {
-        tldSuffix.contentEditable = "plaintext-only";
-      } catch (_) {}
-      tldSuffix.addEventListener("focus", function () {
-        if (skipSuffixSelect) {
-          skipSuffixSelect = false;
-          return;
+      var menuItems = [];
+      var menuIndex = 0;
+
+      function menuGroups(query) {
+        var q = String(query || "").toLowerCase().replace(/^\./, "").replace(/[^a-z0-9.-]/g, "");
+        if (!q) {
+          return [
+            { label: "Common", items: POPULAR },
+            { label: "All endings", items: ALL.filter(function (item) { return POPULAR.indexOf(item) === -1; }) }
+          ];
         }
-        selectAll(tldSuffix);
-      });
-      tldSuffix.addEventListener("pointerup", function () {
-        selectAll(tldSuffix);
-      });
-      tldSuffix.addEventListener("input", function () {
-        var next = normalizeEnding(tldSuffix.textContent) || ".";
-        if (tldSuffix.textContent !== next) {
-          tldSuffix.textContent = next;
-          placeCaretIn(tldSuffix);
-        }
-        if (endingReady(next)) selectedTld = next;
-        syncPressed();
+        var items = ALL.filter(function (item) { return item.indexOf(q) !== -1; });
+        items.sort(function (a, b) {
+          var as = a.indexOf(q) === 0 ? 0 : 1;
+          var bs = b.indexOf(q) === 0 ? 0 : 1;
+          if (as !== bs) return as - bs;
+          if (a.length !== b.length) return a.length - b.length;
+          return a < b ? -1 : a > b ? 1 : 0;
+        });
+        return [{ label: "", items: items }];
+      }
+
+      function markMenuActive() {
+        var buttons = tldOptions.querySelectorAll(".tld-option");
+        Array.prototype.forEach.call(buttons, function (btn, i) {
+          btn.classList.toggle("is-active", i === menuIndex);
+        });
+        if (buttons[menuIndex]) buttons[menuIndex].scrollIntoView({ block: "nearest" });
+      }
+
+      function renderMenu() {
+        var groups = menuGroups(tldSearch.value);
+        menuItems = [];
+        var html = "";
+        groups.forEach(function (group) {
+          if (!group.items.length) return;
+          if (group.label) html += '<div class="tld-group-label">' + group.label + "</div>";
+          group.items.forEach(function (item) {
+            var index = menuItems.length;
+            menuItems.push(item);
+            var selected = "." + item === selectedTld;
+            html += '<button type="button" class="tld-option" role="option" data-i="' + index + '" aria-selected="' + (selected ? "true" : "false") + '"><span>.' + item + '</span><span class="tld-mark" aria-hidden="true">✓</span></button>';
+          });
+        });
+        tldOptions.innerHTML = html || '<p class="tld-empty">No endings</p>';
+        var selectedAt = menuItems.indexOf(String(selectedTld || "").replace(/^\./, ""));
+        menuIndex = selectedAt >= 0 ? selectedAt : 0;
+        markMenuActive();
+      }
+
+      function openMenu() {
+        tldMenu.hidden = false;
+        tldSuffix.setAttribute("aria-expanded", "true");
+        tldSearch.value = "";
+        renderMenu();
+        tldSearch.focus();
+      }
+
+      function closeMenu() {
+        if (tldMenu.hidden) return;
+        tldMenu.hidden = true;
+        tldSuffix.setAttribute("aria-expanded", "false");
+      }
+
+      function chooseEnding(item) {
+        if (!item) return;
+        writeEnding(item);
+        closeMenu();
         scheduleCheck();
+        nameInput.focus();
+      }
+
+      tldSuffix.addEventListener("click", function () {
+        if (tldMenu.hidden) openMenu();
+        else closeMenu();
       });
-      tldSuffix.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
+      tldSearch.addEventListener("input", renderMenu);
+      tldSearch.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowDown") {
           e.preventDefault();
-          clearTimeout(timer);
-          var label = normalizeLabel(nameInput.value);
-          var ending = readEnding();
-          if (label && endingReady(ending)) runCheck(label + ending);
+          if (!menuItems.length) return;
+          menuIndex = (menuIndex + 1) % menuItems.length;
+          markMenuActive();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (!menuItems.length) return;
+          menuIndex = (menuIndex - 1 + menuItems.length) % menuItems.length;
+          markMenuActive();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          chooseEnding(menuItems[menuIndex]);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          closeMenu();
+          nameInput.focus();
         }
       });
-      tldSuffix.addEventListener("paste", function (e) {
-        e.preventDefault();
-        var text = "";
-        try {
-          text = (e.clipboardData || window.clipboardData).getData("text") || "";
-        } catch (_) {}
-        writeEnding(text);
-        scheduleCheck();
+      tldOptions.addEventListener("click", function (e) {
+        var btn = e.target.closest ? e.target.closest(".tld-option") : null;
+        if (!btn) return;
+        chooseEnding(menuItems[Number(btn.getAttribute("data-i"))]);
       });
-      tldSuffix.addEventListener("blur", function () {
-        if (!endingReady(readEnding())) writeEnding(selectedTld || ".com");
+      document.addEventListener("pointerdown", function (e) {
+        if (tldMenu.hidden || tldPop.contains(e.target)) return;
+        closeMenu();
+      });
+      tldPop.addEventListener("focusout", function (e) {
+        if (tldPop.contains(e.relatedTarget)) return;
+        closeMenu();
       });
 
       field.addEventListener("input", scheduleCheck);
       field.addEventListener("keydown", function (e) {
-        if (e.key === "." ) {
+        if (e.key === ".") {
           e.preventDefault();
-          selectAll(tldSuffix);
+          openMenu();
           return;
         }
         if (e.key === "Enter") {
