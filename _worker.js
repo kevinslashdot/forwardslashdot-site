@@ -1,4 +1,3 @@
-import { handlePanorama } from "./panorama/server.js";
 const MODEL = /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Anthropic|Perplexity|Google-Extended|Bytespider|Amazonbot|meta-externalagent|cohere|YouBot|Phind|DuckAssist|CCBot|Applebot-Extended/i;
 const UNFURL = /Slackbot|Twitterbot|facebookexternalhit|Facebot|Discordbot|TelegramBot|WhatsApp|LinkedInBot|Iframely|embedly|Pinterest|vkShare/i;
 const BROWSER = /Mozilla\/|AppleWebKit|Chrome\/|Firefox\/|Safari\//i;
@@ -1111,8 +1110,6 @@ async function personalizedSearch(request, env, url) {
 
 export default {
   async fetch(request, env, ctx) {
-    const panoramaResponse = await handlePanorama(request, env);
-    if (panoramaResponse) return panoramaResponse;
     const url = new URL(request.url);
     const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, "") : url.pathname;
 
