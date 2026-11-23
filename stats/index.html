@@ -56,11 +56,17 @@
       padding: 2.25rem 1.35rem 4.5rem;
     }
 
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 2.25rem;
+    }
+
     .back {
       display: inline-block;
       font-size: 0.85rem;
       color: var(--ink-soft);
-      margin-bottom: 2.25rem;
       opacity: 0;
       transform: translateY(8px);
       animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
@@ -353,7 +359,10 @@
 </head>
 <body>
   <div class="stage">
-    <a class="back" href="/">← forwardslashdot</a>
+    <nav class="top">
+      <a class="back" href="/">← forwardslashdot</a>
+      <a class="back" href="/stats/logout">Sign out</a>
+    </nav>
 
     <header class="hero">
       <span class="mark" aria-label="forwardslashdot">/.</span>
