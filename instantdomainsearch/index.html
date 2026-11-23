@@ -1062,14 +1062,28 @@
       function chooseEnding(item) {
         if (!item) return;
         writeEnding(item);
+        justPicked = true;
         closeMenu();
         scheduleCheck();
         nameInput.focus();
       }
 
+      var justPicked = false;
+      var pointerInMenu = false;
+
       tldSuffix.addEventListener("click", function () {
+        if (justPicked) return;
         if (tldMenu.hidden) openMenu();
         else closeMenu();
+      });
+      tldPop.addEventListener("pointerdown", function () {
+        pointerInMenu = true;
+      });
+      document.addEventListener("pointerup", function () {
+        setTimeout(function () {
+          pointerInMenu = false;
+          justPicked = false;
+        }, 0);
       });
       tldSearch.addEventListener("input", renderMenu);
       tldSearch.addEventListener("keydown", function (e) {
@@ -1092,9 +1106,10 @@
           nameInput.focus();
         }
       });
-      tldOptions.addEventListener("click", function (e) {
+      tldOptions.addEventListener("pointerdown", function (e) {
         var btn = e.target.closest ? e.target.closest(".tld-option") : null;
         if (!btn) return;
+        e.preventDefault();
         chooseEnding(menuItems[Number(btn.getAttribute("data-i"))]);
       });
       document.addEventListener("pointerdown", function (e) {
@@ -1102,7 +1117,8 @@
         closeMenu();
       });
       tldPop.addEventListener("focusout", function (e) {
-        if (tldPop.contains(e.relatedTarget)) return;
+        if (pointerInMenu || justPicked) return;
+        if (e.relatedTarget && tldPop.contains(e.relatedTarget)) return;
         closeMenu();
       });
 
