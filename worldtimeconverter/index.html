@@ -1333,6 +1333,74 @@
       box-shadow: inset 0 0 0 3px var(--focus);
     }
 
+    body:not(.embed) .row-actions { display: none; }
+
+    @media (hover: hover) and (pointer: fine) {
+      body:not(.embed) .row-actions {
+        display: flex;
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        justify-self: end;
+        align-self: center;
+        gap: 0.3rem;
+        margin-right: 0.35rem;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 2;
+        transition: opacity 140ms ease;
+      }
+
+      body:not(.embed) .dial-card:hover .row-actions,
+      body:not(.embed) .dial-card:focus-within .row-actions {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      body:not(.embed) .dial-card.is-swiped .row-actions { display: none; }
+
+      body:not(.embed) .dial-card:hover .when,
+      body:not(.embed) .dial-card:focus-within .when { opacity: 0; }
+
+      body:not(.embed) .dial-card:hover .city-name,
+      body:not(.embed) .dial-card:focus-within .city-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(100% - 9.5rem);
+      }
+
+      body:not(.embed) .row-actions button {
+        border: 0;
+        border-radius: 999px;
+        padding: 0.28rem 0.72rem;
+        background: rgba(28, 25, 23, 0.06);
+        color: var(--ink);
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        cursor: pointer;
+      }
+
+      body:not(.embed) .row-actions button:hover { background: rgba(28, 25, 23, 0.1); }
+
+      body:not(.embed) .row-actions [data-action="remove"] { color: #d70015; }
+
+      body:not(.embed) .row-actions [data-action="remove"]:hover {
+        background: #ff3b30;
+        color: #fff;
+      }
+
+      body:not(.embed) .row-actions button:disabled {
+        color: rgba(28, 25, 23, 0.28);
+        background: rgba(28, 25, 23, 0.04);
+        cursor: default;
+      }
+
+      body:not(.embed) .row-actions button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--focus);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       body:not(.embed) .row-face { transition: none; }
     }
@@ -1467,6 +1535,7 @@
     body.embed .scrub,
     body.embed .adder,
     body.embed .row-confirm,
+    body.embed .row-actions,
     body.embed .ask,
     body.embed .answer,
     body.embed .add-chip { display: none; }
@@ -2272,7 +2341,6 @@
           confirm.append(choice);
         });
         card.tabIndex = 0;
-        card.setAttribute("aria-label", city.city + ". Drag to reorder, or swipe left to change or delete.");
         card.addEventListener("keydown", function (event) {
           if (event.target !== card) return;
           if (event.key === "Delete" || event.key === "Backspace") {
@@ -2287,7 +2355,25 @@
           event.stopPropagation();
           moveCity(card.dataset.key, up ? -1 : 1);
         });
-        face.append(dial, band, name, time, meta, when);
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        [
+          { action: "change", label: "Change" },
+          { action: "remove", label: "Delete", disabled: state.cities.length === 1 }
+        ].forEach(function (item) {
+          const choice = document.createElement("button");
+          choice.type = "button";
+          choice.dataset.action = item.action;
+          choice.textContent = item.label;
+          choice.setAttribute("aria-label", item.label + " " + city.city);
+          if (item.disabled) choice.disabled = true;
+          actions.append(choice);
+        });
+        const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+        card.setAttribute("aria-label", city.city + (finePointer
+          ? ". Drag to reorder."
+          : ". Drag to reorder, or swipe left to change or delete."));
+        face.append(dial, band, name, time, meta, when, actions);
         card.append(confirm, face);
         rowsEl.append(card);
       });
@@ -3315,7 +3401,7 @@
       if (document.body.classList.contains("embed")) return;
       if (event.button) return;
       const card = event.target.closest(".dial-card");
-      if (!card || event.target.closest(".row-confirm")) return;
+      if (!card || event.target.closest(".row-confirm, .row-actions")) return;
       reorder = {
         card: card,
         pointerId: event.pointerId,
