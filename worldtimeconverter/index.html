@@ -1333,69 +1333,96 @@
       box-shadow: inset 0 0 0 3px var(--focus);
     }
 
-    body:not(.embed) .row-actions { display: none; }
+    body:not(.embed) .row-more { display: none; }
+
+    .row-menu {
+      position: fixed;
+      z-index: 30;
+      min-width: 9.5rem;
+      margin: 0;
+      padding: 0.3rem;
+      background: rgba(255, 252, 247, 0.94);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid var(--hairline);
+      border-radius: 0.8rem;
+      box-shadow: 0 16px 44px rgba(70, 48, 24, 0.16);
+    }
+
+    .row-menu[hidden] { display: none; }
+
+    .row-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: none;
+      border-radius: 0.5rem;
+      padding: 0.42rem 0.7rem;
+      font-size: 0.92rem;
+      font-weight: 560;
+      letter-spacing: -0.02em;
+      cursor: pointer;
+    }
+
+    .row-menu button:hover,
+    .row-menu button:focus-visible { background: rgba(111, 78, 55, 0.08); outline: none; }
+
+    .row-menu-rule {
+      height: 1px;
+      margin: 0.22rem 0.4rem;
+      background: rgba(28, 25, 23, 0.1);
+    }
+
+    .row-menu [data-menu="remove"] { color: #ff3b30; }
+
+    .row-menu button:disabled {
+      color: rgba(28, 25, 23, 0.28);
+      cursor: default;
+    }
+
+    .row-menu button:disabled:hover { background: none; }
 
     @media (hover: hover) and (pointer: fine) {
-      body:not(.embed) .row-actions {
-        display: flex;
-        grid-column: 2;
-        grid-row: 1 / span 2;
-        justify-self: end;
+      body:not(.embed) .row-face {
+        grid-template-columns: auto minmax(6.5rem, 1fr) max-content 1.7rem;
+        grid-template-areas:
+          "globe name time more"
+          "globe meta time more"
+          "band band band band";
+      }
+
+      body:not(.embed) .row-more {
+        display: grid;
+        grid-area: more;
+        place-items: center;
         align-self: center;
-        gap: 0.3rem;
-        margin-right: 0.35rem;
+        width: 1.7rem;
+        height: 1.7rem;
+        border: 0;
+        border-radius: 50%;
+        padding: 0;
+        background: rgba(28, 25, 23, 0.08);
+        color: var(--ink);
+        cursor: pointer;
         opacity: 0;
         pointer-events: none;
-        z-index: 2;
         transition: opacity 140ms ease;
       }
 
-      body:not(.embed) .dial-card:hover .row-actions,
-      body:not(.embed) .dial-card:focus-within .row-actions {
+      body:not(.embed) .row-more svg { width: 0.95rem; height: 0.95rem; display: block; }
+
+      body:not(.embed) .dial-card:hover .row-more,
+      body:not(.embed) .dial-card:focus-within .row-more,
+      body:not(.embed) .dial-card.is-menu .row-more {
         opacity: 1;
         pointer-events: auto;
       }
 
-      body:not(.embed) .dial-card.is-swiped .row-actions { display: none; }
+      body:not(.embed) .row-more:hover,
+      body:not(.embed) .row-more[aria-expanded="true"] { background: rgba(28, 25, 23, 0.14); }
 
-      body:not(.embed) .dial-card:hover .when,
-      body:not(.embed) .dial-card:focus-within .when { opacity: 0; }
-
-      body:not(.embed) .dial-card:hover .city-name,
-      body:not(.embed) .dial-card:focus-within .city-name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: calc(100% - 9.5rem);
-      }
-
-      body:not(.embed) .row-actions button {
-        border: 0;
-        border-radius: 999px;
-        padding: 0.28rem 0.72rem;
-        background: rgba(28, 25, 23, 0.06);
-        color: var(--ink);
-        font-size: 0.82rem;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        cursor: pointer;
-      }
-
-      body:not(.embed) .row-actions button:hover { background: rgba(28, 25, 23, 0.1); }
-
-      body:not(.embed) .row-actions [data-action="remove"] { color: #d70015; }
-
-      body:not(.embed) .row-actions [data-action="remove"]:hover {
-        background: #ff3b30;
-        color: #fff;
-      }
-
-      body:not(.embed) .row-actions button:disabled {
-        color: rgba(28, 25, 23, 0.28);
-        background: rgba(28, 25, 23, 0.04);
-        cursor: default;
-      }
-
-      body:not(.embed) .row-actions button:focus-visible {
+      body:not(.embed) .row-more:focus-visible {
         outline: none;
         box-shadow: 0 0 0 3px var(--focus);
       }
@@ -1535,7 +1562,7 @@
     body.embed .scrub,
     body.embed .adder,
     body.embed .row-confirm,
-    body.embed .row-actions,
+    body.embed .row-more,
     body.embed .ask,
     body.embed .answer,
     body.embed .add-chip { display: none; }
@@ -1690,6 +1717,11 @@
         <button class="best" id="best" type="button" hidden></button>
         <p class="meet-note" id="meet-note" hidden></p>
       </section>
+      <div class="row-menu" id="row-menu" role="menu" hidden>
+        <button type="button" role="menuitem" data-menu="change">Change</button>
+        <div class="row-menu-rule" role="separator"></div>
+        <button type="button" role="menuitem" data-menu="remove">Delete</button>
+      </div>
 
       <p class="sr" id="live" aria-live="polite"></p>
     </main>
@@ -2288,6 +2320,7 @@
     function renderTicks() {}
 
     function renderRows() {
+      closeRowMenu();
       rowsEl.innerHTML = "";
       state.cities.forEach(function (city) {
         const home = keyOf(city) === state.anchorKey;
@@ -2355,25 +2388,18 @@
           event.stopPropagation();
           moveCity(card.dataset.key, up ? -1 : 1);
         });
-        const actions = document.createElement("div");
-        actions.className = "row-actions";
-        [
-          { action: "change", label: "Change" },
-          { action: "remove", label: "Delete", disabled: state.cities.length === 1 }
-        ].forEach(function (item) {
-          const choice = document.createElement("button");
-          choice.type = "button";
-          choice.dataset.action = item.action;
-          choice.textContent = item.label;
-          choice.setAttribute("aria-label", item.label + " " + city.city);
-          if (item.disabled) choice.disabled = true;
-          actions.append(choice);
-        });
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "row-more";
+        more.setAttribute("aria-label", "Actions for " + city.city);
+        more.setAttribute("aria-haspopup", "menu");
+        more.setAttribute("aria-expanded", "false");
+        more.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.2" cy="8" r="1.15" fill="currentColor"/><circle cx="8" cy="8" r="1.15" fill="currentColor"/><circle cx="12.8" cy="8" r="1.15" fill="currentColor"/></svg>';
         const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
         card.setAttribute("aria-label", city.city + (finePointer
           ? ". Drag to reorder."
           : ". Drag to reorder, or swipe left to change or delete."));
-        face.append(dial, band, name, time, meta, when, actions);
+        face.append(dial, band, name, time, meta, when, more);
         card.append(confirm, face);
         rowsEl.append(card);
       });
@@ -3025,6 +3051,50 @@
       document.getElementById("adder").scrollIntoView({ block: "nearest" });
     }
 
+    let menuKey = "";
+
+    function closeRowMenu() {
+      const menu = document.getElementById("row-menu");
+      if (!menu) return;
+      const returnFocus = menu.contains(document.activeElement);
+      const card = rowsEl.querySelector(".dial-card.is-menu");
+      menu.hidden = true;
+      menuKey = "";
+      if (!card) return;
+      card.classList.remove("is-menu");
+      const more = card.querySelector(".row-more");
+      if (!more) return;
+      more.setAttribute("aria-expanded", "false");
+      if (returnFocus) more.focus();
+    }
+
+    function openRowMenu(card, x, y, alignEnd) {
+      if (!card) return;
+      closeCardMenus();
+      closeHome();
+      const menu = document.getElementById("row-menu");
+      rowsEl.querySelectorAll(".dial-card.is-menu").forEach(function (el) {
+        el.classList.remove("is-menu");
+        const previous = el.querySelector(".row-more");
+        if (previous) previous.setAttribute("aria-expanded", "false");
+      });
+      menuKey = card.dataset.key;
+      card.classList.add("is-menu");
+      const more = card.querySelector(".row-more");
+      if (more) more.setAttribute("aria-expanded", "true");
+      menu.querySelector("[data-menu='remove']").disabled = state.cities.length === 1;
+      menu.hidden = false;
+      const width = menu.offsetWidth;
+      const height = menu.offsetHeight;
+      let left = alignEnd ? x - width : x;
+      let top = y;
+      if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8;
+      if (left < 8) left = 8;
+      if (top + height > window.innerHeight - 8) top = Math.max(8, (alignEnd ? y - height - 34 : y - height));
+      menu.style.left = left + "px";
+      menu.style.top = top + "px";
+    }
+
     function closeCardMenus() {
       const active = document.activeElement;
       rowsEl.querySelectorAll(".dial-card.is-swiped").forEach(function (card) {
@@ -3042,6 +3112,7 @@
 
     function openCardMenu(card, focusAction) {
       if (!card) return;
+      closeRowMenu();
       closeCardMenus();
       closeComposer();
       card.classList.add("is-swiped");
@@ -3401,7 +3472,7 @@
       if (document.body.classList.contains("embed")) return;
       if (event.button) return;
       const card = event.target.closest(".dial-card");
-      if (!card || event.target.closest(".row-confirm, .row-actions")) return;
+      if (!card || event.target.closest(".row-confirm, .row-more")) return;
       reorder = {
         card: card,
         pointerId: event.pointerId,
@@ -3433,6 +3504,18 @@
       const swiped = event.target.closest(".dial-card.is-swiped");
       if (swiped && !event.target.closest(".row-confirm")) {
         closeCardMenus();
+        return;
+      }
+      const more = event.target.closest(".row-more");
+      if (more) {
+        event.preventDefault();
+        event.stopPropagation();
+        const card = more.closest(".dial-card");
+        if (menuKey === card.dataset.key) closeRowMenu();
+        else {
+          const box = more.getBoundingClientRect();
+          openRowMenu(card, box.right, box.bottom + 6, true);
+        }
         return;
       }
       if (event.target.closest("[data-action], [data-add]")) {
@@ -3614,15 +3697,34 @@
       if (menu.hidden) openHome();
       else closeHome();
     });
+    rowsEl.addEventListener("contextmenu", function (event) {
+      if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+      const card = event.target.closest(".dial-card");
+      if (!card) return;
+      event.preventDefault();
+      openRowMenu(card, event.clientX, event.clientY, false);
+    });
+    rowsEl.addEventListener("scroll", closeRowMenu);
+    document.getElementById("row-menu").addEventListener("click", function (event) {
+      const item = event.target.closest("[data-menu]");
+      if (!item || item.disabled || !menuKey) return;
+      event.stopPropagation();
+      const key = menuKey;
+      closeRowMenu();
+      if (item.dataset.menu === "change") openComposer(key);
+      else if (item.dataset.menu === "remove") removeCity(key);
+    });
     document.addEventListener("click", function (event) {
       if (!event.target.closest(".where-wrap")) closeHome();
       if (!event.target.closest(".row-confirm")) closeCardMenus();
-      if (!event.target.closest("#adder, #add-city, [data-add]")) closeComposer();
+      if (!event.target.closest("#adder, #add-city, [data-add], #row-menu")) closeComposer();
+      if (!event.target.closest("#row-menu, .row-more")) closeRowMenu();
     });
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape") {
         closeHome();
         closeCardMenus();
+        closeRowMenu();
         closeComposer();
       }
     });
