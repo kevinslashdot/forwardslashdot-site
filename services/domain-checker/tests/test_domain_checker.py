@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+
+import dns.resolver
 import httpx
 import pytest
 import respx
@@ -344,6 +347,48 @@ def check_domains_callable(main_mod):
         if inner is not None and callable(inner):
             return inner
     return tool_fn
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_nxdomain_waits_for_rdap_registered(monkeypatch):
+    """Redemption-period names have no nameservers but are still registered."""
+
+    class _NxdomainResolver:
+        lifetime = 0
+
+        async def resolve(self, domain, rdtype):
+            raise dns.resolver.NXDOMAIN()
+
+    monkeypatch.setattr(
+        "app.domain_checker.dns.asyncresolver.Resolver",
+        lambda: _NxdomainResolver(),
+    )
+
+    async def slow_registered(request):
+        await asyncio.sleep(0.05)
+        return httpx.Response(
+            200,
+            json={"ldhName": "PANOIMAGE.COM", "status": ["redemption period"]},
+        )
+
+    respx.get(IANA_DNS_BOOTSTRAP).mock(return_value=httpx.Response(200, json=BOOTSTRAP_BODY))
+    respx.get("https://rdap.verisign.com/com/v1/domain/panoimage.com").mock(
+        side_effect=slow_registered
+    )
+
+    async with httpx.AsyncClient() as http:
+        dc = DomainChecker(
+            http_client=http,
+            owns_client=False,
+            affiliate=None,
+            race_dns=True,
+        )
+        result = await dc.check_one("panoimage.com")
+
+    assert result["status"] == "registered"
+    assert result["source"] == "rdap"
+    assert "affiliate_url" not in result
 
 
 def test_llms_builder_content():

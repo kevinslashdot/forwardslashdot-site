@@ -276,7 +276,17 @@ class DomainChecker:
                         rdap = result
                     else:
                         dns_result = result
-                    if result.get("status") in ("available", "registered"):
+                    # RDAP is authoritative for both available and registered.
+                    # DNS "registered" (NS or SOA) is also enough to stop.
+                    # DNS NXDOMAIN is not: names in redemption, pending
+                    # delete, or serverHold have no nameservers and still
+                    # are not available to register.
+                    dns_registered = task is dns_task and result.get("status") == "registered"
+                    rdap_definitive = task is rdap_task and result.get("status") in (
+                        "available",
+                        "registered",
+                    )
+                    if dns_registered or rdap_definitive:
                         for other in pending:
                             other.cancel()
                         return self._with_affiliate(result)
@@ -286,7 +296,11 @@ class DomainChecker:
             if pending:
                 await asyncio.gather(*pending, return_exceptions=True)
 
-        # Both inconclusive — prefer RDAP detail, fall back to DNS.
+        # RDAP missed. A completed DNS answer is the fallback, including
+        # NXDOMAIN, which we only trust once the registry lookup is done.
+        if dns_result and dns_result.get("status") in ("available", "registered"):
+            return self._with_affiliate(dns_result)
+
         merged = dict(rdap or dns_result or {"domain": domain, "status": "unknown", "source": None})
         if rdap and dns_result and dns_result.get("detail"):
             merged["detail"] = (
