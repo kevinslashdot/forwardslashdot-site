@@ -1826,7 +1826,7 @@
             <span>Where do Register links go?</span>
             <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </summary>
-          <p>Choose your preferred registrar from the dropdown on any register button — Namecheap, Spaceship, or GoDaddy. Your choice is saved locally in your browser.</p>
+          <p>Choose your preferred registrar from the dropdown on any register button — Namecheap, Spaceship, Dynadot, or GoDaddy. Your choice is saved locally in your browser.</p>
         </details>
       </div>
     </section>
@@ -1938,6 +1938,18 @@
           },
           disclosure: function () {
             return "Direct link to Spaceship (opens in a new tab). Searches are never logged.";
+          }
+        },
+        {
+          id: "dynadot",
+          name: "Dynadot",
+          sub: "Low renewal prices",
+          rel: "sponsored noopener noreferrer",
+          url: function (domain) {
+            return "https://www.dynadot.com/domain/search?domain=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to Dynadot (opens in a new tab). Searches are never logged.";
           }
         },
         {
