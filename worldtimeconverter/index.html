@@ -3237,11 +3237,21 @@
     document.getElementById("work-start").addEventListener("change", onWorkChange);
     document.getElementById("work-end").addEventListener("change", onWorkChange);
 
+    // The playhead is a 2px line. Treat a wide column around it as the scrubber
+    // so a grab on the city name or clock does not start a reorder.
+    function nearPlayhead(event) {
+      const track = document.getElementById("track");
+      const box = track.getBoundingClientRect();
+      const inset = 16;
+      const x = box.left + inset + (box.width - inset * 2) * (state.minutes / 1440);
+      return Math.abs(event.clientX - x) <= 64;
+    }
+
     rowsEl.addEventListener("pointerdown", function (event) {
       if (document.body.classList.contains("embed")) return;
       if (event.button) return;
       const card = event.target.closest(".dial-card");
-      if (!card || event.target.closest(".row-confirm, .row-more, .band-hit")) return;
+      if (!card || event.target.closest(".row-confirm, .row-more, .band-hit") || nearPlayhead(event)) return;
       reorder = {
         card: card,
         pointerId: event.pointerId,
@@ -3359,7 +3369,13 @@
     });
     rowsEl.addEventListener("pointerdown", function (event) {
       const hit = event.target.closest(".band-hit");
-      if (hit) beginScrub(event, hit);
+      if (hit) {
+        beginScrub(event, hit);
+        return;
+      }
+      const card = event.target.closest(".dial-card");
+      if (!card || event.target.closest(".row-confirm, .row-more")) return;
+      if (nearPlayhead(event)) beginScrub(event, card);
     });
     [slider, rowsEl].forEach(function (el) {
       el.addEventListener("pointermove", moveScrub);
