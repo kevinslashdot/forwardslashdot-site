@@ -601,7 +601,8 @@ const FONT = {
   "6": [14, 16, 16, 30, 17, 17, 14], "7": [31, 1, 2, 4, 8, 8, 8], "8": [14, 17, 17, 14, 17, 17, 14],
   "9": [14, 17, 17, 15, 1, 1, 14],
   "/": [1, 2, 2, 4, 8, 8, 16], ".": [0, 0, 0, 0, 0, 12, 12], ":": [0, 12, 12, 0, 12, 12, 0],
-  "-": [0, 0, 0, 31, 0, 0, 0], "+": [0, 4, 4, 31, 4, 4, 0], "'": [4, 4, 8, 0, 0, 0, 0], ",": [0, 0, 0, 0, 0, 4, 8]
+  "-": [0, 0, 0, 31, 0, 0, 0], "+": [0, 4, 4, 31, 4, 4, 0], "'": [4, 4, 8, 0, 0, 0, 0], ",": [0, 0, 0, 0, 0, 4, 8],
+  "&": [12, 18, 20, 8, 21, 18, 13]
 };
 
 function fillRect(buf, width, height, x, y, rw, rh, color) {
@@ -782,6 +783,10 @@ async function cardPng(comparison) {
   drawText(buf, width, height, 376, 570, "Off hours", 2, soft);
   const foot = "forwardslashdot.com/worldtimeconverter";
   drawText(buf, width, height, width - 64 - measureTextWidth(foot, 2), 570, foot, 2, soft);
+  return encodePng(buf, width, height);
+}
+
+async function encodePng(buf, width, height) {
   const raw = new Uint8Array((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
     const start = y * (width * 4 + 1);
@@ -805,6 +810,91 @@ async function cardPng(comparison) {
     offset += part.length;
   });
   return png;
+}
+
+async function domainCardPng(query) {
+  const width = 1200;
+  const height = 630;
+  const bg = [245, 245, 247];
+  const card = [255, 255, 255];
+  const border = [224, 224, 230];
+  const pill = [242, 242, 247];
+  const ink = [29, 29, 31];
+  const soft = [110, 110, 115];
+  const green = [36, 138, 61];
+  const greenDot = [52, 199, 89];
+  const mutedDot = [174, 174, 178];
+  const buf = new Uint8Array(width * height * 4);
+  fillRect(buf, width, height, 0, 0, width, height, bg);
+
+  drawText(buf, width, height, 64, 48, "/. Instant Domain Search", 3, ink);
+  const badge = "550+ endings";
+  drawText(buf, width, height, width - 64 - measureTextWidth(badge, 3), 48, badge, 3, soft);
+
+  // Main search card
+  fillRoundRect(buf, width, height, 62, 118, 1076, 148, 28, border);
+  fillRoundRect(buf, width, height, 64, 120, 1072, 144, 26, card);
+
+  const clean = String(query || "").trim().toLowerCase().replace(/[^a-z0-9.-]/g, "").slice(0, 26);
+  const sample = clean ? (clean.includes(".") ? clean : clean + ".com") : "yourname.com";
+  drawText(buf, width, height, 112, 172, sample, 6, ink);
+
+  // Green status pill on right of search bar
+  fillRoundRect(buf, width, height, 856, 158, 232, 68, 34, pill);
+  fillCircle(buf, width, height, 892, 192, 10, greenDot);
+  drawText(buf, width, height, 916, 180, "Available", 3, green);
+
+  // Secondary endings card
+  fillRoundRect(buf, width, height, 62, 294, 1076, 228, 28, border);
+  fillRoundRect(buf, width, height, 64, 296, 1072, 224, 26, card);
+  const stem = sample.split(".")[0] || "yourname";
+  const primaryExt = sample.includes(".") ? "." + sample.split(".").slice(1).join(".") : ".com";
+  const pool = [".com", ".ai", ".io", ".dev"].filter((e) => e !== primaryExt).slice(0, 3);
+  const rows = [
+    { ext: pool[0], free: true },
+    { ext: pool[1], free: true },
+    { ext: pool[2], free: false }
+  ];
+  rows.forEach((row, i) => {
+    const y = 332 + i * 68;
+    if (i > 0) fillRect(buf, width, height, 100, y - 20, 1000, 1, border);
+    drawText(buf, width, height, 112, y, stem, 4, soft);
+    drawText(buf, width, height, 112 + measureTextWidth(stem, 4) + 4, y, row.ext, 4, ink);
+    const label = row.free ? "Available" : "Taken";
+    const lw = measureTextWidth(label, 3);
+    if (row.free) fillCircle(buf, width, height, 1072 - lw - 24, y + 12, 7, greenDot);
+    else fillCircle(buf, width, height, 1072 - lw - 24, y + 12, 7, mutedDot);
+    drawText(buf, width, height, 1072 - lw, y + 2, label, 3, row.free ? green : soft);
+  });
+
+  // Trust & footer strip
+  drawText(buf, width, height, 64, 568, "Live RDAP & DNS - No search logging", 2, soft);
+  const foot = "forwardslashdot.com/instantdomainsearch";
+  drawText(buf, width, height, width - 64 - measureTextWidth(foot, 2), 568, foot, 2, soft);
+  return encodePng(buf, width, height);
+}
+
+async function appleTouchIconPng() {
+  const size = 180;
+  const bg = [29, 29, 31];
+  const ink = [255, 255, 255];
+  const buf = new Uint8Array(size * size * 4);
+  fillRect(buf, size, size, 0, 0, size, size, bg);
+  // Anti-aliased diagonal "/" capsule
+  const x1 = 56, y1 = 132, x2 = 96, y2 = 46, r = 9.5;
+  const dx = x2 - x1, dy = y2 - y1, len2 = dx * dx + dy * dy;
+  for (let py = 32; py < 148; py++) {
+    for (let px = 42; px < 112; px++) {
+      const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
+      const cx = x1 + t * dx, cy = y1 + t * dy;
+      const d = Math.hypot(px - cx, py - cy);
+      if (d <= r - 0.5) fillRect(buf, size, size, px, py, 1, 1, ink);
+      else if (d < r + 0.5) blendPixel(buf, size, size, px, py, ink, r + 0.5 - d);
+    }
+  }
+  // Crisp anti-aliased "." dot
+  fillCircle(buf, size, size, 120, 128, 12, ink);
+  return encodePng(buf, size, size);
 }
 
 async function handleTime(request, env, url, path) {
@@ -1089,10 +1179,32 @@ function tallyDomain(ctx, domain, area, country) {
   if (ctx && ctx.waitUntil) ctx.waitUntil(task);
 }
 
-async function proxyDomain(url) {
+const RDAP_EDGE_CACHE_SECONDS = 60;
+
+async function proxyDomain(url, key, cache, ctx) {
   const upstream = await fetch(API_ORIGIN + "/api/domain?" + url.searchParams.toString(), {
     cf: { cacheTtl: 0 }
   });
+  if (key && cache && upstream.ok) {
+    try {
+      const data = await upstream.json();
+      const row = data && Array.isArray(data.results) && data.results.length === 1 ? data.results[0] : null;
+      const definitive = !!(row && (row.status === "available" || row.status === "registered"));
+      const headers = new Headers({
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": definitive ? "public, max-age=15, s-maxage=" + RDAP_EDGE_CACHE_SECONDS : "no-store",
+        "x-domain-edge": definitive ? "origin-cached" : "origin"
+      });
+      if (data && typeof data.timing_ms === "number") {
+        headers.set("x-response-time-ms", String(data.timing_ms));
+      }
+      const response = new Response(JSON.stringify(data), { status: upstream.status, headers });
+      if (definitive && ctx && ctx.waitUntil) {
+        ctx.waitUntil(cache.put(key, response.clone()).catch(function () {}));
+      }
+      return response;
+    } catch (_) {}
+  }
   const headers = new Headers(upstream.headers);
   headers.set("x-domain-edge", "origin");
   return new Response(upstream.body, { status: upstream.status, headers });
@@ -1103,7 +1215,7 @@ async function handleDomain(request, env, ctx) {
   const country = visitorCountry(request, url);
   if (country && !url.searchParams.get("country")) url.searchParams.set("country", country);
   const raw = (url.searchParams.get("q") || "").trim().toLowerCase();
-  if (!raw || raw.includes(",")) return proxyDomain(url);
+  if (!raw || raw.includes(",")) return proxyDomain(url, null, null, null);
   if (!DOMAIN_RE.test(raw)) {
     return domainResponse({
       count: 1,
@@ -1138,7 +1250,7 @@ async function handleDomain(request, env, ctx) {
   } catch (_) {
     status = null;
   }
-  if (status !== "available" && status !== "registered") return proxyDomain(url);
+  if (status !== "available" && status !== "registered") return proxyDomain(url, key, cache, ctx);
 
   const body = {
     count: 1,
@@ -1159,37 +1271,74 @@ async function handleDomain(request, env, ctx) {
   return response;
 }
 
-async function handleEndings(request, url, ctx) {
+async function resolveEndingsData(request, url, ctx, maxWaitMs) {
   const country = visitorCountry(request, url);
+  const code = country || "XX";
   const seed = seededRow(country);
   let cache = null;
   try { cache = caches.default; } catch (_) { cache = null; }
-  const cacheKey = new Request(url.origin + "/api/endings?country=" + encodeURIComponent(country || "XX"), { method: "GET" });
+  const cacheKey = new Request(url.origin + "/api/endings?country=" + encodeURIComponent(code), { method: "GET" });
   if (cache) {
     try {
       const hit = await cache.match(cacheKey);
-      if (hit) return hit;
+      if (hit) {
+        const cachedData = await hit.json();
+        if (cachedData && Array.isArray(cachedData.endings) && cachedData.endings.length) {
+          return { data: cachedData, fromLiveOrCache: true };
+        }
+      }
     } catch (_) {}
   }
-  let body = { country: country || "XX", endings: seed, source: "seed" };
-  try {
-    const upstream = await fetch(
-      API_ORIGIN + "/api/endings?country=" + encodeURIComponent(country || "XX"),
-      { cf: { cacheTtl: 0 } }
-    );
-    if (upstream.ok) {
-      const data = await upstream.json();
-      if (data && Array.isArray(data.endings) && data.endings.length) body = data;
+  const fetchTask = (async () => {
+    let body = { country: code, endings: seed, source: "seed" };
+    try {
+      const upstream = await fetch(
+        API_ORIGIN + "/api/endings?country=" + encodeURIComponent(code),
+        { cf: { cacheTtl: 0 } }
+      );
+      if (upstream.ok) {
+        const data = await upstream.json();
+        if (data && Array.isArray(data.endings) && data.endings.length) body = data;
+      }
+    } catch (_) {}
+    if (cache) {
+      const toCache = new Response(JSON.stringify(body), {
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "public, max-age=60"
+        }
+      });
+      cache.put(cacheKey, toCache).catch(function () {});
     }
-  } catch (_) {}
-  const response = new Response(JSON.stringify(body), {
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=60"
-    }
-  });
-  if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(function () {}));
-  return response;
+    return body;
+  })();
+
+  if (maxWaitMs && maxWaitMs > 0) {
+    if (ctx && ctx.waitUntil) ctx.waitUntil(fetchTask);
+    const timed = await Promise.race([
+      fetchTask.then(function (data) { return { data: data, fromLiveOrCache: true }; }),
+      new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve({ data: { country: code, endings: seed, source: "seed" }, fromLiveOrCache: false });
+        }, maxWaitMs);
+      })
+    ]);
+    return timed;
+  }
+
+  const body = await fetchTask;
+  return { data: body, fromLiveOrCache: true };
+}
+
+async function handleEndings(request, url, ctx) {
+  const explicit = Boolean((url.searchParams.get("region") || url.searchParams.get("country") || "").trim());
+  const resolved = await resolveEndingsData(request, url, ctx, 0);
+  const headers = {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": explicit ? "public, max-age=60" : "private, max-age=60"
+  };
+  if (!explicit) headers["vary"] = "cf-ipcountry, accept-encoding";
+  return new Response(JSON.stringify(resolved.data), { headers });
 }
 
 async function handleTlds(url, ctx) {
@@ -1223,20 +1372,58 @@ async function handleTlds(url, ctx) {
   return response;
 }
 
-async function personalizedSearch(request, env, url) {
-  const asset = await env.ASSETS.fetch(request);
+const IDS_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://analytics.forwardslashdot.com https://static.cloudflareinsights.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "connect-src 'self' https://api.forwardslashdot.com https://analytics.forwardslashdot.com https://cloudflareinsights.com",
+  "font-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'"
+].join("; ");
+
+function applySecurityHeaders(headers) {
+  headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  headers.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  headers.set("content-security-policy", IDS_CSP);
+  headers.delete("access-control-allow-origin");
+}
+
+async function personalizedSearch(request, env, url, ctx) {
+  const [asset, resolved] = await Promise.all([
+    env.ASSETS.fetch(request),
+    resolveEndingsData(request, url, ctx, 80)
+  ]);
   if (!asset.ok || !asset.headers.get("content-type") || asset.headers.get("content-type").indexOf("text/html") === -1) {
     return asset;
   }
-  const endings = seededRow(visitorCountry(request, url));
+  const endings = (resolved.data && Array.isArray(resolved.data.endings) && resolved.data.endings.length)
+    ? resolved.data.endings.slice(0, 6)
+    : seededRow(visitorCountry(request, url));
   let html = await asset.text();
-  html = html.replace(
-    'var TLDS = [".com", ".net", ".org", ".io", ".co", ".ai"];',
-    "var TLDS = " + JSON.stringify(endings) + ";"
-  );
+  html = html.replace(/var TLDS = \[[^\]]*\];/, "var TLDS = " + JSON.stringify(endings) + ";");
+  if (resolved.fromLiveOrCache) {
+    html = html.replace("var ENDINGS_LIVE = false;", "var ENDINGS_LIVE = true;");
+  }
+  const q = (url.searchParams.get("q") || url.searchParams.get("domain") || "").trim().slice(0, 64);
+  if (q) {
+    const origin = originOf(url);
+    const cardUrl = origin + "/domain.png?q=" + encodeURIComponent(q);
+    html = html
+      .replace(/property="og:image" content="[^"]*"/, 'property="og:image" content="' + escapeXml(cardUrl) + '"')
+      .replace(/name="twitter:image" content="[^"]*"/, 'name="twitter:image" content="' + escapeXml(cardUrl) + '"');
+  }
   const headers = new Headers(asset.headers);
   headers.set("content-type", "text/html; charset=utf-8");
-  headers.set("cache-control", "private, no-store");
+  headers.set("cache-control", "private, max-age=60, stale-while-revalidate=300");
+  headers.set("vary", "cf-ipcountry, accept-encoding");
+  applySecurityHeaders(headers);
   return new Response(html, { status: asset.status, headers });
 }
 
@@ -1244,6 +1431,19 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, "") : url.pathname;
+
+    if (request.method === "GET" && path === "/domain.png") {
+      const q = url.searchParams.get("q") || url.searchParams.get("domain") || "";
+      return new Response(await domainCardPng(q), {
+        headers: { "content-type": "image/png", "cache-control": "public, max-age=300" }
+      });
+    }
+
+    if (request.method === "GET" && path === "/apple-touch-icon.png") {
+      return new Response(await appleTouchIconPng(), {
+        headers: { "content-type": "image/png", "cache-control": "public, max-age=86400, immutable" }
+      });
+    }
 
     if (request.method === "GET" && path === "/api/domain") {
       return handleDomain(request, env, ctx);
@@ -1286,7 +1486,7 @@ export default {
       else await task;
     }
     if (request.method === "GET" && path === "/instantdomainsearch") {
-      return personalizedSearch(request, env, url);
+      return personalizedSearch(request, env, url, ctx);
     }
     return env.ASSETS.fetch(request);
   }

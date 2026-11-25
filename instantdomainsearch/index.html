@@ -9,12 +9,24 @@
   <link rel="canonical" href="https://www.forwardslashdot.com/instantdomainsearch/" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
   <link rel="describedby" href="https://api.forwardslashdot.com/llms.txt" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="forwardslashdot" />
   <meta property="og:title" content="Instant Domain Search — forwardslashdot" />
-  <meta property="og:description" content="Type a name and any ending. Green when it’s free, muted when it’s taken." />
+  <meta property="og:description" content="Live RDAP & DNS availability across 550+ endings. Green when it’s free, muted when it’s taken. No search logging." />
   <meta property="og:url" content="https://www.forwardslashdot.com/instantdomainsearch/" />
+  <meta property="og:image" content="https://www.forwardslashdot.com/domain.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Instant Domain Search by forwardslashdot — live availability across 550+ endings" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Instant Domain Search — forwardslashdot" />
+  <meta name="twitter:description" content="Live RDAP & DNS availability across 550+ endings. No search logging." />
+  <meta name="twitter:image" content="https://www.forwardslashdot.com/domain.png" />
   <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-size='26' font-weight='600' fill='white'%3E/.%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-size='26' font-weight='600' fill='white'%3E/.%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -23,9 +35,49 @@
     "url": "https://www.forwardslashdot.com/instantdomainsearch/",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Any",
-    "description": "Type a name and any ending — .com, .si, .biz, .ai, .io, .co.uk. Green when it’s free.",
+    "description": "Type a name and any ending — .com, .si, .biz, .ai, .io, .co.uk. Live RDAP & DNS checks with no search logging.",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "publisher": { "@type": "Organization", "name": "forwardslashdot", "url": "https://www.forwardslashdot.com/" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Do you log or sell domain searches?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Domain names you type are never logged, stored, or shared with registrars or brokers. Only coarse country-level ending counts are tallied with the domain name discarded."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is domain availability checked?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Checks run live via edge DNS (NS/SOA) and authoritative registry RDAP lookups, so reserved, redemption, or serverHold domains are not falsely shown as available."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which domain endings are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Over 550 public endings including .com, .ai, .io, .dev, .app, .net, .org, .ca, .co.uk, .de, .com.au, and .si. Press . in the search box to filter all endings."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can developers or AI agents query availability via API or MCP?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. A free REST endpoint (GET /api/domain) and Streamable HTTP MCP tool (check_domains) are documented at api.forwardslashdot.com/llms.txt."
+        }
+      }
+    ]
   }
   </script>
   <style>
@@ -151,6 +203,7 @@
 
     .top,
     .search,
+    .faq,
     .dev {
       width: min(36rem, 100%);
     }
@@ -160,6 +213,24 @@
       align-items: center;
       justify-content: space-between;
       min-height: 2.25rem;
+    }
+
+    .top-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.9rem;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .top-nav a {
+      color: var(--label2);
+      transition: color 0.16s ease;
+    }
+
+    .top-nav a:hover {
+      color: var(--label);
+      text-decoration: none;
     }
 
     .brand {
@@ -197,14 +268,48 @@
       color: var(--label2);
     }
 
+    /* ---------- Hero Heading (smoothly collapses once results appear) ---------- */
+    .hero-head {
+      text-align: center;
+      margin-bottom: 1.35rem;
+      max-height: 5.5rem;
+      opacity: 1;
+      overflow: hidden;
+      transition: opacity 0.22s ease, max-height 0.34s var(--spring), margin-bottom 0.34s var(--spring);
+    }
+
+    .hero-head h1 {
+      font-size: clamp(1.38rem, 3.8vw, 1.72rem);
+      font-weight: 650;
+      letter-spacing: -0.036em;
+      line-height: 1.18;
+      color: var(--label);
+    }
+
+    .hero-sub {
+      margin-top: 0.38rem;
+      font-size: 0.86rem;
+      font-weight: 450;
+      letter-spacing: -0.01em;
+      color: var(--label2);
+      line-height: 1.4;
+    }
+
+    .search.has-answers .hero-head {
+      opacity: 0;
+      max-height: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+
     /* ---------- Search Bar (Spotlight-inspired) ---------- */
     .search {
-      margin-top: min(17vh, 8.25rem);
+      margin-top: min(14vh, 6.75rem);
       transition: margin-top 0.42s var(--spring);
     }
 
     .search.has-answers {
-      margin-top: 2rem;
+      margin-top: 1.75rem;
     }
 
     .compose {
@@ -562,10 +667,18 @@
       background: var(--card);
       border-radius: var(--r);
       box-shadow: var(--shadow);
-      overflow: hidden;
+    }
+
+    .answers-primary {
+      position: relative;
+      z-index: 15;
+      overflow: visible;
     }
 
     .answers-more {
+      position: relative;
+      z-index: 5;
+      overflow: hidden;
       margin-top: 0.75rem;
     }
 
@@ -606,11 +719,95 @@
     }
 
     .answers-more .answer.is-taken {
-      opacity: 0.52;
+      opacity: 1;
     }
 
-    .answers-more .answer.is-taken:hover {
+    .answers-more .answer.is-taken .name-stem,
+    .answers-more .answer.is-taken .name-tld {
+      color: var(--label2);
+    }
+
+    .answers-more .answer.is-taken .name-tld {
+      font-weight: 560;
+    }
+
+    .answers-more .answer.is-taken:hover .name-tld {
+      color: var(--label);
+    }
+
+    .answer-meta {
+      display: none;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.2rem 0.55rem;
+      margin-top: 0.28rem;
+      font-size: 0.74rem;
+      font-weight: 480;
+      letter-spacing: -0.005em;
+      color: var(--label2);
+    }
+
+    .answer.is-primary .answer-meta.is-shown {
+      display: inline-flex;
+    }
+
+    .answer-meta a {
+      color: var(--blue);
+      font-weight: 520;
+    }
+
+    .row-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      min-height: 1.9rem;
+      padding: 0 0.56rem;
+      border: 0;
+      border-radius: 980px;
+      background: transparent;
+      color: var(--label2);
+      font-size: 0.78rem;
+      font-weight: 520;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+      transition: background 0.14s ease, color 0.14s ease, transform 0.16s var(--spring);
+    }
+
+    .row-action:hover {
+      background: var(--fill);
+      color: var(--label);
+      text-decoration: none;
+    }
+
+    .row-action:active {
+      transform: scale(0.95);
+    }
+
+    .row-action:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .row-action.copy-btn {
+      width: 1.9rem;
+      padding: 0;
+    }
+
+    .row-action.copy-btn svg {
+      width: 0.88rem;
+      height: 0.88rem;
+    }
+
+    .row-action.copy-btn.is-copied {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .ext-arrow {
+      font-size: 0.82em;
       opacity: 0.78;
+      margin-left: 0.22rem;
     }
 
     .answer-main {
@@ -808,6 +1005,201 @@
       color: var(--cta-ink);
     }
 
+    /* Split CTA + Frosted Registrar Popover (Hero) */
+    .register-split {
+      position: relative;
+      display: inline-flex;
+      align-items: stretch;
+      border-radius: 980px;
+      background: var(--cta-bg);
+      color: var(--cta-ink);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .register-split .register-main {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.35rem;
+      padding: 0 0.85rem 0 1.1rem;
+      border-radius: 980px 0 0 980px;
+      color: var(--cta-ink);
+      font-size: 0.88rem;
+      font-weight: 590;
+      letter-spacing: -0.015em;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.16s ease;
+    }
+
+    .register-split .register-main:hover {
+      background: var(--cta-bg-hover);
+      color: var(--cta-ink);
+      text-decoration: none;
+    }
+
+    .register-split .register-main:focus-visible,
+    .register-split .register-more:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+      position: relative;
+      z-index: 2;
+    }
+
+    .register-sep {
+      width: 1px;
+      align-self: stretch;
+      margin: 0.42rem 0;
+      background: color-mix(in srgb, var(--cta-ink) 22%, transparent);
+      flex: none;
+    }
+
+    .register-more {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.35rem;
+      padding: 0 0.72rem 0 0.56rem;
+      border: 0;
+      border-radius: 0 980px 980px 0;
+      background: transparent;
+      color: var(--cta-ink);
+      transition: background 0.16s ease;
+    }
+
+    .register-more:hover,
+    .register-more[aria-expanded="true"] {
+      background: var(--cta-bg-hover);
+    }
+
+    .register-more svg {
+      width: 0.68rem;
+      height: 0.68rem;
+      opacity: 0.82;
+      transition: transform 0.22s var(--spring);
+    }
+
+    .register-more[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .reg-menu {
+      position: absolute;
+      top: calc(100% + 0.45rem);
+      right: 0;
+      z-index: 25;
+      width: min(15.2rem, calc(100vw - 2rem));
+      padding: 0.35rem;
+      border-radius: 16px;
+      background: var(--glass);
+      backdrop-filter: saturate(180%) blur(28px);
+      -webkit-backdrop-filter: saturate(180%) blur(28px);
+      box-shadow: var(--shadow-pop);
+      color: var(--label);
+      transform-origin: top right;
+      opacity: 0;
+      transform: translateY(-4px) scale(0.96);
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity 0.16s ease,
+        transform 0.22s var(--spring),
+        visibility 0s linear 0.16s;
+    }
+
+    .reg-menu.is-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        opacity 0.16s ease,
+        transform 0.22s var(--spring),
+        visibility 0s linear 0s;
+    }
+
+    .reg-menu-head {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--label2);
+      padding: 0.4rem 0.68rem 0.28rem;
+    }
+
+    .reg-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 0.48rem 0.68rem;
+      border-radius: 10px;
+      color: var(--label);
+      text-align: left;
+      text-decoration: none;
+      transition: background 0.12s ease;
+    }
+
+    .reg-option:hover,
+    .reg-option:focus-visible {
+      background: var(--fill);
+      color: var(--label);
+      text-decoration: none;
+      outline: none;
+    }
+
+    .reg-option:disabled {
+      opacity: 0.48;
+      cursor: default;
+    }
+
+    .reg-option:disabled:hover {
+      background: transparent;
+    }
+
+    .reg-option-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .reg-option-name {
+      font-size: 0.9rem;
+      font-weight: 560;
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+      color: var(--label);
+    }
+
+    .reg-option-sub {
+      font-size: 0.72rem;
+      color: var(--label2);
+      line-height: 1.3;
+    }
+
+    .reg-option-end {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex: none;
+      font-size: 0.78rem;
+      color: var(--label2);
+    }
+
+    .reg-option-check {
+      font-size: 0.82rem;
+      font-weight: 650;
+      color: var(--blue);
+      opacity: 0;
+    }
+
+    .reg-option[data-selected="true"] .reg-option-check {
+      opacity: 1;
+    }
+
     /* ---------- All-Taken Recovery Prompt ---------- */
     .recovery {
       display: none;
@@ -852,23 +1244,178 @@
       border-radius: 6px;
     }
 
-    .disclosure {
+    .disclosure-row {
       display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 0.9rem;
       margin-top: 0.85rem;
       padding: 0 0.25rem;
+    }
+
+    .disclosure-row.is-on {
+      display: flex;
+    }
+
+    .disclosure {
       font-size: 0.74rem;
       line-height: 1.45;
       color: var(--label2);
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
-    .disclosure.is-on {
-      display: block;
+    .reg-switcher {
+      position: relative;
+      flex: none;
+    }
+
+    .reg-switch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      border: 0;
+      border-radius: 8px;
+      background: var(--fill);
+      padding: 0.22rem 0.56rem;
+      font-size: 0.74rem;
+      font-weight: 550;
+      color: var(--label);
+      white-space: nowrap;
+      transition: background 0.14s ease;
+    }
+
+    .reg-switch-btn:hover,
+    .reg-switch-btn[aria-expanded="true"] {
+      background: var(--fill2);
+    }
+
+    .reg-switch-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .reg-switch-btn svg {
+      width: 0.62rem;
+      height: 0.62rem;
+      opacity: 0.65;
+      transition: transform 0.2s var(--spring);
+    }
+
+    .reg-switch-btn[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .reg-switcher .reg-menu {
+      top: auto;
+      bottom: calc(100% + 0.45rem);
+      transform-origin: bottom right;
+      transform: translateY(4px) scale(0.96);
+    }
+
+    .reg-switcher .reg-menu.is-open {
+      transform: translateY(0) scale(1);
+    }
+
+    /* ---------- Below-the-Fold Trust & FAQ ---------- */
+    .faq {
+      margin-top: auto;
+      padding-top: 5.5rem;
+    }
+
+    .search.has-answers ~ .faq {
+      padding-top: 3.25rem;
+    }
+
+    .faq-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.7rem;
+      padding: 0 0.25rem;
+    }
+
+    .faq h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--label2);
+    }
+
+    .faq-list {
+      background: var(--card);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .faq-item {
+      position: relative;
+    }
+
+    .faq-item + .faq-item::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 1.15rem;
+      right: 1.15rem;
+      height: 0.5px;
+      background: var(--sep);
+    }
+
+    .faq-item summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      padding: 0.9rem 1.15rem;
+      font-size: 0.9rem;
+      font-weight: 560;
+      letter-spacing: -0.015em;
+      color: var(--label);
+      cursor: pointer;
+      transition: background 0.14s ease;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary:hover {
+      background: var(--fill);
+    }
+
+    .faq-item summary:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px var(--focus-border);
+    }
+
+    .faq-chevron {
+      width: 0.72rem;
+      height: 0.72rem;
+      color: var(--label2);
+      flex: none;
+      transition: transform 0.22s var(--spring);
+    }
+
+    .faq-item[open] .faq-chevron {
+      transform: rotate(180deg);
+    }
+
+    .faq-item p {
+      padding: 0 1.15rem 0.95rem;
+      font-size: 0.84rem;
+      line-height: 1.55;
+      color: var(--label2);
     }
 
     /* ---------- Footer API Section (aligned to 36rem rail, no 100vh void) ---------- */
     .dev {
-      margin-top: auto;
-      padding-top: 3.5rem;
+      margin-top: 2rem;
+      padding-top: 0;
     }
 
     .dev-inner {
@@ -904,7 +1451,7 @@
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 0.45rem 0.55rem;
+      gap: 0.45rem 0.65rem;
       font-size: 0.86rem;
       color: var(--label2);
       line-height: 1.5;
@@ -969,6 +1516,24 @@
       white-space: nowrap;
     }
 
+    .dev-links {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.35rem 1rem;
+      padding-top: 0.35rem;
+      font-size: 0.78rem;
+      color: var(--label2);
+    }
+
+    .dev-links a {
+      color: var(--label2);
+    }
+
+    .dev-links a:hover {
+      color: var(--label);
+    }
+
     /* ---------- Keyframes ---------- */
     @keyframes rise {
       from {
@@ -992,13 +1557,26 @@
     }
 
     /* ---------- Mobile iOS List-Row Pattern (<= 520px) ---------- */
+    @media (max-width: 600px) {
+      .disclosure-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .reg-switcher .reg-menu {
+        left: 0;
+        right: auto;
+        transform-origin: bottom left;
+      }
+    }
+
     @media (max-width: 520px) {
       .stage {
         padding: 0.95rem 1rem max(1.5rem, env(safe-area-inset-bottom));
       }
 
       .search {
-        margin-top: min(14vh, 5.5rem);
+        margin-top: min(11vh, 4.25rem);
       }
 
       .search.has-answers {
@@ -1030,12 +1608,27 @@
 
       .register {
         min-height: 2.25rem;
-        padding: 0 1rem;
+        padding: 0 0.88rem;
       }
 
       .answer.is-primary .register {
         min-height: 2.4rem;
-        padding: 0 1.1rem;
+        padding: 0 0.98rem;
+      }
+
+      .register-split .register-main {
+        min-height: 2.35rem;
+        padding: 0 0.7rem 0 0.92rem;
+        font-size: 0.84rem;
+      }
+
+      .register-more {
+        min-height: 2.35rem;
+        padding: 0 0.62rem 0 0.48rem;
+      }
+
+      .answer-tail {
+        gap: 0.45rem;
       }
 
       .recovery {
@@ -1056,20 +1649,25 @@
       }
     }
   </style>
-  <script defer src="https://analytics.forwardslashdot.com/script.js" data-website-id="42c75d6b-4881-4599-9262-b0810c5c5f44"></script>
 </head>
 <body>
   <main class="stage">
     <header class="top">
-      <a class="brand" href="https://www.forwardslashdot.com/">
+      <a class="brand" href="https://www.forwardslashdot.com/" aria-label="forwardslashdot home" title="Back to forwardslashdot.com">
         <span class="mark" aria-hidden="true">/.</span>
         <span class="brand-name">Domains</span>
       </a>
+      <nav class="top-nav" aria-label="Site navigation">
+        <a href="https://www.forwardslashdot.com/">forwardslashdot</a>
+        <a href="#about">Privacy &amp; FAQ</a>
+      </nav>
     </header>
 
-    <h1 class="sr-only">Instant Domain Search</h1>
-
     <div class="search" id="search" role="search">
+      <div class="hero-head">
+        <h1>Instant Domain Search</h1>
+        <p class="hero-sub">Live RDAP &amp; DNS checks across 550+ endings · No search logging</p>
+      </div>
       <!--
         No <input>: Chrome contact autofill keyed off label "Name" + input.
         Closed-shadow contenteditable only (no sink input — sinks steal focus).
@@ -1081,6 +1679,7 @@
           tabindex="0"
           role="textbox"
           aria-label="Domain name"
+          aria-describedby="hint"
           aria-multiline="false"
         ></span>
 
@@ -1120,14 +1719,14 @@
                 <circle cx="7" cy="7" r="4.6"/>
                 <path d="m10.5 10.5 3 3"/>
               </svg>
-              <input class="tld-search" id="tld-search" type="text" placeholder="Search 500+ endings" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search endings" />
+              <input class="tld-search" id="tld-search" type="text" placeholder="Search 550+ endings" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search endings" />
             </div>
             <div class="tld-options" id="tld-options" role="listbox" aria-label="Domain endings"></div>
           </div>
         </div>
       </div>
 
-      <p class="hint" id="hint">Type a name, or press <kbd>.</kbd> to search 500+ endings</p>
+      <p class="hint" id="hint">Type a name, or press <kbd>.</kbd> to search 550+ endings</p>
 
       <div class="results" id="results" hidden aria-live="polite">
         <ul class="answers-primary" id="answers-primary"></ul>
@@ -1136,9 +1735,54 @@
           <span>All common endings are taken.</span>
           <button type="button" class="recovery-btn" id="recovery-btn">Try another ending &rarr;</button>
         </div>
-        <p class="disclosure" id="disclosure"></p>
+        <div class="disclosure-row" id="disclosure-row">
+          <p class="disclosure" id="disclosure"></p>
+          <div class="reg-switcher" id="reg-switcher">
+            <button type="button" class="reg-switch-btn" id="reg-switch-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="reg-switch-menu">
+              <span>Registrar: <strong id="reg-switch-label">Namecheap</strong></span>
+              <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="reg-menu" id="reg-switch-menu" role="menu" aria-label="Preferred registrar" aria-hidden="true"></div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <section class="faq" id="about" aria-labelledby="faq-heading">
+      <div class="faq-head">
+        <h2 id="faq-heading">How It Works &amp; Privacy</h2>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>
+            <span>Do you log or sell domain searches?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>No. The domain names you type are never logged, stored, or shared with registrars or brokers. Only coarse country-level ending counts (such as <code>.ca</code> or <code>.com</code>) are tallied, with the domain name itself discarded.</p>
+        </details>
+        <details class="faq-item">
+          <summary>
+            <span>How is availability verified?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>Delegated names resolve immediately via DNS (NS/SOA) at the edge. Any name without DNS records is verified live against the authoritative registry RDAP server so reserved, redemption, and <code>serverHold</code> domains aren&rsquo;t falsely shown as available.</p>
+        </details>
+        <details class="faq-item">
+          <summary>
+            <span>Which domain endings are supported?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>Over 550 public endings including <code>.com</code>, <code>.ai</code>, <code>.io</code>, <code>.dev</code>, <code>.app</code>, <code>.ca</code>, <code>.co.uk</code>, <code>.de</code>, <code>.com.au</code>, and <code>.si</code>. Press <kbd>.</kbd> in the search bar or click the ending pill to filter all supported endings.</p>
+        </details>
+        <details class="faq-item">
+          <summary>
+            <span>Where do Register links go?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>Choose your preferred registrar from the dropdown on any register button — Namecheap, Cloudflare Registrar, Porkbun, or GoDaddy. Your choice is saved locally in your browser, or you can copy any available domain with one click.</p>
+        </details>
+      </div>
+    </section>
 
     <footer class="dev" aria-labelledby="dev-heading">
       <div class="dev-inner">
@@ -1151,7 +1795,12 @@
             <span>GET /api/domain?q=studio.si,cafe.biz</span>
             <span class="code-copy-badge" id="api-copy-badge">Copy</span>
           </button>
-          <span class="dev-mcp"><span>&middot; MCP</span><code class="inline-code">check_domains</code></span>
+          <span class="dev-mcp"><span>MCP</span><code class="inline-code">check_domains</code></span>
+        </div>
+        <div class="dev-links">
+          <a href="https://www.forwardslashdot.com/">forwardslashdot.com</a>
+          <a href="https://www.forwardslashdot.com/worldtimeconverter">World Time Converter</a>
+          <a href="https://www.forwardslashdot.com/llms.txt">llms.txt</a>
         </div>
       </div>
     </footer>
@@ -1160,10 +1809,11 @@
   <script>
     (function () {
       var API = "/api/domain";
-      var TLDS = [".ca", ".com", ".net", ".org", ".io", ".ai"];
-      // The edge answers on the same connection. Wait only while a 1-2 character label is still being typed.
-      var DEBOUNCE_SHORT_MS = 0;
-      var DEBOUNCE_LONG_MS = 40;
+      var TLDS = [".com", ".net", ".org", ".io", ".co", ".ai"];
+      var ENDINGS_LIVE = false;
+      // Short debounce avoids blasting the edge on every keystroke while still feeling instant.
+      var DEBOUNCE_SHORT_MS = 70;
+      var DEBOUNCE_LONG_MS = 120;
       var CACHE_TTL_MS = 10 * 60 * 1000;
       var CACHE_MAX = 200;
 
@@ -1186,8 +1836,203 @@
       var POPULAR = ["com", "net", "org", "io", "co", "ai", "dev", "app", "me", "xyz", "info", "biz"];
       var REGIONS = ["ca", "us", "uk", "co.uk", "org.uk", "me.uk", "de", "fr", "es", "nl", "eu", "ch", "com.au", "net.au", "org.au", "mx", "com.mx", "in", "co.in", "sg", "com.sg", "id", "ph", "pe", "is"];
       var ALL = "ac,academy,accountant,accountants,actor,ad,adult,ae.org,africa,agency,ai,airforce,apartments,app,archi,army,art,asia,associates,attorney,auction,audio,auto,autos,baby,band,bar,barcelona,bargains,beauty,beer,berlin,best,bet,bid,bike,bingo,bio,biz,black,blackfriday,blog,blue,boats,bond,boo,boston,bot,boutique,br.com,broker,build,builders,business,buzz,bz,ca,cab,cafe,cam,camera,camp,capital,car,cards,care,careers,cars,casa,cash,casino,cat,catering,cc,center,ceo,cfd,ch,channel,charity,chat,cheap,christmas,church,city,claims,cleaning,click,clinic,clothing,cloud,club,cm,cn.com,co,co.bz,co.com,co.im,co.in,co.uk,coach,codes,coffee,college,com,com.au,com.co,com.de,com.es,com.im,com.mx,com.pe,com.ph,com.se,com.sg,com.vc,community,company,computer,condos,construction,consulting,contact,contractors,cooking,cool,country,coupons,courses,credit,creditcard,cricket,cruises,cv,cx,cymru,cyou,dad,dance,date,dating,day,de,de.com,deal,dealer,deals,degree,delivery,democrat,dental,dentist,desi,design,dev,diamonds,diet,digital,direct,directory,discount,diy,doctor,dog,domains,download,earth,eco,education,email,energy,engineer,engineering,enterprises,equipment,es,esq,estate,eu,eu.com,events,exchange,expert,exposed,express,fail,faith,family,fan,fans,farm,fashion,fast,feedback,film,finance,financial,fish,fishing,fit,fitness,flights,florist,flowers,fm,foo,food,football,forex,forsale,forum,foundation,fr,free,fun,fund,furniture,futbol,fyi,gallery,game,games,garden,gay,gb.net,gdn,gg,gift,gifts,gives,giving,glass,global,gmbh,gold,golf,gr.com,graphics,gratis,green,gripe,group,guide,guitars,guru,hair,hamburg,haus,health,healthcare,help,hiphop,hockey,holdings,holiday,homes,horse,hospital,host,hosting,hot,house,how,hu.net,icu,id,im,immo,immobilien,in,in.net,inc,industries,info,ing,ink,institute,insure,international,investments,io,irish,is,it.com,jetzt,jewelry,jp.net,jpn.com,juegos,kaufen,kids,kim,kitchen,kiwi,krd,kyoto,la,land,lat,latino,law,lawyer,lease,legal,lgbt,li,life,lifestyle,lighting,limited,limo,link,live,living,llc,loan,loans,locker,lol,london,love,ltd,ltda,maison,makeup,management,market,marketing,markets,mba,me,me.uk,media,melbourne,meme,memorial,men,menu,mex.com,miami,mobi,mobile,moda,moe,mom,money,monster,mortgage,motorcycles,mov,movie,music,mx,my,nagoya,name,navy,net,net.au,net.im,net.pe,net.ph,net.vc,network,new,news,nexus,ngo,ninja,nl,nom.es,now,nyc,observer,okinawa,one,ong,onl,online,org,org.au,org.es,org.im,org.mx,org.pe,org.ph,org.uk,org.vc,osaka,page,paris,partners,parts,party,pe,pet,ph,phd,photo,photography,photos,pics,pictures,pink,pizza,place,plumbing,plus,poker,porn,press,pro,productions,prof,promo,properties,property,protection,pub,pw,quest,racing,realty,recipes,red,rehab,reise,reisen,rent,rentals,repair,report,republican,rest,restaurant,review,reviews,rip,rocks,rodeo,rsvp,ru.com,run,ryukyu,sa.com,sale,salon,sarl,sbs,school,schule,science,se.net,security,services,sex,sexy,sg,sh,shiksha,shoes,shop,shopping,show,singles,site,ski,skin,so,soccer,social,software,solar,solutions,soy,space,spot,storage,store,stream,studio,study,style,substack,sucks,supplies,supply,support,surf,surgery,sydney,systems,talk,tattoo,tax,taxi,team,tech,technology,tel,tennis,theater,theatre,tickets,tienda,tips,tires,to,today,tokyo,tools,top,tours,town,toys,trade,trading,training,travel,tube,tv,uk,uk.com,uk.net,university,uno,us,us.com,us.org,vacations,vana,vc,vegas,ventures,vet,viajes,video,villas,vin,vip,vision,vodka,vote,voting,voto,voyage,wales,watch,webcam,website,wedding,wiki,win,wine,work,works,world,ws,wtf,xyz,yachts,yoga,yokohama,you,za.com,zip,zone".split(",");
+      var disclosureRowEl = document.getElementById("disclosure-row");
       var disclosureEl = document.getElementById("disclosure");
+      var regSwitcherEl = document.getElementById("reg-switcher");
+      var regSwitchBtn = document.getElementById("reg-switch-btn");
+      var regSwitchLabel = document.getElementById("reg-switch-label");
+      var regSwitchMenu = document.getElementById("reg-switch-menu");
       var host = document.getElementById("q-host");
+
+      var REGISTRAR_KEY = "fwd-registrar";
+      var CF_UNSUPPORTED = {
+        ca: 1, de: 1, fr: 1, es: 1, nl: 1, eu: 1, ch: 1, si: 1,
+        "com.au": 1, "net.au": 1, "org.au": 1, in: 1, "co.in": 1,
+        sg: 1, "com.sg": 1, mx: 1, "com.mx": 1, pe: 1, "com.pe": 1,
+        ph: 1, "com.ph": 1, id: 1, my: 1, ai: 1
+      };
+      var REGISTRARS = [
+        {
+          id: "namecheap",
+          name: "Namecheap",
+          sub: "550+ endings · Default",
+          rel: "sponsored noopener noreferrer",
+          url: function (domain, row) {
+            if (row && row.affiliate_url) return row.affiliate_url;
+            return "https://www.namecheap.com/domains/registration/results/?domain=" + encodeURIComponent(domain);
+          },
+          disclosure: function (apiDisclosure) {
+            return apiDisclosure || "Direct link to Namecheap (opens in a new tab). Searches are never logged.";
+          }
+        },
+        {
+          id: "cloudflare",
+          name: "Cloudflare",
+          sub: "At-cost wholesale",
+          rel: "noopener noreferrer",
+          supports: function (tld) {
+            return !CF_UNSUPPORTED[String(tld || "").replace(/^\./, "")];
+          },
+          url: function (domain) {
+            return "https://domains.cloudflare.com/?domain=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to Cloudflare Registrar (no affiliate). Searches are never logged.";
+          }
+        },
+        {
+          id: "porkbun",
+          name: "Porkbun",
+          sub: "Low renewals",
+          rel: "noopener noreferrer",
+          url: function (domain) {
+            return "https://porkbun.com/checkout/search?q=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to Porkbun (no affiliate). Searches are never logged.";
+          }
+        },
+        {
+          id: "godaddy",
+          name: "GoDaddy",
+          sub: "Popular registrar",
+          rel: "noopener noreferrer",
+          url: function (domain) {
+            return "https://www.godaddy.com/domainsearch/find?domainToCheck=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to GoDaddy (opens in a new tab). Searches are never logged.";
+          }
+        }
+      ];
+
+      function registrarById(id) {
+        for (var i = 0; i < REGISTRARS.length; i++) {
+          if (REGISTRARS[i].id === id) return REGISTRARS[i];
+        }
+        return REGISTRARS[0];
+      }
+
+      var selectedRegistrar = (function () {
+        try {
+          var saved = localStorage.getItem(REGISTRAR_KEY);
+          if (saved) return registrarById(saved).id;
+        } catch (_) {}
+        return "namecheap";
+      })();
+
+      function setPreferredRegistrar(id) {
+        var next = registrarById(id).id;
+        selectedRegistrar = next;
+        try { localStorage.setItem(REGISTRAR_KEY, next); } catch (_) {}
+        if (regSwitchLabel) regSwitchLabel.textContent = registrarById(next).name;
+      }
+
+      function effectiveRegistrarFor(tld) {
+        var pref = registrarById(selectedRegistrar);
+        if (pref.supports && !pref.supports(tld)) {
+          return { reg: REGISTRARS[0], fallbackFrom: pref };
+        }
+        return { reg: pref, fallbackFrom: null };
+      }
+
+      var openRegMenuEl = null;
+      var openRegBtnEl = null;
+
+      function closeRegMenus() {
+        if (openRegMenuEl) {
+          openRegMenuEl.classList.remove("is-open");
+          openRegMenuEl.setAttribute("aria-hidden", "true");
+        }
+        if (openRegBtnEl) {
+          openRegBtnEl.setAttribute("aria-expanded", "false");
+        }
+        openRegMenuEl = null;
+        openRegBtnEl = null;
+      }
+
+      function toggleRegMenu(btn, menu, populateFn) {
+        var wasOpen = openRegMenuEl === menu;
+        closeMenu();
+        closeRegMenus();
+        if (wasOpen) return;
+        populateFn();
+        menu.classList.add("is-open");
+        menu.setAttribute("aria-hidden", "false");
+        btn.setAttribute("aria-expanded", "true");
+        openRegMenuEl = menu;
+        openRegBtnEl = btn;
+      }
+
+      function buildRegMenuItems(menuEl, domain, tld, hit, openExternal) {
+        menuEl.innerHTML = "";
+        var head = document.createElement("div");
+        head.className = "reg-menu-head";
+        head.textContent = openExternal ? "Register at" : "Preferred registrar";
+        menuEl.appendChild(head);
+
+        REGISTRARS.forEach(function (reg) {
+          var supported = !tld || !reg.supports || reg.supports(tld);
+          var el = document.createElement(openExternal && supported ? "a" : "button");
+          el.className = "reg-option";
+          el.setAttribute("role", "menuitem");
+          el.setAttribute("data-selected", reg.id === selectedRegistrar ? "true" : "false");
+          if (openExternal && supported) {
+            el.href = reg.url(domain, hit);
+            el.target = "_blank";
+            el.rel = reg.rel;
+          } else {
+            el.type = "button";
+            if (openExternal && !supported) el.disabled = true;
+          }
+          var textWrap = document.createElement("span");
+          textWrap.className = "reg-option-text";
+          var nameSpan = document.createElement("span");
+          nameSpan.className = "reg-option-name";
+          nameSpan.textContent = reg.name;
+          var subSpan = document.createElement("span");
+          subSpan.className = "reg-option-sub";
+          subSpan.textContent = supported ? reg.sub : "Doesn’t sell " + tld;
+          textWrap.appendChild(nameSpan);
+          textWrap.appendChild(subSpan);
+
+          var endWrap = document.createElement("span");
+          endWrap.className = "reg-option-end";
+          var check = document.createElement("span");
+          check.className = "reg-option-check";
+          check.setAttribute("aria-hidden", "true");
+          check.textContent = "✓";
+          endWrap.appendChild(check);
+          if (openExternal && supported) {
+            var arr = document.createElement("span");
+            arr.setAttribute("aria-hidden", "true");
+            arr.textContent = "↗";
+            endWrap.appendChild(arr);
+          }
+
+          el.appendChild(textWrap);
+          el.appendChild(endWrap);
+
+          el.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (openExternal && !supported) return;
+            setPreferredRegistrar(reg.id);
+            closeRegMenus();
+            renderAnswers();
+          });
+          menuEl.appendChild(el);
+        });
+      }
+
+      if (regSwitchLabel) regSwitchLabel.textContent = registrarById(selectedRegistrar).name;
+      if (regSwitchBtn) {
+        regSwitchBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleRegMenu(regSwitchBtn, regSwitchMenu, function () {
+            buildRegMenuItems(regSwitchMenu, "", "", null, false);
+          });
+        });
+      }
 
       // Closed shadow contenteditable — no <input>, so no contact/password autofill.
       // delegatesFocus sends clicks and Tab on the host into the editor.
@@ -1219,7 +2064,7 @@
       field.setAttribute("autocorrect", "off");
       field.setAttribute("autocapitalize", "none");
       field.setAttribute("inputmode", "text");
-      field.setAttribute("enterkeyhint", "done");
+      field.setAttribute("enterkeyhint", "search");
       field.setAttribute("role", "textbox");
       field.setAttribute("aria-multiline", "false");
       field.setAttribute("data-1p-ignore", "true");
@@ -1285,9 +2130,11 @@
       var warmTimer = null;
       var urlTimer = null;
       var abortController = null;
+      var warmAbortController = null;
+      var tldsLoaded = false;
       var requestSeq = 0;
       var lastTypedAt = 0;
-      var cache = new Map(); // domain -> { status, at, domain, affiliate_url, disclosure }
+      var cache = new Map(); // domain -> { status, at, domain, affiliate_url, disclosure, source, rdap_url, cached, timing_ms }
       var primaryNote = "";
 
       function sanitizeLabel(raw) {
@@ -1346,9 +2193,9 @@
         return next;
       }
 
-      function registerHref(domain, row) {
-        if (row && row.affiliate_url) return row.affiliate_url;
-        return "https://www.namecheap.com/domains/registration/results/?domain=" + encodeURIComponent(domain);
+      function registerHref(domain, row, reg) {
+        var r = reg || registrarById(selectedRegistrar);
+        return r.url(domain, row);
       }
 
       function answerEndings(label, primary) {
@@ -1379,6 +2226,56 @@
             }
           } catch (_) {}
         }, 260);
+      }
+
+      var COPY_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5"/></svg>';
+      var CHECK_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 8.4 6.5 11.7 12.8 4.8"/></svg>';
+
+      function copyDomainText(text, btn) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function () {});
+        }
+        btn.classList.add("is-copied");
+        btn.innerHTML = CHECK_ICON_SVG;
+        btn.setAttribute("aria-label", "Copied " + text);
+        clearTimeout(btn._copyTimer);
+        btn._copyTimer = setTimeout(function () {
+          btn.classList.remove("is-copied");
+          btn.innerHTML = COPY_ICON_SVG;
+          btn.setAttribute("aria-label", "Copy " + text);
+        }, 1400);
+      }
+
+      function renderProvenance(metaEl, isPrimary, state, hit) {
+        metaEl.textContent = "";
+        if (!isPrimary || !hit || (state !== "available" && state !== "registered")) {
+          metaEl.classList.remove("is-shown");
+          return;
+        }
+        var parts = [];
+        if (hit.source === "rdap") parts.push("Live RDAP");
+        else if (hit.source === "dns") parts.push("Live DNS");
+        if (hit.cached) parts.push("edge cache");
+        else if (typeof hit.timing_ms === "number" && hit.timing_ms > 0) parts.push(hit.timing_ms + " ms");
+
+        if (!parts.length) {
+          metaEl.classList.remove("is-shown");
+          return;
+        }
+        var textSpan = document.createElement("span");
+        textSpan.textContent = parts.join(" · ");
+        metaEl.appendChild(textSpan);
+
+        if (hit.rdap_url && /^https?:\/\//i.test(hit.rdap_url)) {
+          var rdapLink = document.createElement("a");
+          rdapLink.href = hit.rdap_url;
+          rdapLink.target = "_blank";
+          rdapLink.rel = "noopener noreferrer";
+          rdapLink.textContent = "Registry ↗";
+          rdapLink.setAttribute("aria-label", "View authoritative RDAP record for " + hit.domain);
+          metaEl.appendChild(rdapLink);
+        }
+        metaEl.classList.add("is-shown");
       }
 
       function buildRow(domain, label, tld, isPrimary, state, note, hit, seen) {
@@ -1416,12 +2313,16 @@
           subStatus.appendChild(subDot);
           subStatus.appendChild(subText);
 
+          var metaEl = document.createElement("span");
+          metaEl.className = "answer-meta";
+
           main.appendChild(nameBtn);
           main.appendChild(subStatus);
+          main.appendChild(metaEl);
           li.appendChild(main);
 
           li.addEventListener("click", function (e) {
-            if (e.target.closest && e.target.closest(".register")) return;
+            if (e.target.closest && e.target.closest(".register, .register-split, .row-action, .answer-meta a")) return;
             var rowTld = li.dataset.tld;
             if (!rowTld || rowTld === selectedTld) return;
             selectTld(rowTld);
@@ -1446,6 +2347,7 @@
         else statusLabel = "Checking";
 
         main.querySelector(".answer-substatus .status-text").textContent = statusLabel;
+        renderProvenance(main.querySelector(".answer-meta"), isPrimary, state, hit);
 
         var tail = li.querySelector(".answer-tail");
         if (!tail) {
@@ -1467,20 +2369,121 @@
 
         tail.querySelector(".answer-status .status-text").textContent = statusLabel;
 
+        // Copy domain button for resolved rows
+        var copyBtn = tail.querySelector(".copy-btn");
+        if (state === "available" || state === "registered") {
+          if (!copyBtn) {
+            copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "row-action copy-btn";
+            copyBtn.innerHTML = COPY_ICON_SVG;
+            copyBtn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              copyDomainText(li.dataset.domain, copyBtn);
+            });
+            tail.appendChild(copyBtn);
+          }
+          if (!copyBtn.classList.contains("is-copied")) {
+            copyBtn.setAttribute("aria-label", "Copy " + domain);
+            copyBtn.title = "Copy " + domain;
+          }
+        } else if (copyBtn) {
+          copyBtn.remove();
+        }
+
+        // Taken row action: Visit link
+        var visitLink = tail.querySelector(".visit-link");
+        if (state === "registered") {
+          if (!visitLink) {
+            visitLink = document.createElement("a");
+            visitLink.className = "row-action visit-link";
+            visitLink.target = "_blank";
+            visitLink.rel = "noopener noreferrer";
+            visitLink.innerHTML = 'Visit<span class="ext-arrow" aria-hidden="true">↗</span>';
+            tail.appendChild(visitLink);
+          }
+          visitLink.href = "https://" + domain;
+          visitLink.setAttribute("aria-label", "Visit " + domain + " in a new tab");
+        } else if (visitLink) {
+          visitLink.remove();
+        }
+
+        // Available row CTA: split pill + registrar popover on hero, single pill on secondary rows
+        var splitWrap = tail.querySelector(".register-split");
         var link = tail.querySelector(".register");
         if (state === "available") {
-          if (!link) {
-            link = document.createElement("a");
-            link.className = "register";
-            link.rel = "sponsored noopener noreferrer";
-            link.target = "_blank";
-            link.textContent = "Register";
-            tail.appendChild(link);
+          var eff = effectiveRegistrarFor(tld);
+          var reg = eff.reg;
+          var href = registerHref(domain, hit, reg);
+          var tip = eff.fallbackFrom
+            ? eff.fallbackFrom.name + " doesn’t sell " + tld + " — opens on " + reg.name
+            : "Register " + domain + " on " + reg.name + " (opens in a new tab)";
+
+          if (isPrimary) {
+            if (link) link.remove();
+            if (!splitWrap) {
+              splitWrap = document.createElement("div");
+              splitWrap.className = "register-split";
+
+              var mainLink = document.createElement("a");
+              mainLink.className = "register-main";
+              mainLink.target = "_blank";
+
+              var sep = document.createElement("span");
+              sep.className = "register-sep";
+              sep.setAttribute("aria-hidden", "true");
+
+              var moreBtn = document.createElement("button");
+              moreBtn.type = "button";
+              moreBtn.className = "register-more";
+              moreBtn.setAttribute("aria-haspopup", "menu");
+              moreBtn.setAttribute("aria-expanded", "false");
+              moreBtn.setAttribute("aria-label", "Choose registrar");
+              moreBtn.title = "Choose registrar";
+              moreBtn.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+              var regMenu = document.createElement("div");
+              regMenu.className = "reg-menu";
+              regMenu.setAttribute("role", "menu");
+              regMenu.setAttribute("aria-label", "Register at");
+              regMenu.setAttribute("aria-hidden", "true");
+
+              moreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                toggleRegMenu(moreBtn, regMenu, function () {
+                  buildRegMenuItems(regMenu, li.dataset.domain, li.dataset.tld, cacheGet(li.dataset.domain), true);
+                });
+              });
+
+              splitWrap.appendChild(mainLink);
+              splitWrap.appendChild(sep);
+              splitWrap.appendChild(moreBtn);
+              splitWrap.appendChild(regMenu);
+              tail.appendChild(splitWrap);
+            }
+            var mainLinkEl = splitWrap.querySelector(".register-main");
+            mainLinkEl.href = href;
+            mainLinkEl.rel = reg.rel;
+            mainLinkEl.title = tip;
+            mainLinkEl.setAttribute("aria-label", "Register " + domain + " on " + reg.name);
+            mainLinkEl.innerHTML = '<span>' + reg.name + '</span><span class="ext-arrow" aria-hidden="true">↗</span>';
+          } else {
+            if (splitWrap) splitWrap.remove();
+            if (!link) {
+              link = document.createElement("a");
+              link.className = "register";
+              link.target = "_blank";
+              tail.appendChild(link);
+            }
+            link.href = href;
+            link.rel = reg.rel;
+            link.title = tip;
+            link.setAttribute("aria-label", "Register " + domain + " on " + reg.name);
+            link.innerHTML = reg.name + '<span class="ext-arrow" aria-hidden="true">↗</span>';
           }
-          link.href = registerHref(domain, hit);
-          link.setAttribute("aria-label", "Register " + domain);
-        } else if (link) {
-          link.remove();
+        } else {
+          if (splitWrap) splitWrap.remove();
+          if (link) link.remove();
         }
 
         return li;
@@ -1492,13 +2495,14 @@
         compose.classList.remove("is-available", "is-taken", "is-checking");
 
         if (!label || !endingReady(ending)) {
+          closeRegMenus();
           primaryListEl.innerHTML = "";
           moreListEl.innerHTML = "";
           moreListEl.hidden = true;
           resultsEl.hidden = true;
           searchEl.classList.remove("has-answers");
           recoveryEl.classList.remove("is-on");
-          disclosureEl.classList.remove("is-on");
+          disclosureRowEl.classList.remove("is-on");
           disclosureEl.textContent = "";
           syncUrl("", "");
           return;
@@ -1560,11 +2564,13 @@
         var allTaken = endings.length > 1 && resolvedCount === endings.length && availableCount === 0;
         recoveryEl.classList.toggle("is-on", allTaken);
 
-        if (disclosure) {
-          disclosureEl.textContent = disclosure;
-          disclosureEl.classList.add("is-on");
+        if (availableCount > 0) {
+          var activeReg = registrarById(selectedRegistrar);
+          disclosureEl.textContent = activeReg.disclosure(disclosure);
+          if (regSwitchLabel) regSwitchLabel.textContent = activeReg.name;
+          disclosureRowEl.classList.add("is-on");
         } else {
-          disclosureEl.classList.remove("is-on");
+          disclosureRowEl.classList.remove("is-on");
           disclosureEl.textContent = "";
         }
 
@@ -1630,6 +2636,7 @@
         var ending = readEnding() || selectedTld;
         if (!split.label) {
           if (abortController) abortController.abort();
+          if (warmAbortController) warmAbortController.abort();
           clearTimeout(timer);
           clearTimeout(warmTimer);
           renderAnswers();
@@ -1638,6 +2645,7 @@
 
         if (!endingReady(ending)) {
           if (abortController) abortController.abort();
+          if (warmAbortController) warmAbortController.abort();
           clearTimeout(timer);
           clearTimeout(warmTimer);
           renderAnswers();
@@ -1666,33 +2674,41 @@
 
       function warmOtherTlds(label) {
         clearTimeout(warmTimer);
+        if (warmAbortController) warmAbortController.abort();
         if (label.length < 3) return;
         warmTimer = setTimeout(function () {
           if (normalizeLabel(nameInput.value) !== label) return;
+          warmAbortController = new AbortController();
+          var signal = warmAbortController.signal;
           TLDS.forEach(function (tld) {
             if (tld === selectedTld) return;
             var other = label + tld;
             if (cacheGet(other)) return;
             fetch(
               API + "?q=" + encodeURIComponent(other) + "&area=instant_domain_search&warm=1",
-              { credentials: "omit", cache: "default" }
+              { signal: signal, credentials: "omit", cache: "default" }
             ).then(function (res) {
               if (!res.ok) return null;
               return res.json();
             }).then(function (data) {
+              if (signal.aborted) return;
               var row = data && data.results && data.results[0];
               if (!row) return;
               if (row.status === "available" || row.status === "registered" || row.status === "invalid") {
                 cacheSet(other, row.status, row.domain, {
                   affiliate_url: row.affiliate_url || "",
                   disclosure: row.disclosure || "",
+                  source: row.source || "",
+                  rdap_url: row.rdap_url || "",
+                  cached: !!row.cached,
+                  timing_ms: typeof data.timing_ms === "number" ? data.timing_ms : null,
                   status: row.status
                 });
                 if (normalizeLabel(nameInput.value) === label) renderAnswers();
               }
             }).catch(function () {});
           });
-        }, 160);
+        }, 180);
       }
 
       function runCheck(domain) {
@@ -1736,6 +2752,10 @@
               cacheSet(domain, status, row.domain, {
                 affiliate_url: row.affiliate_url || "",
                 disclosure: row.disclosure || "",
+                source: row.source || "",
+                rdap_url: row.rdap_url || "",
+                cached: !!row.cached,
+                timing_ms: typeof data.timing_ms === "number" ? data.timing_ms : null,
                 status: status
               });
             }
@@ -1840,6 +2860,7 @@
       }
 
       function openMenu() {
+        closeRegMenus();
         menuOpen = true;
         searchEl.classList.add("menu-open");
         tldMenu.classList.add("is-open");
@@ -1848,6 +2869,7 @@
         tldSearch.value = "";
         renderMenu();
         tldSearch.focus();
+        loadSoldEndings();
       }
 
       function closeMenu() {
@@ -1939,8 +2961,26 @@
         chooseEnding(menuItems[Number(btn.getAttribute("data-i"))]);
       });
       document.addEventListener("pointerdown", function (e) {
-        if (!menuOpen || tldPop.contains(e.target)) return;
-        closeMenu();
+        if (menuOpen && !tldPop.contains(e.target)) closeMenu();
+        if (openRegMenuEl && !openRegMenuEl.contains(e.target) && (!openRegBtnEl || !openRegBtnEl.contains(e.target))) {
+          closeRegMenus();
+        }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          if (openRegMenuEl) {
+            e.preventDefault();
+            var returnBtn = openRegBtnEl;
+            closeRegMenus();
+            if (returnBtn) returnBtn.focus();
+            return;
+          }
+          if (menuOpen) {
+            e.preventDefault();
+            closeMenu();
+            nameInput.focus();
+          }
+        }
       });
       tldPop.addEventListener("focusout", function (e) {
         if (pointerInMenu || justPicked) return;
@@ -1948,11 +2988,43 @@
         closeMenu();
       });
 
+      function resultRowButtons() {
+        return Array.prototype.slice.call(resultsEl.querySelectorAll(".answer .answer-name"));
+      }
+
+      resultsEl.addEventListener("keydown", function (e) {
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Escape") return;
+        var buttons = resultRowButtons();
+        var current = buttons.indexOf(document.activeElement);
+        if (e.key === "Escape") {
+          e.preventDefault();
+          nameInput.focus();
+          return;
+        }
+        if (current === -1) return;
+        e.preventDefault();
+        if (e.key === "ArrowDown") {
+          var next = buttons[current + 1];
+          if (next) next.focus();
+        } else if (e.key === "ArrowUp") {
+          if (current === 0) nameInput.focus();
+          else buttons[current - 1].focus();
+        }
+      });
+
       field.addEventListener("input", scheduleCheck);
       field.addEventListener("keydown", function (e) {
         if (e.key === ".") {
           e.preventDefault();
           openMenu();
+          return;
+        }
+        if (e.key === "ArrowDown" && !resultsEl.hidden) {
+          var buttons = resultRowButtons();
+          if (buttons.length) {
+            e.preventDefault();
+            buttons[0].focus();
+          }
           return;
         }
         if (e.key === "Escape" && readField()) {
@@ -2004,6 +3076,15 @@
         try {
           region = new URLSearchParams(window.location.search).get("region") || "";
         } catch (err) {}
+        if (ENDINGS_LIVE && !region) return;
+        var storageKey = "fwd-endings:" + (region ? region.toUpperCase() : "auto");
+        try {
+          var saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+          if (saved && Array.isArray(saved.endings) && Date.now() - saved.at < 300000) {
+            if (!endingChosen && saved.endings.join() !== TLDS.join()) paintTlds(saved.endings);
+            return;
+          }
+        } catch (_) {}
         var url = "/api/endings";
         if (/^[A-Za-z]{2}$/.test(region)) {
           url += "?country=" + encodeURIComponent(region.toUpperCase() === "UK" ? "GB" : region.toUpperCase());
@@ -2013,17 +3094,23 @@
             return res.ok ? res.json() : null;
           })
           .then(function (data) {
-            if (endingChosen || !data || !data.endings) return;
+            if (!data || !data.endings) return;
             var next = data.endings.filter(function (item) {
               return /^\.[a-z0-9-]{2,24}(?:\.[a-z0-9-]{2,24})?$/.test(item);
             }).slice(0, 6);
-            if (next.length < 4 || next.join() === TLDS.join()) return;
+            if (next.length < 4) return;
+            try {
+              sessionStorage.setItem(storageKey, JSON.stringify({ endings: next, at: Date.now() }));
+            } catch (_) {}
+            if (endingChosen || next.join() === TLDS.join()) return;
             paintTlds(next);
           })
           .catch(function () {});
       }
 
       function loadSoldEndings() {
+        if (tldsLoaded) return;
+        tldsLoaded = true;
         fetch("/api/tlds", { credentials: "omit", cache: "default" })
           .then(function (res) { return res.ok ? res.json() : null; })
           .then(function (data) {
@@ -2037,10 +3124,11 @@
             tldSearch.placeholder = "Search " + rounded + "+ endings";
             if (menuOpen) renderMenu();
           })
-          .catch(function () {});
+          .catch(function () {
+            tldsLoaded = false;
+          });
       }
 
-      loadSoldEndings();
       loadRegionalEndings();
       nameInput.focus();
       noteVisit("instant_domain_search");
