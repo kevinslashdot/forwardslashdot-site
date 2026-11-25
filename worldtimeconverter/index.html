@@ -51,12 +51,16 @@
       --blue: #007aff;
       --green: #34c759;
       --green-ink: #1c7c36;
+      --warn-ink: #b25e00;
       --orange: #ff9500;
       --red: #ff3b30;
       --p-work: #34c759;
-      --p-edge: rgba(255, 149, 0, 0.5);
+      --p-edge: rgba(255, 149, 0, 0.56);
+      --p-edge-stripe: rgba(255, 149, 0, 0.85);
       --p-night: rgba(120, 120, 128, 0.16);
       --glass: rgba(242, 242, 247, 0.78);
+      --popover: rgba(255, 255, 255, 0.92);
+      --popover-border: rgba(0, 0, 0, 0.1);
       --shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.04), 0 8px 30px rgba(0, 0, 0, 0.06);
       --font: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
       --r: 20px;
@@ -78,12 +82,16 @@
         --blue: #0a84ff;
         --green: #30d158;
         --green-ink: #30d158;
+        --warn-ink: #ff9f0a;
         --orange: #ff9f0a;
         --red: #ff453a;
         --p-work: #30d158;
-        --p-edge: rgba(255, 159, 10, 0.55);
+        --p-edge: rgba(255, 159, 10, 0.58);
+        --p-edge-stripe: rgba(255, 159, 10, 0.88);
         --p-night: rgba(120, 120, 128, 0.24);
         --glass: rgba(0, 0, 0, 0.72);
+        --popover: rgba(44, 44, 46, 0.94);
+        --popover-border: rgba(255, 255, 255, 0.14);
         --shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.07);
       }
     }
@@ -141,6 +149,22 @@
     .mark { font-size: 20px; font-weight: 700; letter-spacing: -0.04em; }
     .brand-name { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--label2); }
 
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .fmt-btn {
+      min-height: 36px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 18px;
+      background: var(--fill);
+      font-size: 14px;
+      font-weight: 590;
+      color: var(--label2);
+      white-space: nowrap;
+      transition: transform 0.2s var(--spring), background 0.2s, color 0.2s;
+    }
+    .fmt-btn:active { transform: scale(0.96); background: var(--fill2); }
+    .fmt-btn[aria-pressed="true"] { color: var(--blue); }
+    .share-wrap { position: relative; }
     .share {
       display: inline-flex;
       align-items: center;
@@ -238,11 +262,47 @@
       font-weight: 600;
       letter-spacing: -0.045em;
       line-height: 1;
+      display: flex;
+      align-items: baseline;
+    }
+    .clock-btn {
+      display: inline-flex;
+      align-items: baseline;
+      padding: 2px 8px 2px 0;
+      margin-left: -2px;
+      border: 0;
+      border-radius: 14px;
+      background: none;
+      text-align: left;
+      transition: background 0.18s;
+    }
+    .clock-btn:hover { background: var(--fill); padding-left: 8px; margin-left: -8px; }
+    .clock-input {
+      width: min(100%, 280px);
+      padding: 4px 12px;
+      border: 2px solid var(--blue);
+      border-radius: 14px;
+      background: var(--card);
+      font-size: clamp(44px, 14vw, 64px);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--label);
+      outline: none;
     }
     .ampm { margin-left: 6px; font-size: 0.3em; font-weight: 600; letter-spacing: -0.01em; color: var(--label2); }
+    .ampm:empty { display: none; }
 
     .ask { margin-top: 8px; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.3; }
-    .answer { margin-top: 2px; font-size: 15px; color: var(--label2); line-height: 1.4; }
+    .answer {
+      margin-top: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px 14px;
+      font-size: 15px;
+      color: var(--label2);
+      line-height: 1.4;
+    }
     .chat-bit { white-space: nowrap; }
     .chat-line {
       position: absolute;
@@ -253,7 +313,17 @@
       white-space: nowrap;
     }
 
-    .summary { margin-top: 8px; font-size: 15px; font-weight: 590; color: var(--green-ink); }
+    .summary { margin-top: 8px; font-size: 15px; font-weight: 590; color: var(--label2); }
+    .summary.is-good { color: var(--green-ink); }
+    .summary.is-warn { color: var(--warn-ink); }
+    .summary.is-low { color: var(--label2); }
+    .dst-note {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 550;
+      color: var(--warn-ink);
+      line-height: 1.35;
+    }
     .card-open-row { display: none; }
     .card-open { font-size: 15px; font-weight: 590; }
 
@@ -270,7 +340,7 @@
       background: var(--card);
       box-shadow: var(--shadow);
       text-align: left;
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 590;
       letter-spacing: -0.015em;
       line-height: 1.3;
@@ -293,10 +363,61 @@
       border-radius: 18px;
       background: var(--blue);
       color: #fff;
-      font-size: 15px;
+      font-size: 14px;
       white-space: nowrap;
     }
-    .meet-note { margin: 0 4px 16px; font-size: 15px; color: var(--label2); }
+    .best.is-active { cursor: default; }
+    .best.is-active:active { transform: none; }
+    .best.is-active::after {
+      content: "In window";
+      background: color-mix(in srgb, var(--green) 16%, transparent);
+      color: var(--green-ink);
+    }
+    .meet-box {
+      margin: 0 0 16px;
+      padding: 14px 16px;
+      border-radius: var(--r);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .meet-note { margin: 0; font-size: 15px; font-weight: 590; color: var(--label); }
+    .meet-sub { margin-top: 3px; font-size: 13px; color: var(--label2); }
+    .compromises {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .comp-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 6px 12px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--fill);
+      font-size: 14px;
+      font-weight: 550;
+      color: var(--label);
+      text-align: left;
+      transition: background 0.18s, transform 0.18s var(--spring);
+    }
+    .comp-btn:hover { background: var(--fill2); }
+    .comp-btn:active { transform: scale(0.98); }
+    .comp-btn[aria-pressed="true"] {
+      background: color-mix(in srgb, var(--blue) 18%, transparent);
+      color: var(--blue);
+    }
+    .comp-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      flex: none;
+    }
+    .comp-why { font-size: 12px; font-weight: 450; color: var(--label2); }
+    .comp-btn[aria-pressed="true"] .comp-why { color: inherit; opacity: 0.85; }
 
     /* ---------- The day: shared axis, rows, playhead ---------- */
     .group {
@@ -447,13 +568,34 @@
       background: var(--blue);
       vertical-align: 3px;
     }
-    .who-meta, .when {
-      display: inline;
+    .who-meta {
+      min-width: 0;
+      font-size: 13px;
+      color: var(--label2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sub {
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
       font-size: 13px;
       color: var(--label2);
     }
-    .sub { margin-top: 1px; font-size: 13px; color: var(--label2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .when { margin-left: 6px; font-weight: 590; color: var(--blue); }
+    .when {
+      flex: none;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--blue) 14%, var(--card));
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--blue);
+      white-space: nowrap;
+    }
 
     .who-time {
       position: relative;
@@ -466,6 +608,7 @@
       white-space: nowrap;
     }
     .who-time small { margin-left: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--label2); }
+    .who-time small:empty { display: none; }
     .wday { display: none; }
 
     .city-name, .who-time, .sub {
@@ -488,7 +631,47 @@
     .row-more svg { width: 16px; height: 16px; }
 
     .band-hit { grid-column: 1 / -1; padding: 12px 0 14px; cursor: ew-resize; touch-action: pan-y; }
-    .dayband { position: relative; height: 8px; border-radius: 4px; background: var(--strip, var(--p-night)); }
+    .dayband {
+      position: relative;
+      height: 9px;
+      border-radius: 4.5px;
+      background: var(--strip, var(--p-night));
+      overflow: visible;
+    }
+    .dayband-edge {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        -45deg,
+        transparent 0 3px,
+        rgba(0, 0, 0, 0.22) 3px 5px
+      );
+      -webkit-mask-image: var(--edge-mask, none);
+      mask-image: var(--edge-mask, none);
+    }
+    .band-span, .band-span-wrap {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--blue) 22%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 55%, transparent);
+      pointer-events: none;
+    }
+    .band-span {
+      left: calc(var(--f, 0) * 100%);
+      width: calc(var(--span-w, 0.04167) * 100%);
+    }
+    .band-span-wrap {
+      left: 0;
+      width: calc(var(--span-wrap, 0) * 100%);
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+    .dial-card.is-swiped .band-span,
+    .dial-card.is-swiped .band-span-wrap { opacity: 0; }
 
     .add-row {
       display: flex;
@@ -511,10 +694,24 @@
     .add-row .plus svg { width: 12px; height: 12px; }
 
     .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 14px 6px 0; font-size: 13px; color: var(--label2); }
-    .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+    .legend i { display: inline-block; width: 12px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+    .legend i.swatch-edge {
+      background:
+        repeating-linear-gradient(-45deg, transparent 0 2.5px, rgba(0, 0, 0, 0.24) 2.5px 4.5px),
+        var(--p-edge);
+    }
     .tip { padding: 10px 6px 0; font-size: 13px; color: var(--label2); }
 
     /* ---------- Add / change a place ---------- */
+    .adder-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 39;
+      background: rgba(0, 0, 0, 0.45);
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+    }
     .adder {
       display: none;
       margin-top: 16px;
@@ -524,8 +721,26 @@
       box-shadow: var(--shadow);
     }
     .adder.is-open { display: block; }
-    .adder-title { margin-bottom: 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-    .search { position: relative; }
+    .adder-head {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .adder-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+    .adder-close {
+      min-height: 32px;
+      padding: 0 4px;
+      border: 0;
+      background: none;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--blue);
+    }
+    .adder-close:active { opacity: 0.6; }
+    .search { position: relative; flex: none; }
     .search input {
       width: 100%;
       height: 44px;
@@ -539,6 +754,7 @@
     .search input::placeholder { color: var(--label2); }
     .search input:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 40%, transparent); }
     .search input:disabled { opacity: 0.5; }
+    .adder-body { min-height: 0; }
     .results { list-style: none; margin-top: 6px; max-height: 340px; overflow: auto; }
     .option {
       display: flex;
@@ -546,7 +762,7 @@
       justify-content: space-between;
       gap: 12px;
       min-height: 56px;
-      padding: 0 4px;
+      padding: 0 10px;
       border-top: 0.5px solid var(--sep);
       cursor: pointer;
     }
@@ -566,6 +782,35 @@
       font-weight: 590;
     }
     .chip:active { background: var(--fill2); }
+
+    @media (max-width: 640px), (hover: none) and (pointer: coarse) {
+      .adder-backdrop.is-open { display: block; }
+      .adder.is-open {
+        position: fixed;
+        z-index: 40;
+        left: 12px;
+        right: 12px;
+        top: calc(var(--vv-top, 0px) + env(safe-area-inset-top, 0px) + 10px);
+        max-height: calc(var(--vv-h, 100dvh) - env(safe-area-inset-top, 0px) - 20px);
+        margin-top: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--popover);
+        border: 0.5px solid var(--popover-border);
+        -webkit-backdrop-filter: saturate(180%) blur(28px);
+        backdrop-filter: saturate(180%) blur(28px);
+        box-shadow: 0 20px 52px rgba(0, 0, 0, 0.36);
+      }
+      .adder-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+      .adder .results { max-height: none; overflow: visible; }
+    }
 
     /* ---------- Workday ---------- */
     .workday { margin-top: 16px; border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
@@ -630,38 +875,40 @@
     .work-note:empty { display: none; }
 
     /* ---------- Menus and toast ---------- */
-    .home-menu, .row-menu {
-      min-width: 220px;
+    .home-menu, .row-menu, .share-menu {
+      min-width: 230px;
       padding: 6px;
       border-radius: 16px;
-      background: var(--glass);
+      background: var(--popover);
       -webkit-backdrop-filter: saturate(180%) blur(30px);
       backdrop-filter: saturate(180%) blur(30px);
-      box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 14px 44px rgba(0, 0, 0, 0.22);
+      box-shadow: 0 0 0 0.5px var(--popover-border), 0 16px 48px rgba(0, 0, 0, 0.34);
       animation: pop 0.22s var(--spring);
     }
     @keyframes pop { from { opacity: 0; transform: scale(0.94); } }
-    .home-menu { position: absolute; z-index: 40; top: 100%; right: 0; list-style: none; transform-origin: top right; }
-    .home-menu button, .row-menu button {
+    .home-menu { position: absolute; z-index: 40; top: calc(100% + 4px); right: 0; list-style: none; transform-origin: top right; }
+    .share-menu { position: absolute; z-index: 50; top: calc(100% + 6px); right: 0; transform-origin: top right; }
+    .home-menu button, .row-menu button, .share-menu button {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
       width: 100%;
       min-height: 44px;
       padding: 0 12px;
       border: 0;
       border-radius: 10px;
       background: none;
-      font-size: 17px;
+      font-size: 16px;
+      color: var(--label);
       text-align: left;
       white-space: nowrap;
     }
-    .home-menu button:hover, .row-menu button:hover:not(:disabled) { background: var(--fill); }
+    .home-menu button:hover, .row-menu button:hover:not(:disabled), .share-menu button:hover:not(:disabled) { background: var(--fill); }
     .home-menu button[aria-selected="true"] { color: var(--blue); }
-    .home-menu .hint { font-size: 13px; color: var(--label2); }
+    .home-menu .hint, .share-menu .hint { font-size: 13px; color: var(--label2); }
     .row-menu { position: fixed; z-index: 60; }
-    .row-menu button:disabled { opacity: 0.35; }
+    .row-menu button:disabled, .share-menu button:disabled { opacity: 0.35; cursor: default; }
     .row-menu [data-menu="remove"] { color: var(--red); }
     .row-menu-rule { height: 0.5px; margin: 4px 8px; background: var(--sep); }
 
@@ -705,7 +952,9 @@
     body.embed .ask,
     body.embed .answer,
     body.embed .summary,
+    body.embed .dst-note,
     body.embed .workday,
+    body.embed .meet-box,
     body.embed .meet-note,
     body.embed .adder,
     body.embed .add-row,
@@ -754,14 +1003,26 @@
         <span class="brand-name">Time</span>
       </a>
       <div class="header-actions">
-        <button class="share" id="share" type="button" aria-label="Share this comparison">
-          <svg class="share-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3.5v11.5" />
-            <path d="m7.5 8 4.5-4.5L16.5 8" />
-            <path d="M5.5 12.5v6a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-6" />
-          </svg>
-          <span class="share-label">Share</span>
-        </button>
+        <button class="fmt-btn" id="fmt-toggle" type="button" aria-pressed="false" aria-label="Switch between 12-hour and 24-hour clock">24h</button>
+        <div class="share-wrap">
+          <button class="share" id="share" type="button" aria-label="Share this comparison" aria-haspopup="menu" aria-expanded="false" aria-controls="share-menu">
+            <svg class="share-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3.5v11.5" />
+              <path d="m7.5 8 4.5-4.5L16.5 8" />
+              <path d="M5.5 12.5v6a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-6" />
+            </svg>
+            <span class="share-label">Share</span>
+          </button>
+          <div class="share-menu" id="share-menu" role="menu" hidden>
+            <button type="button" role="menuitem" data-share="link"><span>Copy link</span><span class="hint">URL</span></button>
+            <button type="button" role="menuitem" data-share="text"><span>Copy times as text</span><span class="hint">Slack / Email</span></button>
+            <div class="row-menu-rule" role="separator"></div>
+            <button type="button" role="menuitem" data-share="ics"><span>Download .ics</span><span class="hint">Calendar</span></button>
+            <button type="button" role="menuitem" data-share="gcal"><span>Google Calendar</span><span class="hint">New tab</span></button>
+            <div class="row-menu-rule" id="share-native-rule" role="separator" hidden></div>
+            <button type="button" role="menuitem" data-share="native" id="share-native" hidden><span>System share…</span></button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -782,23 +1043,33 @@
           </div>
           <div class="moment-actions">
             <div class="where-wrap">
-              <button class="where" id="where" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-menu"></button>
+              <button class="where" id="where" type="button" aria-label="Change home city" aria-haspopup="listbox" aria-expanded="false" aria-controls="home-menu"></button>
               <ul class="home-menu" id="home-menu" role="listbox" hidden></ul>
             </div>
             <button class="text-btn" id="now" type="button">Now</button>
           </div>
         </div>
-        <p class="clock" id="clock"><span id="clock-hm">–:–</span><span class="ampm" id="clock-ampm"></span></p>
+        <div class="clock" id="clock">
+          <button class="clock-btn" id="clock-btn" type="button" aria-label="Edit time" title="Click to type an exact time">
+            <span id="clock-hm">–:–</span><span class="ampm" id="clock-ampm"></span>
+          </button>
+          <input class="clock-input" id="clock-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Type a time such as 2:15 PM or 14:15" hidden />
+        </div>
         <h1 class="ask" id="ask">What time is it?</h1>
         <p class="answer" id="answer"></p>
         <p class="chat-line" id="chat-line"></p>
         <p class="summary" id="summary" hidden></p>
+        <p class="dst-note" id="dst-note" hidden></p>
         <p class="card-open-row"><a class="card-open" id="card-open" href="">Open the day</a></p>
       </section>
 
       <section class="board" id="board" aria-label="Cities on one day">
-        <button class="best" id="best" type="button" hidden></button>
-        <p class="meet-note" id="meet-note" hidden></p>
+        <button class="best" id="best" type="button" aria-label="Suggested meeting window" hidden></button>
+        <div class="meet-box" id="meet-box" hidden>
+          <p class="meet-note" id="meet-note"></p>
+          <p class="meet-sub" id="meet-sub"></p>
+          <div class="compromises" id="compromises"></div>
+        </div>
         <div class="group" id="group">
           <div class="scrub" id="slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439" aria-label="Time of day" aria-describedby="chat-line">
             <div class="axis-lane" id="axis-lane" aria-hidden="true">
@@ -815,21 +1086,27 @@
             <span>Add a city</span>
           </button>
         </div>
+        <div class="adder-backdrop" id="adder-backdrop" aria-hidden="true"></div>
         <div class="adder" id="adder">
-          <p class="adder-title" id="adder-title">Add a city</p>
+          <div class="adder-head">
+            <p class="adder-title" id="adder-title">Add a city</p>
+            <button class="adder-close" id="adder-close" type="button">Cancel</button>
+          </div>
           <div class="search">
             <label class="sr" for="city-search">Add a city</label>
             <input id="city-search" type="text" placeholder="Add a place" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
-            <ul class="results" id="city-list" role="listbox" hidden></ul>
           </div>
-          <div class="chips" id="chips"></div>
+          <div class="adder-body">
+            <ul class="results" id="city-list" role="listbox" hidden></ul>
+            <div class="chips" id="chips"></div>
+          </div>
         </div>
         <p class="legend">
           <span><i style="background: var(--p-work)"></i>Workday</span>
-          <span><i style="background: var(--p-edge)"></i>Early or late</span>
+          <span><i class="swatch-edge"></i>Early or late</span>
           <span><i style="background: var(--p-night)"></i>Off hours</span>
         </p>
-        <p class="tip" id="tip">Drag along a bar to pick a time. Drag a city to reorder it.</p>
+        <p class="tip" id="tip">Drag along a bar to pick a time. Drag a city to reorder it, or use its ⋯ menu.</p>
         <details class="workday" id="workday">
           <summary id="workday-summary">Workday 9:00 AM – 5:00 PM · 1 hour</summary>
           <div class="workday-body">
@@ -840,13 +1117,20 @@
               <button class="dur" type="button" data-dur="60">1h</button>
               <button class="dur" type="button" data-dur="120">2h</button>
             </div>
+            <div class="segmented" role="group" aria-label="Clock format">
+              <button class="dur" type="button" data-fmt="12">12h</button>
+              <button class="dur" type="button" data-fmt="24">24h</button>
+            </div>
             <span class="work-note" id="work-note" role="status"></span>
           </div>
         </details>
       </section>
       <div class="row-menu" id="row-menu" role="menu" hidden>
-        <button type="button" role="menuitem" data-menu="change">Change</button>
+        <button type="button" role="menuitem" data-menu="home">Set as home clock</button>
+        <button type="button" role="menuitem" data-menu="up">Move up</button>
+        <button type="button" role="menuitem" data-menu="down">Move down</button>
         <div class="row-menu-rule" role="separator"></div>
+        <button type="button" role="menuitem" data-menu="change">Change</button>
         <button type="button" role="menuitem" data-menu="remove">Delete</button>
       </div>
 
@@ -857,7 +1141,7 @@
     <footer>
       <p class="foot-links">
         <a href="/llms.txt">llms.txt</a>
-        <a href="/time.txt">plain text</a>
+        <a id="plain-text-link" href="/time.txt">plain text</a>
         <a href="https://api.forwardslashdot.com/llms.txt">domain API</a>
       </p>
     </footer>
@@ -888,7 +1172,15 @@
       { city: "UTC", region: "Coordinated Universal Time", zone: "Etc/UTC", aliases: ["utc"] }
     ];
 
-    let CITIES = FALLBACK.slice();
+    function defaultHour24() {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().hour12 === false;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    let CITIES = [{"city":"New York","region":"United States","zone":"America/New_York","aliases":["nyc","new york city","manhattan","eastern"],"popular":true},{"city":"Boston","region":"United States","zone":"America/New_York","aliases":["bos"]},{"city":"Miami","region":"United States","zone":"America/New_York","aliases":["mia"]},{"city":"Atlanta","region":"United States","zone":"America/New_York","aliases":["atl"]},{"city":"Toronto","region":"Canada","zone":"America/Toronto","aliases":["yyz"],"popular":true},{"city":"Montreal","region":"Canada","zone":"America/Toronto","aliases":["montréal"]},{"city":"Washington","region":"United States","zone":"America/New_York","aliases":["dc","washington dc"]},{"city":"Halifax","region":"Canada","zone":"America/Halifax","aliases":["atlantic"]},{"city":"St. John's","region":"Canada","zone":"America/St_Johns","aliases":["st johns","newfoundland"]},{"city":"Chicago","region":"United States","zone":"America/Chicago","aliases":["chi","central"],"popular":true},{"city":"Austin","region":"United States","zone":"America/Chicago","aliases":["atx"]},{"city":"Dallas","region":"United States","zone":"America/Chicago","aliases":["dfw"]},{"city":"Houston","region":"United States","zone":"America/Chicago","aliases":["hou"]},{"city":"Winnipeg","region":"Canada","zone":"America/Winnipeg","aliases":[]},{"city":"Mexico City","region":"Mexico","zone":"America/Mexico_City","aliases":["cdmx","mexico"],"popular":true},{"city":"Bogotá","region":"Colombia","zone":"America/Bogota","aliases":["bogota"]},{"city":"Lima","region":"Peru","zone":"America/Lima","aliases":[]},{"city":"Denver","region":"United States","zone":"America/Denver","aliases":["mountain"],"popular":true},{"city":"Salt Lake City","region":"United States","zone":"America/Denver","aliases":["slc","utah"]},{"city":"Edmonton","region":"Canada","zone":"America/Edmonton","aliases":[]},{"city":"Calgary","region":"Canada","zone":"America/Edmonton","aliases":["yyc"]},{"city":"Phoenix","region":"United States","zone":"America/Phoenix","aliases":["phx","arizona"]},{"city":"Los Angeles","region":"United States","zone":"America/Los_Angeles","aliases":["la","lax","pacific"],"popular":true},{"city":"San Francisco","region":"United States","zone":"America/Los_Angeles","aliases":["sf","bay area","san fran"]},{"city":"Seattle","region":"United States","zone":"America/Los_Angeles","aliases":["sea"]},{"city":"Vancouver","region":"Canada","zone":"America/Vancouver","aliases":["yvr"]},{"city":"Anchorage","region":"United States","zone":"America/Anchorage","aliases":["alaska"]},{"city":"Honolulu","region":"United States","zone":"Pacific/Honolulu","aliases":["hawaii","hnl"]},{"city":"São Paulo","region":"Brazil","zone":"America/Sao_Paulo","aliases":["sao paulo","sampa"],"popular":true},{"city":"Rio de Janeiro","region":"Brazil","zone":"America/Sao_Paulo","aliases":["rio"]},{"city":"Buenos Aires","region":"Argentina","zone":"America/Argentina/Buenos_Aires","aliases":["baires"]},{"city":"Santiago","region":"Chile","zone":"America/Santiago","aliases":[]},{"city":"Reykjavík","region":"Iceland","zone":"Atlantic/Reykjavik","aliases":["reykjavik"]},{"city":"London","region":"United Kingdom","zone":"Europe/London","aliases":["uk","britain","england","gmt"],"popular":true},{"city":"Dublin","region":"Ireland","zone":"Europe/Dublin","aliases":[]},{"city":"Lisbon","region":"Portugal","zone":"Europe/Lisbon","aliases":["lx"]},{"city":"Paris","region":"France","zone":"Europe/Paris","aliases":["cdg"],"popular":true},{"city":"Madrid","region":"Spain","zone":"Europe/Madrid","aliases":[]},{"city":"Barcelona","region":"Spain","zone":"Europe/Madrid","aliases":["bcn"]},{"city":"Berlin","region":"Germany","zone":"Europe/Berlin","aliases":["ber"],"popular":true},{"city":"Amsterdam","region":"Netherlands","zone":"Europe/Amsterdam","aliases":["ams"]},{"city":"Brussels","region":"Belgium","zone":"Europe/Brussels","aliases":[]},{"city":"Rome","region":"Italy","zone":"Europe/Rome","aliases":["roma"]},{"city":"Zurich","region":"Switzerland","zone":"Europe/Zurich","aliases":["zürich","zurich"]},{"city":"Vienna","region":"Austria","zone":"Europe/Vienna","aliases":["wien"]},{"city":"Prague","region":"Czechia","zone":"Europe/Prague","aliases":["praha"]},{"city":"Warsaw","region":"Poland","zone":"Europe/Warsaw","aliases":["warszawa"]},{"city":"Stockholm","region":"Sweden","zone":"Europe/Stockholm","aliases":[]},{"city":"Oslo","region":"Norway","zone":"Europe/Oslo","aliases":[]},{"city":"Copenhagen","region":"Denmark","zone":"Europe/Copenhagen","aliases":["københavn","copenhagen"]},{"city":"Helsinki","region":"Finland","zone":"Europe/Helsinki","aliases":[]},{"city":"Athens","region":"Greece","zone":"Europe/Athens","aliases":[]},{"city":"Bucharest","region":"Romania","zone":"Europe/Bucharest","aliases":[]},{"city":"Kyiv","region":"Ukraine","zone":"Europe/Kyiv","aliases":["kiev"]},{"city":"Istanbul","region":"Türkiye","zone":"Europe/Istanbul","aliases":["constantinople"]},{"city":"Moscow","region":"Russia","zone":"Europe/Moscow","aliases":["москва"]},{"city":"Cairo","region":"Egypt","zone":"Africa/Cairo","aliases":[]},{"city":"Johannesburg","region":"South Africa","zone":"Africa/Johannesburg","aliases":["joburg","jhb"],"popular":true},{"city":"Cape Town","region":"South Africa","zone":"Africa/Johannesburg","aliases":["cpt"]},{"city":"Lagos","region":"Nigeria","zone":"Africa/Lagos","aliases":[]},{"city":"Nairobi","region":"Kenya","zone":"Africa/Nairobi","aliases":[]},{"city":"Addis Ababa","region":"Ethiopia","zone":"Africa/Addis_Ababa","aliases":["addis"]},{"city":"Casablanca","region":"Morocco","zone":"Africa/Casablanca","aliases":["casa"]},{"city":"Tel Aviv","region":"Israel","zone":"Asia/Jerusalem","aliases":["jerusalem"]},{"city":"Riyadh","region":"Saudi Arabia","zone":"Asia/Riyadh","aliases":[]},{"city":"Doha","region":"Qatar","zone":"Asia/Qatar","aliases":[]},{"city":"Dubai","region":"United Arab Emirates","zone":"Asia/Dubai","aliases":["uae","dxb"],"popular":true},{"city":"Tehran","region":"Iran","zone":"Asia/Tehran","aliases":[]},{"city":"Karachi","region":"Pakistan","zone":"Asia/Karachi","aliases":[]},{"city":"Mumbai","region":"India","zone":"Asia/Kolkata","aliases":["bombay"],"popular":true},{"city":"Delhi","region":"India","zone":"Asia/Kolkata","aliases":["new delhi"]},{"city":"Bengaluru","region":"India","zone":"Asia/Kolkata","aliases":["bangalore"]},{"city":"Kolkata","region":"India","zone":"Asia/Kolkata","aliases":["calcutta"]},{"city":"Kathmandu","region":"Nepal","zone":"Asia/Kathmandu","aliases":[]},{"city":"Dhaka","region":"Bangladesh","zone":"Asia/Dhaka","aliases":[]},{"city":"Bangkok","region":"Thailand","zone":"Asia/Bangkok","aliases":["bkk"]},{"city":"Ho Chi Minh City","region":"Vietnam","zone":"Asia/Ho_Chi_Minh","aliases":["saigon","hcmc"]},{"city":"Jakarta","region":"Indonesia","zone":"Asia/Jakarta","aliases":["jkt"]},{"city":"Singapore","region":"Singapore","zone":"Asia/Singapore","aliases":["sg","sin"],"popular":true},{"city":"Kuala Lumpur","region":"Malaysia","zone":"Asia/Kuala_Lumpur","aliases":["kl"]},{"city":"Hong Kong","region":"China","zone":"Asia/Hong_Kong","aliases":["hk"],"popular":true},{"city":"Taipei","region":"Taiwan","zone":"Asia/Taipei","aliases":[]},{"city":"Shanghai","region":"China","zone":"Asia/Shanghai","aliases":[],"popular":true},{"city":"Beijing","region":"China","zone":"Asia/Shanghai","aliases":["peking"]},{"city":"Manila","region":"Philippines","zone":"Asia/Manila","aliases":["mnl"]},{"city":"Seoul","region":"South Korea","zone":"Asia/Seoul","aliases":["korea"]},{"city":"Tokyo","region":"Japan","zone":"Asia/Tokyo","aliases":["tyo","japan"],"popular":true},{"city":"Osaka","region":"Japan","zone":"Asia/Tokyo","aliases":[]},{"city":"Perth","region":"Australia","zone":"Australia/Perth","aliases":[]},{"city":"Adelaide","region":"Australia","zone":"Australia/Adelaide","aliases":[]},{"city":"Brisbane","region":"Australia","zone":"Australia/Brisbane","aliases":[]},{"city":"Sydney","region":"Australia","zone":"Australia/Sydney","aliases":["syd"],"popular":true},{"city":"Melbourne","region":"Australia","zone":"Australia/Melbourne","aliases":["mel"]},{"city":"Auckland","region":"New Zealand","zone":"Pacific/Auckland","aliases":["akl"],"popular":true},{"city":"Wellington","region":"New Zealand","zone":"Pacific/Auckland","aliases":[]},{"city":"Fiji","region":"Fiji","zone":"Pacific/Fiji","aliases":["suva"]},{"city":"UTC","region":"Coordinated Universal Time","zone":"Etc/UTC","aliases":["utc","zulu"],"popular":true}];
     const state = {
       cities: [],
       anchorKey: "",
@@ -899,6 +1191,8 @@
       workStart: 9 * 60,
       workEnd: 17 * 60,
       duration: 60,
+      hour24: defaultHour24(),
+      hour24Explicit: false,
       detected: "",
       followDevice: true,
       customOrder: false,
@@ -973,6 +1267,78 @@
       };
     }
 
+    const ZONE_ABBR = {
+      "Asia/Tokyo": { 540: "JST" },
+      "Asia/Seoul": { 540: "KST" },
+      "Asia/Kolkata": { 330: "IST" },
+      "Asia/Calcutta": { 330: "IST" },
+      "Asia/Singapore": { 480: "SGT" },
+      "Asia/Hong_Kong": { 480: "HKT" },
+      "Asia/Shanghai": { 480: "CST" },
+      "Asia/Taipei": { 480: "CST" },
+      "Asia/Manila": { 480: "PHT" },
+      "Asia/Kuala_Lumpur": { 480: "MYT" },
+      "Asia/Bangkok": { 420: "ICT" },
+      "Asia/Ho_Chi_Minh": { 420: "ICT" },
+      "Asia/Jakarta": { 420: "WIB" },
+      "Asia/Dubai": { 240: "GST" },
+      "Asia/Riyadh": { 180: "AST" },
+      "Asia/Qatar": { 180: "AST" },
+      "Asia/Karachi": { 300: "PKT" },
+      "Asia/Kathmandu": { 345: "NPT" },
+      "Asia/Dhaka": { 360: "BST" },
+      "Asia/Jerusalem": { 120: "IST", 180: "IDT" },
+      "Asia/Tehran": { 210: "IRST" },
+      "Europe/London": { 0: "GMT", 60: "BST" },
+      "Europe/Paris": { 60: "CET", 120: "CEST" },
+      "Europe/Berlin": { 60: "CET", 120: "CEST" },
+      "Europe/Amsterdam": { 60: "CET", 120: "CEST" },
+      "Europe/Rome": { 60: "CET", 120: "CEST" },
+      "Europe/Madrid": { 60: "CET", 120: "CEST" },
+      "Europe/Zurich": { 60: "CET", 120: "CEST" },
+      "Europe/Vienna": { 60: "CET", 120: "CEST" },
+      "Europe/Prague": { 60: "CET", 120: "CEST" },
+      "Europe/Warsaw": { 60: "CET", 120: "CEST" },
+      "Europe/Stockholm": { 60: "CET", 120: "CEST" },
+      "Europe/Oslo": { 60: "CET", 120: "CEST" },
+      "Europe/Copenhagen": { 60: "CET", 120: "CEST" },
+      "Europe/Brussels": { 60: "CET", 120: "CEST" },
+      "Europe/Budapest": { 60: "CET", 120: "CEST" },
+      "Europe/Lisbon": { 0: "WET", 60: "WEST" },
+      "Europe/Dublin": { 0: "GMT", 60: "IST" },
+      "Europe/Athens": { 120: "EET", 180: "EEST" },
+      "Europe/Helsinki": { 120: "EET", 180: "EEST" },
+      "Europe/Bucharest": { 120: "EET", 180: "EEST" },
+      "Europe/Kyiv": { 120: "EET", 180: "EEST" },
+      "Europe/Istanbul": { 180: "TRT" },
+      "Europe/Moscow": { 180: "MSK" },
+      "Australia/Sydney": { 600: "AEST", 660: "AEDT" },
+      "Australia/Melbourne": { 600: "AEST", 660: "AEDT" },
+      "Australia/Brisbane": { 600: "AEST" },
+      "Australia/Adelaide": { 570: "ACST", 630: "ACDT" },
+      "Australia/Perth": { 480: "AWST" },
+      "Pacific/Auckland": { 720: "NZST", 780: "NZDT" },
+      "America/Sao_Paulo": { "-180": "BRT" },
+      "America/Argentina/Buenos_Aires": { "-180": "ART" },
+      "America/Santiago": { "-240": "CLT", "-180": "CLST" },
+      "America/Bogota": { "-300": "COT" },
+      "America/Lima": { "-300": "PET" },
+      "America/Mexico_City": { "-360": "CST" },
+      "Africa/Johannesburg": { 120: "SAST" },
+      "Africa/Cairo": { 120: "EET", 180: "EEST" },
+      "Africa/Lagos": { 60: "WAT" },
+      "Africa/Nairobi": { 180: "EAT" }
+    };
+
+    function friendlyAbbr(timeZone, rawAbbr, year, month, day, hour, minute, second, utcMs) {
+      if (rawAbbr && !/^(GMT|UTC)[+-]/i.test(rawAbbr)) return rawAbbr;
+      const map = ZONE_ABBR[timeZone];
+      if (!map) return rawAbbr || "";
+      const asUTC = Date.UTC(year, month - 1, day, hour, minute, second);
+      const off = Math.round((asUTC - utcMs) / 60000);
+      return map[off] || map[String(off)] || rawAbbr || "";
+    }
+
     function partsInZone(utcMs, timeZone) {
       const fixed = permanentRule(timeZone, utcMs);
       if (fixed) return partsFromOffset(utcMs, fixed.offset, fixed.abbr);
@@ -992,15 +1358,20 @@
       fmt.formatToParts(new Date(utcMs)).forEach(function (part) { bag[part.type] = part.value; });
       let hour = Number(bag.hour);
       if (hour === 24) hour = 0;
+      const year = Number(bag.year);
+      const month = Number(bag.month);
+      const day = Number(bag.day);
+      const minute = Number(bag.minute);
+      const second = Number(bag.second);
       return {
-        year: Number(bag.year),
-        month: Number(bag.month),
-        day: Number(bag.day),
+        year: year,
+        month: month,
+        day: day,
         hour: hour,
-        minute: Number(bag.minute),
-        second: Number(bag.second),
+        minute: minute,
+        second: second,
         weekday: bag.weekday,
-        abbr: bag.timeZoneName || ""
+        abbr: friendlyAbbr(timeZone, bag.timeZoneName || "", year, month, day, hour, minute, second, utcMs)
       };
     }
 
@@ -1039,9 +1410,13 @@
     }
 
     function formatTime(hour, minute) {
+      const m = String(minute).padStart(2, "0");
+      if (state.hour24) {
+        const h24 = String(hour).padStart(2, "0");
+        return { h: h24, m: m, suffix: "", text: h24 + ":" + m };
+      }
       const suffix = hour < 12 ? "AM" : "PM";
       const h = hour % 12 || 12;
-      const m = String(minute).padStart(2, "0");
       return { h: h, m: m, suffix: suffix, text: h + ":" + m + " " + suffix };
     }
 
@@ -1075,12 +1450,70 @@
       return parts.weekday.slice(0, 3) + ", " + MONTHS_SHORT[parts.month - 1] + " " + parts.day;
     }
 
-    function summaryLine(places) {
-      if (places.length < 4) return "";
+    function summaryInfo(places) {
+      if (places.length < 4) return null;
       const working = places.filter(function (place) { return place.period === "work"; }).length;
-      if (!working || working === places.length) return "";
+      if (!working || working === places.length) return null;
       const verb = working === 1 ? "is" : "are";
-      return working + " of " + places.length + " " + verb + " in their workday.";
+      const ratio = working / places.length;
+      const tone = ratio >= 0.75 ? "is-good" : ratio >= 0.5 ? "is-warn" : "is-low";
+      return { text: working + " of " + places.length + " " + verb + " in their workday.", tone: tone };
+    }
+
+    function summaryLine(places) {
+      const info = summaryInfo(places);
+      return info ? info.text : "";
+    }
+
+    function findUpcomingDst() {
+      if (!state.cities.length) return "";
+      const anchor = anchorCity();
+      const baseNoon = civilToInstant(state.year, state.month, state.day, 12 * 60, anchor.zone);
+      const baseAnchorOff = tzOffset(baseNoon, anchor.zone);
+      let earliest = null;
+      state.cities.forEach(function (city) {
+        const startOfDay = civilToInstant(state.year, state.month, state.day, 0, city.zone);
+        const startOff = tzOffset(startOfDay, city.zone);
+        const endOfDay = startOfDay + 24 * 3600000;
+        const endOff = tzOffset(endOfDay, city.zone);
+        if (endOff !== startOff) {
+          earliest = { days: 0, city: city, month: state.month, day: state.day, beforeDelta: startOff - baseAnchorOff, afterDelta: endOff - tzOffset(endOfDay, anchor.zone) };
+          return;
+        }
+        let prevOff = tzOffset(baseNoon, city.zone);
+        for (let d = 1; d <= 14; d += 1) {
+          const probe = baseNoon + d * 86400000;
+          const off = tzOffset(probe, city.zone);
+          if (off !== prevOff) {
+            if (!earliest || d < earliest.days) {
+              const p = partsInZone(probe, city.zone);
+              const nextAnchorOff = tzOffset(probe, anchor.zone);
+              earliest = {
+                days: d,
+                city: city,
+                month: p.month,
+                day: p.day,
+                beforeDelta: prevOff - baseAnchorOff,
+                afterDelta: off - nextAnchorOff
+              };
+            }
+            break;
+          }
+          prevOff = off;
+        }
+      });
+      if (!earliest) return "";
+      const when = earliest.days === 0
+        ? "today"
+        : earliest.days === 1
+          ? "tomorrow (" + MONTHS_SHORT[earliest.month - 1] + " " + earliest.day + ")"
+          : "in " + earliest.days + " days (" + MONTHS_SHORT[earliest.month - 1] + " " + earliest.day + ")";
+      let msg = "Clocks change in " + earliest.city.city + " " + when + ".";
+      if (state.cities.length > 1 && earliest.beforeDelta !== earliest.afterDelta && keyOf(earliest.city) !== state.anchorKey) {
+        msg = "Clocks change in " + earliest.city.city + " " + when + " — offset shifts from "
+          + formatDelta(earliest.beforeDelta).toLowerCase() + " to " + formatDelta(earliest.afterDelta).toLowerCase() + ".";
+      }
+      return msg;
     }
 
     function fitSummary() {
@@ -1200,15 +1633,22 @@
       const atNow = sameDay(live, state) && state.minutes === live.hour * 60 + live.minute;
       document.getElementById("now").setAttribute("aria-pressed", atNow ? "true" : "false");
 
-      const summary = summaryLine(snap.places);
+      const summary = summaryInfo(snap.places);
       const summaryEl = document.getElementById("summary");
       summaryEl.hidden = !summary;
-      summaryEl.textContent = summary;
+      summaryEl.className = "summary" + (summary ? " " + summary.tone : "");
+      summaryEl.textContent = summary ? summary.text : "";
       if (summary) fitSummary();
       const line = fillChatLine(snap);
       const question = fillAsk(snap);
 
-      groupEl.style.setProperty("--f", (state.minutes / 1440).toFixed(5));
+      const f = state.minutes / 1440;
+      const durF = state.duration / 1440;
+      const spanW = Math.min(durF, 1 - f);
+      const spanWrap = Math.max(0, (f + durF) - 1);
+      groupEl.style.setProperty("--f", f.toFixed(5));
+      groupEl.style.setProperty("--span-w", spanW.toFixed(5));
+      groupEl.style.setProperty("--span-wrap", spanWrap.toFixed(5));
       slider.setAttribute("aria-valuenow", String(state.minutes));
       slider.setAttribute("aria-valuetext", line);
       document.title = question;
@@ -1241,7 +1681,7 @@
         const yours = place.city.zone === state.detected;
         let metaText = (yours ? "Your location" : place.offsetLabel) + " · " + place.parts.abbr;
         if (BC_PCT_ZONES[place.city.zone]) {
-          metaText = (yours ? "" : place.offsetLabel + " · ") + "UTC−7 all year";
+          metaText = (yours ? "" : place.offsetLabel + " · ") + "PCT · UTC−7 all year";
         }
         const metaEl = row.querySelector("[data-meta]");
         metaEl.textContent = metaText;
@@ -1251,21 +1691,44 @@
         const when = row.querySelector("[data-when]");
         when.textContent = place.delta === 0 ? "" : dayText(place.delta, place.parts);
         when.hidden = place.delta === 0;
+        const wrapEl = row.querySelector(".band-span-wrap");
+        if (wrapEl) wrapEl.hidden = spanWrap <= 0.0005;
         row.classList.toggle("is-home", keyOf(place.city) === state.anchorKey);
       });
 
       const best = document.getElementById("best");
       const start = Number(best.dataset.start);
-      if (Number.isFinite(start)) {
-        const inside = state.minutes >= start && state.minutes < start + state.duration;
+      if (best.dataset.range && Number.isFinite(start)) {
+        const endMin = Number(best.dataset.end);
         const already = snap.places.every(function (place) { return place.period === "work"; });
-        best.hidden = inside || already;
-        best.setAttribute("aria-pressed", inside && !already ? "true" : "false");
+        const inside = Number.isFinite(endMin)
+          ? (state.minutes >= start && state.minutes + state.duration <= endMin)
+          : (state.minutes >= start && state.minutes < start + state.duration);
+        const inGood = already || inside;
+        best.hidden = false;
+        best.classList.toggle("is-active", inGood);
+        best.textContent = inGood
+          ? "In everyone's workday · " + best.dataset.range + " " + snap.anchor.city
+          : best.dataset.range + " " + snap.anchor.city + " · everyone is in their workday";
+        best.setAttribute("aria-label", best.textContent);
+        best.setAttribute("aria-pressed", inGood ? "true" : "false");
       }
+      document.querySelectorAll(".comp-btn").forEach(function (btn) {
+        const s = Number(btn.dataset.start);
+        btn.setAttribute("aria-pressed", s === state.minutes ? "true" : "false");
+      });
+      const fmtBtn = document.getElementById("fmt-toggle");
+      if (fmtBtn) {
+        fmtBtn.textContent = state.hour24 ? "24h" : "12h";
+        fmtBtn.setAttribute("aria-pressed", state.hour24 ? "true" : "false");
+      }
+      document.querySelectorAll("[data-fmt]").forEach(function (btn) {
+        btn.setAttribute("aria-pressed", (btn.dataset.fmt === "24") === state.hour24 ? "true" : "false");
+      });
       const workOpen = formatTime(Math.floor(state.workStart / 60), state.workStart % 60).text;
       const workClose = formatTime(Math.floor(state.workEnd / 60) % 24, state.workEnd % 60).text;
       const lengthLabel = state.duration === 30 ? "30 min" : state.duration === 120 ? "2 hours" : "1 hour";
-      document.getElementById("workday-summary").textContent = "Workday " + workOpen + " – " + workClose + " · " + lengthLabel;
+      document.getElementById("workday-summary").textContent = "Workday " + workOpen + " – " + workClose + " · " + lengthLabel + " · " + (state.hour24 ? "24h" : "12h");
     }
 
     function sameDay(parts, clock) {
@@ -1300,8 +1763,7 @@
       if (!others.length) {
         answer.textContent = snap.anchorParts.weekday + ", " + MONTHS[snap.anchorParts.month - 1] + " " + snap.anchorParts.day;
       } else {
-        others.forEach(function (place, index) {
-          if (index) answer.append(document.createTextNode(" \u00b7 "));
+        others.forEach(function (place) {
           const bit = document.createElement("span");
           bit.className = "chat-bit";
           const clock = formatTime(place.parts.hour, place.parts.minute).text;
@@ -1342,24 +1804,45 @@
       if (!el) return;
       const tone = { work: "var(--p-work)", early: "var(--p-edge)", late: "var(--p-edge)", night: "var(--p-night)" };
       const runs = [];
+      const edgeRuns = [];
       instants.forEach(function (instant, slot) {
         const local = partsInZone(instant, city.zone);
-        const color = tone[classify(local.hour * 60 + local.minute)];
+        const p = classify(local.hour * 60 + local.minute);
+        const color = tone[p];
         const last = runs[runs.length - 1];
         if (last && last.color === color) last.to = slot + 1;
         else runs.push({ color: color, from: slot, to: slot + 1 });
+        const isEdge = p === "early" || p === "late";
+        const lastEdge = edgeRuns[edgeRuns.length - 1];
+        if (lastEdge && lastEdge.on === isEdge) lastEdge.to = slot + 1;
+        else edgeRuns.push({ on: isEdge, from: slot, to: slot + 1 });
       });
       const stops = runs.map(function (run) {
         return run.color + " " + (run.from / 48 * 100).toFixed(3) + "% " + (run.to / 48 * 100).toFixed(3) + "%";
       });
       el.style.setProperty("--strip", "linear-gradient(to right, " + stops.join(", ") + ")");
+      const edgeOverlay = el.querySelector(".dayband-edge");
+      if (edgeOverlay) {
+        const maskStops = edgeRuns.map(function (run) {
+          return (run.on ? "#000" : "transparent") + " " + (run.from / 48 * 100).toFixed(3) + "% " + (run.to / 48 * 100).toFixed(3) + "%";
+        });
+        edgeOverlay.style.setProperty("--edge-mask", "linear-gradient(to right, " + maskStops.join(", ") + ")");
+      }
       const open = formatTime(Math.floor(state.workStart / 60), state.workStart % 60).text;
       const close = formatTime(Math.floor(state.workEnd / 60) % 24, state.workEnd % 60).text;
       el.parentNode.title = "Workday " + open + " to " + close + " in " + city.city + ". Drag to pick a time.";
       el.setAttribute("aria-hidden", "true");
     }
 
-    function renderTicks() {}
+    function renderTicks() {
+      const spans = laneEl.querySelectorAll("span");
+      const labels = state.hour24
+        ? ["00:00", "06:00", "12:00", "18:00", "24:00"]
+        : ["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"];
+      spans.forEach(function (sp, i) {
+        if (labels[i] != null) sp.textContent = labels[i];
+      });
+    }
 
     function renderRows() {
       closeRowMenu();
@@ -1419,6 +1902,14 @@
         const band = document.createElement("div");
         band.className = "dayband";
         band.dataset.band = "1";
+        const edgeOverlay = document.createElement("div");
+        edgeOverlay.className = "dayband-edge";
+        const spanBar = document.createElement("div");
+        spanBar.className = "band-span";
+        const spanWrapBar = document.createElement("div");
+        spanWrapBar.className = "band-span-wrap";
+        spanWrapBar.hidden = true;
+        band.append(edgeOverlay, spanBar, spanWrapBar);
         hit.append(band);
         paintBand(band, city, instants);
 
@@ -1472,34 +1963,107 @@
         : "Drag along a bar to pick a time. Hold and drag a city to reorder it. Swipe it left to change or delete.";
     }
 
+    function fullOverlapRange() {
+      const anchor = anchorCity();
+      const duration = state.duration;
+      let first = null;
+      let last = null;
+      for (let start = 0; start + duration <= 1440; start += 30) {
+        const instant = civilToInstant(state.year, state.month, state.day, start, anchor.zone);
+        const check = partsInZone(instant, anchor.zone);
+        if (check.year !== state.year || check.month !== state.month || check.day !== state.day) continue;
+        if (check.hour * 60 + check.minute !== start) continue;
+        const ok = state.cities.every(function (city) { return holds(instant, duration, city.zone) === "work"; });
+        if (ok) {
+          if (first === null) first = start;
+          last = start + duration;
+        } else if (first !== null) {
+          break;
+        }
+      }
+      return first === null ? null : { start: first, end: last };
+    }
+
+    function describeOutside(held) {
+      const notes = [];
+      held.forEach(function (status, index) {
+        if (status === "work") return;
+        const city = state.cities[index];
+        if (!city) return;
+        const label = status === "early" ? "early" : status === "late" ? "late" : "off hours";
+        notes.push(label + " in " + city.city);
+      });
+      if (!notes.length) return "everyone in workday";
+      if (notes.length <= 2) return notes.join(", ");
+      return notes.slice(0, 2).join(", ") + " +" + (notes.length - 2);
+    }
+
     function renderMeetings() {
       document.querySelectorAll(".dur").forEach(function (button) {
         button.setAttribute("aria-pressed", Number(button.dataset.dur) === state.duration ? "true" : "false");
       });
       const best = document.getElementById("best");
+      const box = document.getElementById("meet-box");
       const note = document.getElementById("meet-note");
+      const sub = document.getElementById("meet-sub");
+      const compEl = document.getElementById("compromises");
+      compEl.replaceChildren();
       if (state.cities.length < 2) {
         best.hidden = true;
-        note.hidden = true;
+        best.removeAttribute("data-start");
+        best.removeAttribute("data-end");
+        best.removeAttribute("data-range");
+        box.hidden = true;
         return;
       }
       const windows = findWindows();
       const good = windows.find(function (item) { return item.all; });
       if (good) {
-        const startText = formatTime(Math.floor(good.start / 60), good.start % 60).text;
-        const snap = snapshot();
-        const already = snap.places.every(function (place) { return place.period === "work"; });
-        const inside = state.minutes >= good.start && state.minutes < good.start + state.duration;
-        best.dataset.start = String(good.start);
-        best.textContent = startText + " " + anchorCity().city + ", everyone is in their workday";
-        best.hidden = already || inside;
-        note.hidden = true;
+        const span = fullOverlapRange();
+        const startMin = span ? span.start : good.start;
+        const endMin = span ? span.end : good.start + state.duration;
+        const startText = formatTime(Math.floor(startMin / 60), startMin % 60).text;
+        const endText = formatTime(Math.floor(endMin / 60) % 24, endMin % 60).text;
+        const rangeText = startText + " – " + endText;
+        best.dataset.start = String(startMin);
+        best.dataset.end = String(endMin);
+        best.dataset.range = rangeText;
+        best.hidden = false;
+        box.hidden = true;
       } else {
         best.hidden = true;
         best.removeAttribute("data-start");
+        best.removeAttribute("data-end");
+        best.removeAttribute("data-range");
         const length = state.duration === 30 ? "30-minute" : state.duration === 120 ? "2-hour" : "1-hour";
-        note.hidden = false;
         note.textContent = "No " + length + " window lands in every workday.";
+        const closest = windows.slice(0, 3);
+        sub.textContent = closest.length ? "Closest options in " + anchorCity().city + " time:" : "";
+        sub.hidden = !closest.length;
+        closest.forEach(function (item) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "comp-btn";
+          btn.dataset.start = String(item.start);
+          btn.setAttribute("aria-pressed", item.start === state.minutes ? "true" : "false");
+          const dot = document.createElement("span");
+          dot.className = "comp-dot";
+          dot.setAttribute("aria-hidden", "true");
+          const t = document.createElement("span");
+          t.textContent = formatTime(Math.floor(item.start / 60), item.start % 60).text;
+          const why = document.createElement("span");
+          why.className = "comp-why";
+          why.textContent = describeOutside(item.held);
+          btn.append(dot, t, why);
+          btn.addEventListener("click", function () {
+            state.minutes = item.start;
+            paint();
+            commit();
+            announce();
+          });
+          compEl.append(btn);
+        });
+        box.hidden = false;
       }
     }
 
@@ -1533,10 +2097,19 @@
       document.getElementById("work-end").value = String(Math.floor(state.workEnd / 60) === 24 ? 24 : Math.floor(state.workEnd / 60));
     }
 
+    function renderDstNote() {
+      const el = document.getElementById("dst-note");
+      if (!el) return;
+      const msg = findUpcomingDst();
+      el.hidden = !msg;
+      el.textContent = msg;
+    }
+
     function renderAll() {
       renderTicks();
       renderRows();
       renderMeetings();
+      renderDstNote();
       renderChips();
       syncChrome();
       paint();
@@ -1576,19 +2149,20 @@
       const we = String(Math.floor(state.workEnd / 60)).padStart(2, "0") + ":" + String(state.workEnd % 60).padStart(2, "0");
       params.set("work", ws + "-" + we);
       params.set("dur", String(state.duration));
+      if (state.hour24Explicit) params.set("fmt", state.hour24 ? "24" : "12");
       if (document.body.classList.contains("embed")) {
         const incoming = new URLSearchParams(location.search);
         if (incoming.get("card") === "1") params.set("card", "1");
         else params.set("embed", "1");
       }
+      const bare = new URLSearchParams(params);
+      bare.delete("embed");
+      bare.delete("card");
+      bare.delete("format");
       const open = document.getElementById("card-open");
-      if (open) {
-        const bare = new URLSearchParams(params);
-        bare.delete("embed");
-        bare.delete("card");
-        bare.delete("format");
-        open.href = location.pathname + "?" + bare.toString();
-      }
+      if (open) open.href = location.pathname + "?" + bare.toString();
+      const plain = document.getElementById("plain-text-link");
+      if (plain) plain.href = "/time.txt?" + bare.toString();
       const next = location.pathname + "?" + params.toString();
       if (next !== location.pathname + location.search) history.replaceState(null, "", next);
     }
@@ -1602,7 +2176,9 @@
           customOrder: state.customOrder === true,
           workStart: state.workStart,
           workEnd: state.workEnd,
-          duration: state.duration
+          duration: state.duration,
+          hour24: state.hour24,
+          hour24Explicit: state.hour24Explicit === true
         }));
       } catch (err) { /* private mode */ }
     }
@@ -1715,8 +2291,15 @@
 
     function parseLooseTime(value) {
       const text = String(value || "").trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, "");
-      const match = text.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
-      if (!match) return null;
+      let match = text.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+      if (!match) {
+        const compact = text.match(/^(\d{3,4})(am|pm)?$/);
+        if (!compact) return null;
+        const digits = compact[1];
+        const hStr = digits.length === 3 ? digits.slice(0, 1) : digits.slice(0, 2);
+        const mStr = digits.slice(-2);
+        match = [text, hStr, mStr, compact[2]];
+      }
       let hour = Number(match[1]);
       const minute = match[2] ? Number(match[2]) : 0;
       if (minute > 59 || hour > 24) return null;
@@ -1728,7 +2311,7 @@
       return hour * 60 + minute;
     }
 
-    let ZONE_SETS = {};
+    let ZONE_SETS = {"America/New_York":{"city":"New York","compare":["London","Los Angeles"]},"America/Detroit":{"same":"America/New_York"},"America/Indiana/Indianapolis":{"same":"America/New_York"},"America/Indiana/Vincennes":{"same":"America/New_York"},"America/Indiana/Winamac":{"same":"America/New_York"},"America/Indiana/Marengo":{"same":"America/New_York"},"America/Indiana/Petersburg":{"same":"America/New_York"},"America/Indiana/Vevay":{"same":"America/New_York"},"America/Kentucky/Louisville":{"same":"America/New_York"},"America/Kentucky/Monticello":{"same":"America/New_York"},"America/Toronto":{"city":"Toronto","compare":["London","Vancouver"]},"America/Iqaluit":{"same":"America/Toronto"},"America/Thunder_Bay":{"same":"America/Toronto"},"America/Nipigon":{"same":"America/Toronto"},"America/Halifax":{"city":"Halifax","compare":["New York","London"]},"America/Glace_Bay":{"same":"America/Halifax"},"America/Moncton":{"same":"America/Halifax"},"America/Goose_Bay":{"same":"America/Halifax"},"America/St_Johns":{"city":"St. John's","compare":["New York","London"]},"America/Chicago":{"city":"Chicago","compare":["New York","Los Angeles"]},"America/Indiana/Knox":{"same":"America/Chicago"},"America/Indiana/Tell_City":{"same":"America/Chicago"},"America/Menominee":{"same":"America/Chicago"},"America/North_Dakota/Center":{"same":"America/Chicago"},"America/North_Dakota/New_Salem":{"same":"America/Chicago"},"America/North_Dakota/Beulah":{"same":"America/Chicago"},"America/Winnipeg":{"city":"Winnipeg","compare":["New York","Vancouver"]},"America/Rainy_River":{"same":"America/Winnipeg"},"America/Rankin_Inlet":{"same":"America/Winnipeg"},"America/Resolute":{"same":"America/Winnipeg"},"America/Mexico_City":{"city":"Mexico City","compare":["New York","Los Angeles"]},"America/Bogota":{"city":"Bogotá","compare":["New York","Los Angeles"]},"America/Lima":{"city":"Lima","compare":["New York","Los Angeles"]},"America/Denver":{"city":"Denver","compare":["New York","Los Angeles"]},"America/Boise":{"same":"America/Denver"},"America/Edmonton":{"city":"Calgary","compare":["Vancouver","New York"]},"America/Cambridge_Bay":{"same":"America/Edmonton"},"America/Inuvik":{"same":"America/Edmonton"},"America/Yellowknife":{"same":"America/Edmonton"},"America/Phoenix":{"city":"Phoenix","compare":["New York","Los Angeles"]},"America/Los_Angeles":{"city":"Los Angeles","compare":["New York","London"]},"America/Tijuana":{"same":"America/Los_Angeles"},"America/Vancouver":{"city":"Vancouver","compare":["New York","London"]},"Canada/Pacific":{"same":"America/Vancouver"},"America/Whitehorse":{"same":"America/Vancouver"},"America/Dawson":{"same":"America/Vancouver"},"America/Anchorage":{"city":"Anchorage","compare":["Los Angeles","New York"]},"America/Juneau":{"same":"America/Anchorage"},"America/Nome":{"same":"America/Anchorage"},"America/Sitka":{"same":"America/Anchorage"},"America/Yakutat":{"same":"America/Anchorage"},"Pacific/Honolulu":{"city":"Honolulu","compare":["Los Angeles","New York"]},"America/Sao_Paulo":{"city":"São Paulo","compare":["New York","London"]},"America/Argentina/Buenos_Aires":{"city":"Buenos Aires","compare":["New York","London"]},"America/Santiago":{"city":"Santiago","compare":["New York","Los Angeles"]},"Atlantic/Reykjavik":{"city":"Reykjavík","compare":["London","New York"]},"Europe/London":{"city":"London","compare":["New York","Los Angeles"]},"Europe/Dublin":{"city":"Dublin","compare":["London","New York"]},"Europe/Lisbon":{"city":"Lisbon","compare":["London","New York"]},"Europe/Paris":{"city":"Paris","compare":["London","New York"]},"Europe/Madrid":{"city":"Madrid","compare":["London","New York"]},"Europe/Berlin":{"city":"Berlin","compare":["London","New York"]},"Europe/Amsterdam":{"city":"Amsterdam","compare":["London","New York"]},"Europe/Brussels":{"city":"Brussels","compare":["London","New York"]},"Europe/Rome":{"city":"Rome","compare":["London","New York"]},"Europe/Zurich":{"city":"Zurich","compare":["London","New York"]},"Europe/Vienna":{"city":"Vienna","compare":["London","New York"]},"Europe/Prague":{"city":"Prague","compare":["London","New York"]},"Europe/Warsaw":{"city":"Warsaw","compare":["London","New York"]},"Europe/Stockholm":{"city":"Stockholm","compare":["London","New York"]},"Europe/Oslo":{"city":"Oslo","compare":["London","New York"]},"Europe/Copenhagen":{"city":"Copenhagen","compare":["London","New York"]},"Europe/Helsinki":{"city":"Helsinki","compare":["London","New York"]},"Europe/Athens":{"city":"Athens","compare":["London","New York"]},"Europe/Bucharest":{"city":"Bucharest","compare":["London","New York"]},"Europe/Kyiv":{"city":"Kyiv","compare":["London","New York"]},"Europe/Istanbul":{"city":"Istanbul","compare":["London","New York"]},"Europe/Moscow":{"city":"Moscow","compare":["London","New York"]},"Africa/Cairo":{"city":"Cairo","compare":["London","New York"]},"Africa/Johannesburg":{"city":"Johannesburg","compare":["London","New York"]},"Africa/Lagos":{"city":"Lagos","compare":["London","New York"]},"Africa/Nairobi":{"city":"Nairobi","compare":["London","New York"]},"Africa/Addis_Ababa":{"city":"Addis Ababa","compare":["London","New York"]},"Africa/Casablanca":{"city":"Casablanca","compare":["London","New York"]},"Asia/Jerusalem":{"city":"Tel Aviv","compare":["London","New York"]},"Asia/Riyadh":{"city":"Riyadh","compare":["London","New York"]},"Asia/Qatar":{"city":"Doha","compare":["London","Dubai"]},"Asia/Dubai":{"city":"Dubai","compare":["London","New York"]},"Asia/Tehran":{"city":"Tehran","compare":["London","Dubai"]},"Asia/Karachi":{"city":"Karachi","compare":["Dubai","London"]},"Asia/Kolkata":{"city":"Mumbai","compare":["London","New York"]},"Asia/Kathmandu":{"city":"Kathmandu","compare":["Mumbai","London"]},"Asia/Dhaka":{"city":"Dhaka","compare":["Mumbai","London"]},"Asia/Bangkok":{"city":"Bangkok","compare":["Singapore","London"]},"Asia/Ho_Chi_Minh":{"city":"Ho Chi Minh City","compare":["Singapore","Tokyo"]},"Asia/Jakarta":{"city":"Jakarta","compare":["Singapore","Tokyo"]},"Asia/Singapore":{"city":"Singapore","compare":["London","New York"]},"Asia/Kuala_Lumpur":{"city":"Kuala Lumpur","compare":["Singapore","London"]},"Asia/Hong_Kong":{"city":"Hong Kong","compare":["London","New York"]},"Asia/Taipei":{"city":"Taipei","compare":["Tokyo","New York"]},"Asia/Shanghai":{"city":"Shanghai","compare":["New York","London"]},"Asia/Manila":{"city":"Manila","compare":["Singapore","Tokyo"]},"Asia/Seoul":{"city":"Seoul","compare":["Tokyo","New York"]},"Asia/Tokyo":{"city":"Tokyo","compare":["New York","London"]},"Australia/Perth":{"city":"Perth","compare":["Sydney","Singapore"]},"Australia/Adelaide":{"city":"Adelaide","compare":["Sydney","London"]},"Australia/Brisbane":{"city":"Brisbane","compare":["Sydney","London"]},"Australia/Sydney":{"city":"Sydney","compare":["London","Los Angeles"]},"Australia/Melbourne":{"city":"Melbourne","compare":["Sydney","London"]},"Australia/Hobart":{"same":"Australia/Melbourne"},"Pacific/Auckland":{"city":"Auckland","compare":["Sydney","London"]},"Pacific/Fiji":{"city":"Fiji","compare":["Auckland","Sydney"]},"Etc/UTC":{"city":"UTC","compare":["London","New York"]},"Etc/GMT":{"same":"Etc/UTC"}};
 
     function cityRecord(name) {
       const row = CITIES.find(function (item) { return item.city === name; });
@@ -1797,6 +2380,10 @@
           state.workEnd = fromStore.workEnd;
         }
         if ([30, 60, 120].includes(fromStore.duration)) state.duration = fromStore.duration;
+        if (fromStore.hour24Explicit && typeof fromStore.hour24 === "boolean") {
+          state.hour24 = fromStore.hour24;
+          state.hour24Explicit = true;
+        }
       }
       if (params.get("cities")) {
         cities = parseCityList(params.get("cities"));
@@ -1830,6 +2417,11 @@
       }
       const dur = Number(params.get("dur"));
       if ([30, 60, 120].includes(dur)) state.duration = dur;
+      const fmt = params.get("fmt");
+      if (fmt === "24" || fmt === "12") {
+        state.hour24 = fmt === "24";
+        state.hour24Explicit = true;
+      }
       const at = params.get("at") || "";
       const loose = parseLooseTime(at);
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(at)) {
@@ -2081,12 +2673,29 @@
       options[activeOption].scrollIntoView({ block: "nearest" });
     }
 
+    const adderSheetQuery = window.matchMedia("(max-width: 640px), (hover: none) and (pointer: coarse)");
+
+    function syncVisualViewport() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      document.documentElement.style.setProperty("--vv-top", Math.max(0, Math.round(vv.offsetTop)) + "px");
+      document.documentElement.style.setProperty("--vv-h", Math.round(vv.height) + "px");
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncVisualViewport);
+      window.visualViewport.addEventListener("scroll", syncVisualViewport);
+      syncVisualViewport();
+    }
+
     function closeComposer() {
       state.replaceKey = "";
       document.getElementById("adder").classList.remove("is-open");
+      document.getElementById("adder-backdrop").classList.remove("is-open");
       document.getElementById("adder-title").textContent = "Add a city";
       searchInput.placeholder = "City or time zone";
       searchInput.value = "";
+      if (document.activeElement === searchInput) searchInput.blur();
       const addBtn = document.getElementById("add-city");
       if (addBtn) addBtn.setAttribute("aria-expanded", "false");
       closeList();
@@ -2099,13 +2708,22 @@
       document.getElementById("adder-title").textContent = current ? "Change " + current.city : "Add a city";
       searchInput.placeholder = current ? "Search for a different place" : "Town, city, or time zone";
       searchInput.value = "";
-      document.getElementById("adder").classList.add("is-open");
+      syncVisualViewport();
+      const adder = document.getElementById("adder");
+      adder.classList.add("is-open");
+      document.getElementById("adder-backdrop").classList.add("is-open");
       const addBtn = document.getElementById("add-city");
       if (addBtn) addBtn.setAttribute("aria-expanded", state.replaceKey ? "false" : "true");
       closeList();
       renderChips();
-      searchInput.focus();
-      document.getElementById("adder").scrollIntoView({ block: "nearest" });
+      try { searchInput.focus({ preventScroll: adderSheetQuery.matches }); }
+      catch (_) { searchInput.focus(); }
+      if (adderSheetQuery.matches) {
+        setTimeout(syncVisualViewport, 120);
+        setTimeout(syncVisualViewport, 350);
+      } else {
+        adder.scrollIntoView({ block: "center" });
+      }
     }
 
     let menuKey = "";
@@ -2139,6 +2757,13 @@
       card.classList.add("is-menu");
       const more = card.querySelector(".row-more");
       if (more) more.setAttribute("aria-expanded", "true");
+      const idx = state.cities.findIndex(function (city) { return keyOf(city) === menuKey; });
+      const homeBtn = menu.querySelector("[data-menu='home']");
+      const upBtn = menu.querySelector("[data-menu='up']");
+      const downBtn = menu.querySelector("[data-menu='down']");
+      if (homeBtn) homeBtn.disabled = menuKey === state.anchorKey;
+      if (upBtn) upBtn.disabled = idx <= 0;
+      if (downBtn) downBtn.disabled = idx < 0 || idx >= state.cities.length - 1;
       menu.querySelector("[data-menu='remove']").disabled = state.cities.length === 1;
       menu.hidden = false;
       const width = menu.offsetWidth;
@@ -2375,10 +3000,12 @@
     function showToast(text, undo) {
       const toast = document.getElementById("toast");
       document.getElementById("toast-text").textContent = text;
-      undoStep = undo;
+      const undoBtn = document.getElementById("toast-undo");
+      if (undoBtn) undoBtn.hidden = !undo;
+      undoStep = undo || null;
       toast.classList.add("in");
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(hideToast, 6000);
+      toastTimer = setTimeout(hideToast, undo ? 6000 : 2800);
     }
 
     function hideToast() {
@@ -2454,6 +3081,8 @@
     function fillWorkSelects() {
       const start = document.getElementById("work-start");
       const end = document.getElementById("work-end");
+      start.replaceChildren();
+      end.replaceChildren();
       for (let hour = 0; hour < 24; hour += 1) {
         const option = document.createElement("option");
         option.value = String(hour);
@@ -2463,13 +3092,21 @@
       for (let hour = 1; hour <= 24; hour += 1) {
         const option = document.createElement("option");
         option.value = String(hour);
-        option.textContent = formatTime(hour % 24, 0).text;
+        option.textContent = hour === 24 && state.hour24 ? "24:00" : formatTime(hour % 24, 0).text;
         end.append(option);
       }
     }
 
+    function setHourFormat(next24) {
+      state.hour24 = !!next24;
+      state.hour24Explicit = true;
+      fillWorkSelects();
+      renderAll();
+    }
+
+    restore();
     fillWorkSelects();
-    renderTicks();
+    renderAll();
 
     function noteVisit(area) {
       try {
@@ -2501,16 +3138,60 @@
       } catch (err) {}
     }
     noteVisit("world_time_converter");
-    Promise.all([
-      fetch("/cities.json").then(function (res) { return res.ok ? res.json() : null; }).catch(function () { return null; }),
-      fetch("/timezone-defaults.json").then(function (res) { return res.ok ? res.json() : null; }).catch(function () { return null; })
-    ]).then(function (pair) {
-      if (Array.isArray(pair[0]) && pair[0].length) CITIES = pair[0];
-      if (pair[1] && typeof pair[1] === "object") ZONE_SETS = pair[1];
-      restore();
-      renderAll();
-    });
     window.addEventListener("resize", fitSummary);
+
+    document.getElementById("fmt-toggle").addEventListener("click", function () {
+      setHourFormat(!state.hour24);
+    });
+    document.querySelectorAll("[data-fmt]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        setHourFormat(button.dataset.fmt === "24");
+      });
+    });
+
+    (function wireDirectClock() {
+      const btn = document.getElementById("clock-btn");
+      const input = document.getElementById("clock-input");
+      if (!btn || !input) return;
+      function closeEditor() {
+        input.hidden = true;
+        btn.hidden = false;
+      }
+      function commitEditor() {
+        const parsed = parseLooseTime(input.value);
+        closeEditor();
+        if (parsed == null) {
+          showToast("Try a time like 2:15 PM or 14:15");
+          return;
+        }
+        state.minutes = parsed;
+        paint();
+        commit();
+        announce();
+      }
+      btn.addEventListener("click", function () {
+        if (document.body.classList.contains("embed")) return;
+        const t = formatTime(Math.floor(state.minutes / 60), state.minutes % 60).text;
+        input.value = t;
+        btn.hidden = true;
+        input.hidden = false;
+        input.focus();
+        input.select();
+      });
+      input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commitEditor();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          closeEditor();
+          btn.focus();
+        }
+      });
+      input.addEventListener("blur", function () {
+        if (!input.hidden) commitEditor();
+      });
+    })();
 
     document.getElementById("prev-day").addEventListener("click", function () { shiftDay(-1); });
     document.getElementById("next-day").addEventListener("click", function () { shiftDay(1); });
@@ -2729,6 +3410,14 @@
       if (adder.classList.contains("is-open") && !state.replaceKey) closeComposer();
       else openComposer("");
     });
+    document.getElementById("adder-close").addEventListener("click", function (event) {
+      event.stopPropagation();
+      closeComposer();
+    });
+    document.getElementById("adder-backdrop").addEventListener("click", function (event) {
+      event.stopPropagation();
+      closeComposer();
+    });
 
     // A held finger must be able to drag a row without the page scrolling under it.
     window.addEventListener("touchmove", function (event) {
@@ -2796,12 +3485,17 @@
       const menu = document.getElementById("home-menu");
       const button = document.getElementById("where");
       menu.replaceChildren();
+      const instant = currentInstant();
       const detected = placeForZone(state.detected);
       const items = [];
-      if (detected) items.push({ place: detected, follow: true, label: "Your location", hint: detected.city });
+      if (detected) {
+        const dp = partsInZone(instant, detected.zone);
+        items.push({ place: detected, follow: true, label: "Your location · " + detected.city, hint: formatTime(dp.hour, dp.minute).text + " " + dp.abbr });
+      }
       state.cities.forEach(function (city) {
         if (detected && city.zone === detected.zone && city.city === detected.city) return;
-        items.push({ place: city, follow: false, label: city.city, hint: "Show the day in this city" });
+        const cp = partsInZone(instant, city.zone);
+        items.push({ place: city, follow: false, label: city.city, hint: formatTime(cp.hour, cp.minute).text + " " + cp.abbr });
       });
       items.forEach(function (item, index) {
         const li = document.createElement("li");
@@ -2832,7 +3526,7 @@
 
     document.getElementById("where").addEventListener("click", function () {
       const menu = document.getElementById("home-menu");
-      if (menu.hidden) openHome();
+      if (menu.hidden) { closeShareMenu(); openHome(); }
       else closeHome();
     });
     rowsEl.addEventListener("contextmenu", function (event) {
@@ -2849,11 +3543,15 @@
       event.stopPropagation();
       const key = menuKey;
       closeRowMenu();
-      if (item.dataset.menu === "change") openComposer(key);
+      if (item.dataset.menu === "home") setAnchor(key, false);
+      else if (item.dataset.menu === "up") moveCity(key, -1);
+      else if (item.dataset.menu === "down") moveCity(key, 1);
+      else if (item.dataset.menu === "change") openComposer(key);
       else if (item.dataset.menu === "remove") removeCity(key);
     });
     document.addEventListener("click", function (event) {
       if (!event.target.closest(".where-wrap")) closeHome();
+      if (!event.target.closest(".share-wrap")) closeShareMenu();
       if (!event.target.closest(".row-confirm")) closeCardMenus();
       if (!event.target.closest("#adder, #add-city, [data-add], #row-menu")) closeComposer();
       if (!event.target.closest("#row-menu, .row-more")) closeRowMenu();
@@ -2861,6 +3559,7 @@
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape") {
         closeHome();
+        closeShareMenu();
         closeCardMenus();
         closeRowMenu();
         closeComposer();
@@ -2868,6 +3567,7 @@
     });
 
     document.getElementById("best").addEventListener("click", function () {
+      if (this.classList.contains("is-active")) return;
       const start = Number(this.dataset.start);
       if (!Number.isFinite(start)) return;
       state.minutes = start;
@@ -2887,46 +3587,176 @@
       el.addEventListener("animationend", function () { el.classList.remove("mh-bounce"); }, { once: true });
     }
 
-    document.getElementById("share").addEventListener("click", function () {
+    function closeShareMenu() {
+      const menu = document.getElementById("share-menu");
+      const btn = document.getElementById("share");
+      if (!menu || menu.hidden) return;
+      menu.hidden = true;
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    }
+
+    function openShareMenu() {
+      closeHome();
+      closeRowMenu();
+      const menu = document.getElementById("share-menu");
+      const btn = document.getElementById("share");
+      const nativeBtn = document.getElementById("share-native");
+      const nativeRule = document.getElementById("share-native-rule");
+      const hasNative = typeof navigator.share === "function";
+      if (nativeBtn) nativeBtn.hidden = !hasNative;
+      if (nativeRule) nativeRule.hidden = !hasNative;
+      menu.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+    }
+
+    function markShareCopied(toastMsg) {
       const button = document.getElementById("share");
       const glyph = button.querySelector("svg");
       const label = button.querySelector(".share-label");
+      playBounce(glyph);
+      glyph.innerHTML = CHECK_GLYPH;
+      label.textContent = "Copied";
+      button.classList.add("is-copied");
+      button.setAttribute("aria-label", "Copied to clipboard");
+      if (toastMsg) showToast(toastMsg);
+      setTimeout(function () {
+        glyph.innerHTML = SHARE_GLYPH;
+        label.textContent = "Share";
+        button.classList.remove("is-copied");
+        button.setAttribute("aria-label", "Share this comparison");
+      }, 1600);
+    }
+
+    function copyTextResilient(text, okMsg) {
+      function fallbackCopy() {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          if (ok) { markShareCopied(okMsg); return; }
+        } catch (err) {}
+        showToast("Could not copy automatically — copy from the address bar");
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          markShareCopied(okMsg);
+        }, fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+    }
+
+    function formatUtcStamp(ms) {
+      const d = new Date(ms);
+      return d.getUTCFullYear()
+        + String(d.getUTCMonth() + 1).padStart(2, "0")
+        + String(d.getUTCDate()).padStart(2, "0")
+        + "T"
+        + String(d.getUTCHours()).padStart(2, "0")
+        + String(d.getUTCMinutes()).padStart(2, "0")
+        + "00Z";
+    }
+
+    function buildTimesBlock() {
+      const snap = snapshot();
+      const dateStr = snap.anchorParts.weekday + ", " + MONTHS[snap.anchorParts.month - 1] + " " + snap.anchorParts.day + ", " + snap.anchorParts.year;
+      const lenStr = state.duration === 30 ? "30 min" : state.duration === 120 ? "2 hours" : "1 hour";
+      const lines = [dateStr + " (" + lenStr + ")"];
+      orderedPlaces(snap).forEach(function (place) {
+        const endParts = partsInZone(snap.instant + state.duration * 60000, place.city.zone);
+        const startStr = formatTime(place.parts.hour, place.parts.minute).text;
+        const endStr = formatTime(endParts.hour, endParts.minute).text;
+        const extra = place.delta === 0 ? "" : " (" + dayText(place.delta, place.parts) + ")";
+        lines.push("• " + place.city.city + ": " + startStr + " – " + endStr + " " + place.parts.abbr + extra);
+      });
+      lines.push(location.href);
+      return lines.join("\n");
+    }
+
+    function downloadIcs() {
+      syncUrl();
+      const snap = snapshot();
+      const startMs = snap.instant;
+      const endMs = startMs + state.duration * 60000;
+      const summary = "Meeting — " + orderedPlaces(snap).map(function (p) { return p.city.city; }).join(" / ");
+      const desc = buildTimesBlock().replace(/\n/g, "\\n");
+      const ics = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//forwardslashdot//World Time Converter//EN",
+        "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        "UID:" + formatUtcStamp(startMs) + "@forwardslashdot.com",
+        "DTSTAMP:" + formatUtcStamp(Date.now()),
+        "DTSTART:" + formatUtcStamp(startMs),
+        "DTEND:" + formatUtcStamp(endMs),
+        "SUMMARY:" + summary,
+        "DESCRIPTION:" + desc,
+        "URL:" + location.href,
+        "END:VEVENT",
+        "END:VCALENDAR"
+      ].join("\r\n");
+      const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "meeting-" + stampDate() + ".ics";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      showToast("Calendar invite downloaded");
+    }
+
+    function openGoogleCalendar() {
+      syncUrl();
+      const snap = snapshot();
+      const startMs = snap.instant;
+      const endMs = startMs + state.duration * 60000;
+      const gcal = new URL("https://calendar.google.com/calendar/render");
+      gcal.searchParams.set("action", "TEMPLATE");
+      gcal.searchParams.set("text", "Meeting (" + orderedPlaces(snap).map(function (p) { return p.city.city; }).join(" / ") + ")");
+      gcal.searchParams.set("dates", formatUtcStamp(startMs) + "/" + formatUtcStamp(endMs));
+      gcal.searchParams.set("details", buildTimesBlock());
+      window.open(gcal.toString(), "_blank", "noopener,noreferrer");
+    }
+
+    document.getElementById("share").addEventListener("click", function (event) {
+      event.stopPropagation();
+      const menu = document.getElementById("share-menu");
+      if (menu.hidden) openShareMenu();
+      else closeShareMenu();
+    });
+
+    document.getElementById("share-menu").addEventListener("click", function (event) {
+      const item = event.target.closest("[data-share]");
+      if (!item) return;
+      event.stopPropagation();
+      const action = item.dataset.share;
+      closeShareMenu();
       syncUrl();
       const line = document.getElementById("chat-line").textContent;
       const url = location.href;
-      const title = document.title;
-      playBounce(glyph);
-      const touch = window.matchMedia("(pointer: coarse)").matches;
-      const payload = touch ? { text: line, url: url } : { title: title, text: line, url: url };
-      const markCopied = function () {
-        glyph.innerHTML = CHECK_GLYPH;
-        label.textContent = "Copied";
-        button.classList.add("is-copied");
-        button.setAttribute("aria-label", "Link copied");
-        setTimeout(function () {
-          glyph.innerHTML = SHARE_GLYPH;
-          label.textContent = "Share";
-          button.classList.remove("is-copied");
-          button.setAttribute("aria-label", "Share this comparison");
-        }, 1600);
-      };
-      const copy = function () {
-        const text = line + "\n" + url;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(markCopied, function () {});
-        }
-      };
-      if (typeof navigator.share === "function") {
-        const data = typeof navigator.canShare === "function" && !navigator.canShare(payload) ? { url: url } : payload;
-        if (typeof navigator.canShare !== "function" || navigator.canShare(data)) {
-          navigator.share(data).then(function () {}, function (err) {
-            if (err && err.name === "AbortError") return;
-            copy();
-          });
-          return;
-        }
+      if (action === "link") {
+        copyTextResilient(line + "\n" + url, "Link copied");
+      } else if (action === "text") {
+        copyTextResilient(buildTimesBlock(), "Times copied");
+      } else if (action === "ics") {
+        downloadIcs();
+      } else if (action === "gcal") {
+        openGoogleCalendar();
+      } else if (action === "native" && typeof navigator.share === "function") {
+        const payload = { title: document.title, text: line, url: url };
+        navigator.share(payload).catch(function (err) {
+          if (err && err.name === "AbortError") return;
+          copyTextResilient(line + "\n" + url, "Link copied");
+        });
       }
-      copy();
     });
 
     window.addEventListener("resize", paint);

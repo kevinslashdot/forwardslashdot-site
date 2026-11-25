@@ -171,11 +171,46 @@ function civilToInstant(year, month, day, minutes, timeZone) {
   return instant;
 }
 
-function formatTime(hour, minute) {
+function formatTime(hour, minute, hour24) {
+  const m = String(minute).padStart(2, "0");
+  if (hour24) return String(hour).padStart(2, "0") + ":" + m;
   const suffix = hour < 12 ? "AM" : "PM";
   const h = hour % 12 || 12;
-  const m = String(minute).padStart(2, "0");
   return h + ":" + m + " " + suffix;
+}
+
+const CARD_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WORKER_ZONE_ABBR = {
+  "Asia/Tokyo": { 540: "JST" }, "Asia/Seoul": { 540: "KST" },
+  "Asia/Kolkata": { 330: "IST" }, "Asia/Calcutta": { 330: "IST" },
+  "Asia/Singapore": { 480: "SGT" }, "Asia/Hong_Kong": { 480: "HKT" },
+  "Asia/Shanghai": { 480: "CST" }, "Asia/Dubai": { 240: "GST" },
+  "Europe/London": { 0: "GMT", 60: "BST" },
+  "Europe/Paris": { 60: "CET", 120: "CEST" }, "Europe/Berlin": { 60: "CET", 120: "CEST" },
+  "Europe/Amsterdam": { 60: "CET", 120: "CEST" }, "Europe/Rome": { 60: "CET", 120: "CEST" },
+  "Europe/Madrid": { 60: "CET", 120: "CEST" }, "Europe/Zurich": { 60: "CET", 120: "CEST" },
+  "Australia/Sydney": { 600: "AEST", 660: "AEDT" }, "Australia/Melbourne": { 600: "AEST", 660: "AEDT" },
+  "Australia/Perth": { 480: "AWST" }, "Pacific/Auckland": { 720: "NZST", 780: "NZDT" }
+};
+
+function friendlyWorkerAbbr(zone, rawAbbr, offset) {
+  if (rawAbbr && !/^(GMT|UTC)[+-]/i.test(rawAbbr)) return rawAbbr;
+  const map = WORKER_ZONE_ABBR[zone];
+  if (map && map[offset]) return map[offset];
+  return rawAbbr || "";
+}
+
+function classifyPeriod(minute, workStart, workEnd) {
+  const m = ((minute % 1440) + 1440) % 1440;
+  const covers = (val, s, e) => {
+    let x = val;
+    if (x < s) x += 1440;
+    else if (x >= s + 1440) x -= 1440;
+    return s <= x && x < e;
+  };
+  if (covers(m, workStart, workEnd)) return "work";
+  if (covers(m, workStart - 120, workStart) || covers(m, workEnd, workEnd + 120)) return "edge";
+  return "night";
 }
 
 function dayText(delta) {
@@ -308,10 +343,23 @@ function compareQuery(catalog, params, nowMs) {
   const instant = civilToInstant(year, month, day, minutes, anchor.zone);
   const anchorParts = partsInZone(instant, anchor.zone);
   const anchorDay = Date.UTC(anchorParts.year, anchorParts.month - 1, anchorParts.day);
+  const hour24 = params.get("fmt") === "24";
+  let workStart = 9 * 60;
+  let workEnd = 17 * 60;
+  const workParam = params.get("work") || "";
+  const wm = workParam.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (wm) {
+    const ws = Number(wm[1]) * 60 + Number(wm[2]);
+    const we = Number(wm[3]) * 60 + Number(wm[4]);
+    if (we > ws && we <= 1440) { workStart = ws; workEnd = we; }
+  }
   const places = cities.map((city) => {
     const parts = partsInZone(instant, city.zone);
+    const off = tzOffset(instant, city.zone);
+    parts.abbr = friendlyWorkerAbbr(city.zone, parts.abbr, off);
     const delta = Math.round((Date.UTC(parts.year, parts.month - 1, parts.day) - anchorDay) / 86400000);
-    return { city, parts, delta };
+    const period = classifyPeriod(parts.hour * 60 + parts.minute, workStart, workEnd);
+    return { city, parts, delta, period };
   });
   const ordered = [];
   places.forEach((place) => {
@@ -322,10 +370,11 @@ function compareQuery(catalog, params, nowMs) {
   });
   const line = ordered.map((place) => {
     const extra = dayText(place.delta);
-    return formatTime(place.parts.hour, place.parts.minute) + " " + place.city.city + (extra ? " " + extra : "");
+    return formatTime(place.parts.hour, place.parts.minute, hour24) + " " + place.city.city + (extra ? " " + extra : "");
   }).join(" · ");
   const shown = partsInZone(instant, anchor.zone);
-  return { line, places, anchor, year: shown.year, month: shown.month, day: shown.day, minutes: shown.hour * 60 + shown.minute };
+  const dateLabel = shown.weekday.slice(0, 3) + ", " + CARD_MONTHS[shown.month - 1] + " " + shown.day + ", " + shown.year;
+  return { line, places, anchor, year: shown.year, month: shown.month, day: shown.day, minutes: shown.hour * 60 + shown.minute, dateLabel, hour24 };
 }
 
 function pageUrl(origin, comparison) {
@@ -345,28 +394,40 @@ function escapeXml(value) {
 
 function cardSvg(comparison) {
   const places = (comparison ? comparison.places : []).slice(0, 4);
+  const hour24 = !!(comparison && comparison.hour24);
+  const dotColor = { work: "#34c759", edge: "#ff9500", night: "#8e8e93" };
   const rows = places.length
     ? places.map((place) => ({
-      time: formatTime(place.parts.hour, place.parts.minute),
+      time: formatTime(place.parts.hour, place.parts.minute, hour24),
       city: place.city.city,
-      extra: dayText(place.delta)
+      abbr: place.parts.abbr || "",
+      extra: dayText(place.delta),
+      dot: dotColor[place.period] || "#34c759"
     }))
-    : [{ time: "One day", city: "across cities", extra: "" }];
-  const block = rows.length * 108;
-  const top = Math.max(150, (630 - block) / 2 + 36);
+    : [{ time: "One day", city: "across cities", abbr: "", extra: "", dot: "#34c759" }];
+  const dateText = comparison && comparison.dateLabel ? comparison.dateLabel : "";
+  const rowH = 96;
+  const block = rows.length * rowH;
+  const top = Math.max(176, Math.round((630 - block) / 2) + 34);
   const body = rows.map((row, index) => {
-    const y = top + index * 108;
-    return `<circle cx="92" cy="${y - 8}" r="16" fill="#5c97b4"/>
-      <circle cx="86" cy="${y - 12}" r="7" fill="#f3eadc"/>
-      <text x="128" y="${y}" font-family="Helvetica, Arial, sans-serif" font-size="42" font-weight="600" fill="#1c1917">${escapeXml(row.time)}</text>
-      <text x="390" y="${y}" font-family="Helvetica, Arial, sans-serif" font-size="42" font-weight="600" fill="#1c1917">${escapeXml(row.city)}${row.extra ? `<tspan font-size="26" font-weight="560" fill="#c47b62">  ${escapeXml(row.extra)}</tspan>` : ""}</text>`;
+    const y = top + index * rowH;
+    const rule = index ? `<line x1="92" y1="${y - 54}" x2="1108" y2="${y - 54}" stroke="#e5e5ea" stroke-width="1"/>` : "";
+    return `${rule}
+      <circle cx="108" cy="${y - 12}" r="10" fill="${row.dot}"/>
+      <text x="142" y="${y}" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="40" font-weight="600" fill="#1d1d1f">${escapeXml(row.city)}${row.abbr ? `<tspan font-size="22" font-weight="500" fill="#6e6e73">  ${escapeXml(row.abbr)}</tspan>` : ""}${row.extra ? `<tspan font-size="22" font-weight="600" fill="#007aff">  ${escapeXml(row.extra)}</tspan>` : ""}</text>
+      <text x="1096" y="${y}" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="42" font-weight="600" fill="#1d1d1f">${escapeXml(row.time)}</text>`;
   }).join("");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#f7f1e8"/>
-  <text x="72" y="78" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="#7c736a">/. World Time Converter</text>
+  <rect width="1200" height="630" fill="#f2f2f7"/>
+  <text x="64" y="72" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="24" font-weight="600" fill="#1d1d1f">/. <tspan fill="#6e6e73">World Time Converter</tspan></text>
+  ${dateText ? `<text x="1136" y="72" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" fill="#6e6e73">${escapeXml(dateText)}</text>` : ""}
+  <rect x="64" y="106" width="1072" height="432" rx="26" fill="#ffffff" stroke="#e5e5ea" stroke-width="1.5"/>
   ${body}
-  <text x="72" y="584" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#7c736a">forwardslashdot.com/worldtimeconverter</text>
+  <circle cx="74" cy="580" r="6" fill="#34c759"/><text x="88" y="587" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" fill="#6e6e73">Workday</text>
+  <circle cx="192" cy="580" r="6" fill="#ff9500"/><text x="206" y="587" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" fill="#6e6e73">Early or late</text>
+  <circle cx="342" cy="580" r="6" fill="#8e8e93"/><text x="356" y="587" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" fill="#6e6e73">Off hours</text>
+  <text x="1136" y="587" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="19" fill="#6e6e73">forwardslashdot.com/worldtimeconverter</text>
 </svg>`;
 }
 
@@ -439,7 +500,7 @@ function indexPolicy(origin, cities, params, sets) {
   if (params.get("cities") && !cities.length) return { canonical: bare, index: false };
   if (!cities.length) return { canonical: bare, index: true };
   const found = sets.get(cities.map(keyOf).join(","));
-  const variant = ["at", "work", "dur", "embed", "card", "format"].some((name) => params.get(name));
+  const variant = ["at", "work", "dur", "fmt", "embed", "card", "format"].some((name) => params.get(name));
   const anchor = params.get("anchor");
   const anchorMoved = !!(found && anchor && anchor !== keyOf(found[0]));
   if (found && !variant && !anchorMoved) return { canonical: stableUrl(origin, found), index: true };
@@ -468,11 +529,11 @@ function htmlResponse(html) {
 
 function searchCopy(comparison) {
   const anchorPlace = comparison.places.find((place) => keyOf(place.city) === keyOf(comparison.anchor)) || comparison.places[0];
-  const time = formatTime(anchorPlace.parts.hour, anchorPlace.parts.minute);
+  const time = formatTime(anchorPlace.parts.hour, anchorPlace.parts.minute, comparison.hour24);
   const title = "What time is " + time + " in " + comparison.anchor.city + "?";
   const others = comparison.places.filter((place) => keyOf(place.city) !== keyOf(comparison.anchor)).map((place) => {
     const extra = dayText(place.delta);
-    return formatTime(place.parts.hour, place.parts.minute) + (extra ? " " + extra : "") + " in " + place.city.city;
+    return formatTime(place.parts.hour, place.parts.minute, comparison.hour24) + (extra ? " " + extra : "") + " in " + place.city.city;
   });
   let description = time + " in " + comparison.anchor.city + ".";
   if (others.length === 1) description = time + " in " + comparison.anchor.city + " is " + others[0] + ".";
@@ -483,7 +544,7 @@ function searchCopy(comparison) {
 function answerLine(comparison) {
   return comparison.places.filter((place) => keyOf(place.city) !== keyOf(comparison.anchor)).map((place) => {
     const extra = place.delta === 0 ? "" : dayText(place.delta) + " ";
-    return formatTime(place.parts.hour, place.parts.minute) + " " + extra + "in " + place.city.city;
+    return formatTime(place.parts.hour, place.parts.minute, comparison.hour24) + " " + extra + "in " + place.city.city;
   }).join(" · ");
 }
 
@@ -540,7 +601,7 @@ const FONT = {
   "6": [14, 16, 16, 30, 17, 17, 14], "7": [31, 1, 2, 4, 8, 8, 8], "8": [14, 17, 17, 14, 17, 17, 14],
   "9": [14, 17, 17, 15, 1, 1, 14],
   "/": [1, 2, 2, 4, 8, 8, 16], ".": [0, 0, 0, 0, 0, 12, 12], ":": [0, 12, 12, 0, 12, 12, 0],
-  "-": [0, 0, 0, 31, 0, 0, 0], "'": [4, 4, 8, 0, 0, 0, 0], ",": [0, 0, 0, 0, 0, 4, 8]
+  "-": [0, 0, 0, 31, 0, 0, 0], "+": [0, 4, 4, 31, 4, 4, 0], "'": [4, 4, 8, 0, 0, 0, 0], ",": [0, 0, 0, 0, 0, 4, 8]
 };
 
 function fillRect(buf, width, height, x, y, rw, rh, color) {
@@ -560,20 +621,52 @@ function fillRect(buf, width, height, x, y, rw, rh, color) {
   }
 }
 
+function blendPixel(buf, width, height, px, py, color, alpha) {
+  if (px < 0 || py < 0 || px >= width || py >= height || alpha <= 0) return;
+  const i = (py * width + px) * 4;
+  const a = Math.min(1, alpha);
+  const inv = 1 - a;
+  buf[i] = Math.round(buf[i] * inv + color[0] * a);
+  buf[i + 1] = Math.round(buf[i + 1] * inv + color[1] * a);
+  buf[i + 2] = Math.round(buf[i + 2] * inv + color[2] * a);
+  buf[i + 3] = 255;
+}
+
 function fillCircle(buf, width, height, cx, cy, radius, color) {
-  const r2 = radius * radius;
-  for (let py = cy - radius; py <= cy + radius; py++) {
-    for (let px = cx - radius; px <= cx + radius; px++) {
-      const dx = px - cx;
-      const dy = py - cy;
-      if (dx * dx + dy * dy <= r2) fillRect(buf, width, height, px, py, 1, 1, color);
+  const pad = Math.ceil(radius) + 1;
+  for (let py = Math.floor(cy - pad); py <= Math.ceil(cy + pad); py++) {
+    for (let px = Math.floor(cx - pad); px <= Math.ceil(cx + pad); px++) {
+      const dist = Math.hypot(px - cx, py - cy);
+      if (dist <= radius - 0.5) fillRect(buf, width, height, px, py, 1, 1, color);
+      else if (dist < radius + 0.5) blendPixel(buf, width, height, px, py, color, radius + 0.5 - dist);
     }
   }
+}
+
+function fillRoundRect(buf, width, height, x, y, rw, rh, r, color) {
+  fillRect(buf, width, height, x + r, y, rw - 2 * r, rh, color);
+  fillRect(buf, width, height, x, y + r, rw, rh - 2 * r, color);
+  fillCircle(buf, width, height, x + r, y + r, r, color);
+  fillCircle(buf, width, height, x + rw - r - 1, y + r, r, color);
+  fillCircle(buf, width, height, x + r, y + rh - r - 1, r, color);
+  fillCircle(buf, width, height, x + rw - r - 1, y + rh - r - 1, r, color);
+}
+
+function measureTextWidth(text, scale) {
+  let cursor = 0;
+  const folded = String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const ch of folded) {
+    if (ch === " ") cursor += 3 * scale;
+    else if (!FONT[ch]) cursor += 4 * scale;
+    else cursor += 6 * scale;
+  }
+  return Math.max(0, cursor - scale);
 }
 
 function drawText(buf, width, height, x, y, text, scale, color) {
   let cursor = x;
   const folded = String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const r = Math.max(1, Math.floor(scale * 0.35));
   for (const ch of folded) {
     if (ch === " ") {
       cursor += 3 * scale;
@@ -588,7 +681,14 @@ function drawText(buf, width, height, x, y, text, scale, color) {
       const bits = rows[row];
       for (let col = 0; col < 5; col++) {
         if (((bits >> (4 - col)) & 1) === 0) continue;
-        fillRect(buf, width, height, cursor + col * scale, y + row * scale, scale, scale, color);
+        const px = cursor + col * scale;
+        const py = y + row * scale;
+        fillRect(buf, width, height, px, py, scale, scale, color);
+        if (scale >= 4) {
+          blendPixel(buf, width, height, px - 1, py, color, 0.25);
+          blendPixel(buf, width, height, px + scale, py, color, 0.25);
+          blendPixel(buf, width, height, px, py + scale, color, 0.25);
+        }
       }
     }
     cursor += 6 * scale;
@@ -627,31 +727,61 @@ function pngChunk(type, data) {
 async function cardPng(comparison) {
   const width = 1200;
   const height = 630;
-  const paper = [247, 241, 232];
-  const ink = [28, 25, 23];
-  const soft = [124, 115, 106];
-  const sea = [92, 151, 180];
-  const land = [243, 234, 220];
+  const bg = [242, 242, 247];
+  const card = [255, 255, 255];
+  const border = [224, 224, 230];
+  const ink = [29, 29, 31];
+  const soft = [110, 110, 115];
+  const blue = [0, 122, 255];
+  const dots = { work: [52, 199, 89], edge: [255, 149, 0], night: [142, 142, 147] };
   const buf = new Uint8Array(width * height * 4);
-  fillRect(buf, width, height, 0, 0, width, height, paper);
-  drawText(buf, width, height, 72, 48, "/. World Time Converter", 3, soft);
+  fillRect(buf, width, height, 0, 0, width, height, bg);
+  drawText(buf, width, height, 64, 46, "/. World Time Converter", 3, ink);
+  if (comparison && comparison.dateLabel) {
+    const dw = measureTextWidth(comparison.dateLabel, 3);
+    drawText(buf, width, height, width - 64 - dw, 46, comparison.dateLabel, 3, soft);
+  }
+  fillRoundRect(buf, width, height, 62, 102, 1076, 436, 26, border);
+  fillRoundRect(buf, width, height, 64, 104, 1072, 432, 24, card);
   const places = (comparison ? comparison.places : []).slice(0, 4);
+  const hour24 = !!(comparison && comparison.hour24);
   const rows = places.length
     ? places.map((place) => ({
-      time: formatTime(place.parts.hour, place.parts.minute),
-      city: place.city.city + (dayText(place.delta) ? "  " + dayText(place.delta) : "")
+      time: formatTime(place.parts.hour, place.parts.minute, hour24),
+      city: place.city.city,
+      abbr: place.parts.abbr || "",
+      extra: dayText(place.delta),
+      dot: dots[place.period] || dots.work
     }))
-    : [{ time: "One day", city: "across cities" }];
-  const block = rows.length * 108;
-  const top = Math.max(150, Math.round((height - block) / 2));
+    : [{ time: "One day", city: "across cities", abbr: "", extra: "", dot: dots.work }];
+  const rowH = 96;
+  const block = rows.length * rowH;
+  const top = Math.max(138, Math.round(104 + (432 - block) / 2) + 26);
   rows.forEach((row, index) => {
-    const y = top + index * 108;
-    fillCircle(buf, width, height, 92, y + 16, 16, sea);
-    fillCircle(buf, width, height, 86, y + 12, 7, land);
-    drawText(buf, width, height, 128, y, row.time, 6, ink);
-    drawText(buf, width, height, 520, y, row.city, 5, ink);
+    const y = top + index * rowH;
+    if (index > 0) fillRect(buf, width, height, 96, y - 34, 1008, 1, border);
+    fillCircle(buf, width, height, 110, y + 18, 11, row.dot);
+    drawText(buf, width, height, 144, y, row.city, 5, ink);
+    const cityW = measureTextWidth(row.city, 5);
+    let subX = 144 + cityW + 18;
+    if (row.abbr) {
+      drawText(buf, width, height, subX, y + 10, row.abbr, 3, soft);
+      subX += measureTextWidth(row.abbr, 3) + 16;
+    }
+    if (row.extra) {
+      drawText(buf, width, height, subX, y + 10, row.extra, 3, blue);
+    }
+    const tw = measureTextWidth(row.time, 5);
+    drawText(buf, width, height, 1096 - tw, y, row.time, 5, ink);
   });
-  drawText(buf, width, height, 72, 575, "forwardslashdot.com/worldtimeconverter", 3, soft);
+  fillCircle(buf, width, height, 72, 578, 7, dots.work);
+  drawText(buf, width, height, 88, 570, "Workday", 2, soft);
+  fillCircle(buf, width, height, 200, 578, 7, dots.edge);
+  drawText(buf, width, height, 216, 570, "Early/late", 2, soft);
+  fillCircle(buf, width, height, 360, 578, 7, dots.night);
+  drawText(buf, width, height, 376, 570, "Off hours", 2, soft);
+  const foot = "forwardslashdot.com/worldtimeconverter";
+  drawText(buf, width, height, width - 64 - measureTextWidth(foot, 2), 570, foot, 2, soft);
   const raw = new Uint8Array((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
     const start = y * (width * 4 + 1);
@@ -713,8 +843,12 @@ async function handleTime(request, env, url, path) {
     });
   }
 
-  const asset = new URL("/worldtimeconverter/index.html", request.url);
-  const response = await env.ASSETS.fetch(new Request(asset, { headers: request.headers }));
+  const asset = new URL("/worldtimeconverter/", request.url);
+  let response = await env.ASSETS.fetch(new Request(asset, { headers: request.headers }));
+  if ((response.status === 307 || response.status === 308) && response.headers.get("location")) {
+    const nextAsset = new URL(response.headers.get("location"), request.url);
+    response = await env.ASSETS.fetch(new Request(nextAsset, { headers: request.headers }));
+  }
   if (!response.ok) return response;
   const queried = ["cities", "anchor", "at", "work", "dur", "embed", "card", "format"].some((name) => url.searchParams.has(name));
   if (browser && !queried) return response;
