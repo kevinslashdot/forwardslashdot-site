@@ -667,10 +667,18 @@
       background: var(--card);
       border-radius: var(--r);
       box-shadow: var(--shadow);
-      overflow: hidden;
+    }
+
+    .answers-primary {
+      position: relative;
+      z-index: 15;
+      overflow: visible;
     }
 
     .answers-more {
+      position: relative;
+      z-index: 5;
+      overflow: hidden;
       margin-top: 0.75rem;
     }
 
@@ -794,14 +802,6 @@
     .row-action.copy-btn.is-copied {
       color: var(--green);
       background: var(--green-soft);
-    }
-
-    .register-full {
-      display: inline;
-    }
-
-    .register-short {
-      display: none;
     }
 
     .ext-arrow {
@@ -1005,6 +1005,201 @@
       color: var(--cta-ink);
     }
 
+    /* Split CTA + Frosted Registrar Popover (Hero) */
+    .register-split {
+      position: relative;
+      display: inline-flex;
+      align-items: stretch;
+      border-radius: 980px;
+      background: var(--cta-bg);
+      color: var(--cta-ink);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .register-split .register-main {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.35rem;
+      padding: 0 0.85rem 0 1.1rem;
+      border-radius: 980px 0 0 980px;
+      color: var(--cta-ink);
+      font-size: 0.88rem;
+      font-weight: 590;
+      letter-spacing: -0.015em;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.16s ease;
+    }
+
+    .register-split .register-main:hover {
+      background: var(--cta-bg-hover);
+      color: var(--cta-ink);
+      text-decoration: none;
+    }
+
+    .register-split .register-main:focus-visible,
+    .register-split .register-more:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+      position: relative;
+      z-index: 2;
+    }
+
+    .register-sep {
+      width: 1px;
+      align-self: stretch;
+      margin: 0.42rem 0;
+      background: color-mix(in srgb, var(--cta-ink) 22%, transparent);
+      flex: none;
+    }
+
+    .register-more {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.35rem;
+      padding: 0 0.72rem 0 0.56rem;
+      border: 0;
+      border-radius: 0 980px 980px 0;
+      background: transparent;
+      color: var(--cta-ink);
+      transition: background 0.16s ease;
+    }
+
+    .register-more:hover,
+    .register-more[aria-expanded="true"] {
+      background: var(--cta-bg-hover);
+    }
+
+    .register-more svg {
+      width: 0.68rem;
+      height: 0.68rem;
+      opacity: 0.82;
+      transition: transform 0.22s var(--spring);
+    }
+
+    .register-more[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .reg-menu {
+      position: absolute;
+      top: calc(100% + 0.45rem);
+      right: 0;
+      z-index: 25;
+      width: min(15.2rem, calc(100vw - 2rem));
+      padding: 0.35rem;
+      border-radius: 16px;
+      background: var(--glass);
+      backdrop-filter: saturate(180%) blur(28px);
+      -webkit-backdrop-filter: saturate(180%) blur(28px);
+      box-shadow: var(--shadow-pop);
+      color: var(--label);
+      transform-origin: top right;
+      opacity: 0;
+      transform: translateY(-4px) scale(0.96);
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity 0.16s ease,
+        transform 0.22s var(--spring),
+        visibility 0s linear 0.16s;
+    }
+
+    .reg-menu.is-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        opacity 0.16s ease,
+        transform 0.22s var(--spring),
+        visibility 0s linear 0s;
+    }
+
+    .reg-menu-head {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--label2);
+      padding: 0.4rem 0.68rem 0.28rem;
+    }
+
+    .reg-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 0.48rem 0.68rem;
+      border-radius: 10px;
+      color: var(--label);
+      text-align: left;
+      text-decoration: none;
+      transition: background 0.12s ease;
+    }
+
+    .reg-option:hover,
+    .reg-option:focus-visible {
+      background: var(--fill);
+      color: var(--label);
+      text-decoration: none;
+      outline: none;
+    }
+
+    .reg-option:disabled {
+      opacity: 0.48;
+      cursor: default;
+    }
+
+    .reg-option:disabled:hover {
+      background: transparent;
+    }
+
+    .reg-option-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .reg-option-name {
+      font-size: 0.9rem;
+      font-weight: 560;
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+      color: var(--label);
+    }
+
+    .reg-option-sub {
+      font-size: 0.72rem;
+      color: var(--label2);
+      line-height: 1.3;
+    }
+
+    .reg-option-end {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex: none;
+      font-size: 0.78rem;
+      color: var(--label2);
+    }
+
+    .reg-option-check {
+      font-size: 0.82rem;
+      font-weight: 650;
+      color: var(--blue);
+      opacity: 0;
+    }
+
+    .reg-option[data-selected="true"] .reg-option-check {
+      opacity: 1;
+    }
+
     /* ---------- All-Taken Recovery Prompt ---------- */
     .recovery {
       display: none;
@@ -1049,17 +1244,77 @@
       border-radius: 6px;
     }
 
-    .disclosure {
+    .disclosure-row {
       display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 0.9rem;
       margin-top: 0.85rem;
       padding: 0 0.25rem;
+    }
+
+    .disclosure-row.is-on {
+      display: flex;
+    }
+
+    .disclosure {
       font-size: 0.74rem;
       line-height: 1.45;
       color: var(--label2);
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
-    .disclosure.is-on {
-      display: block;
+    .reg-switcher {
+      position: relative;
+      flex: none;
+    }
+
+    .reg-switch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      border: 0;
+      border-radius: 8px;
+      background: var(--fill);
+      padding: 0.22rem 0.56rem;
+      font-size: 0.74rem;
+      font-weight: 550;
+      color: var(--label);
+      white-space: nowrap;
+      transition: background 0.14s ease;
+    }
+
+    .reg-switch-btn:hover,
+    .reg-switch-btn[aria-expanded="true"] {
+      background: var(--fill2);
+    }
+
+    .reg-switch-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .reg-switch-btn svg {
+      width: 0.62rem;
+      height: 0.62rem;
+      opacity: 0.65;
+      transition: transform 0.2s var(--spring);
+    }
+
+    .reg-switch-btn[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .reg-switcher .reg-menu {
+      top: auto;
+      bottom: calc(100% + 0.45rem);
+      transform-origin: bottom right;
+      transform: translateY(4px) scale(0.96);
+    }
+
+    .reg-switcher .reg-menu.is-open {
+      transform: translateY(0) scale(1);
     }
 
     /* ---------- Below-the-Fold Trust & FAQ ---------- */
@@ -1302,6 +1557,19 @@
     }
 
     /* ---------- Mobile iOS List-Row Pattern (<= 520px) ---------- */
+    @media (max-width: 600px) {
+      .disclosure-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .reg-switcher .reg-menu {
+        left: 0;
+        right: auto;
+        transform-origin: bottom left;
+      }
+    }
+
     @media (max-width: 520px) {
       .stage {
         padding: 0.95rem 1rem max(1.5rem, env(safe-area-inset-bottom));
@@ -1348,12 +1616,19 @@
         padding: 0 0.98rem;
       }
 
-      .register-full {
-        display: none;
+      .register-split .register-main {
+        min-height: 2.35rem;
+        padding: 0 0.7rem 0 0.92rem;
+        font-size: 0.84rem;
       }
 
-      .register-short {
-        display: inline;
+      .register-more {
+        min-height: 2.35rem;
+        padding: 0 0.62rem 0 0.48rem;
+      }
+
+      .answer-tail {
+        gap: 0.45rem;
       }
 
       .recovery {
@@ -1460,7 +1735,16 @@
           <span>All common endings are taken.</span>
           <button type="button" class="recovery-btn" id="recovery-btn">Try another ending &rarr;</button>
         </div>
-        <p class="disclosure" id="disclosure"></p>
+        <div class="disclosure-row" id="disclosure-row">
+          <p class="disclosure" id="disclosure"></p>
+          <div class="reg-switcher" id="reg-switcher">
+            <button type="button" class="reg-switch-btn" id="reg-switch-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="reg-switch-menu">
+              <span>Registrar: <strong id="reg-switch-label">Namecheap</strong></span>
+              <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="reg-menu" id="reg-switch-menu" role="menu" aria-label="Preferred registrar" aria-hidden="true"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1495,7 +1779,7 @@
             <span>Where do Register links go?</span>
             <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </summary>
-          <p>Register links open Namecheap directly with your exact domain pre-filled in a new tab. You can also copy any available domain with one click to register it at Cloudflare Registrar, Porkbun, or any registrar you prefer.</p>
+          <p>Choose your preferred registrar from the dropdown on any register button — Namecheap, Cloudflare Registrar, Porkbun, or GoDaddy. Your choice is saved locally in your browser, or you can copy any available domain with one click.</p>
         </details>
       </div>
     </section>
@@ -1552,8 +1836,203 @@
       var POPULAR = ["com", "net", "org", "io", "co", "ai", "dev", "app", "me", "xyz", "info", "biz"];
       var REGIONS = ["ca", "us", "uk", "co.uk", "org.uk", "me.uk", "de", "fr", "es", "nl", "eu", "ch", "com.au", "net.au", "org.au", "mx", "com.mx", "in", "co.in", "sg", "com.sg", "id", "ph", "pe", "is"];
       var ALL = "ac,academy,accountant,accountants,actor,ad,adult,ae.org,africa,agency,ai,airforce,apartments,app,archi,army,art,asia,associates,attorney,auction,audio,auto,autos,baby,band,bar,barcelona,bargains,beauty,beer,berlin,best,bet,bid,bike,bingo,bio,biz,black,blackfriday,blog,blue,boats,bond,boo,boston,bot,boutique,br.com,broker,build,builders,business,buzz,bz,ca,cab,cafe,cam,camera,camp,capital,car,cards,care,careers,cars,casa,cash,casino,cat,catering,cc,center,ceo,cfd,ch,channel,charity,chat,cheap,christmas,church,city,claims,cleaning,click,clinic,clothing,cloud,club,cm,cn.com,co,co.bz,co.com,co.im,co.in,co.uk,coach,codes,coffee,college,com,com.au,com.co,com.de,com.es,com.im,com.mx,com.pe,com.ph,com.se,com.sg,com.vc,community,company,computer,condos,construction,consulting,contact,contractors,cooking,cool,country,coupons,courses,credit,creditcard,cricket,cruises,cv,cx,cymru,cyou,dad,dance,date,dating,day,de,de.com,deal,dealer,deals,degree,delivery,democrat,dental,dentist,desi,design,dev,diamonds,diet,digital,direct,directory,discount,diy,doctor,dog,domains,download,earth,eco,education,email,energy,engineer,engineering,enterprises,equipment,es,esq,estate,eu,eu.com,events,exchange,expert,exposed,express,fail,faith,family,fan,fans,farm,fashion,fast,feedback,film,finance,financial,fish,fishing,fit,fitness,flights,florist,flowers,fm,foo,food,football,forex,forsale,forum,foundation,fr,free,fun,fund,furniture,futbol,fyi,gallery,game,games,garden,gay,gb.net,gdn,gg,gift,gifts,gives,giving,glass,global,gmbh,gold,golf,gr.com,graphics,gratis,green,gripe,group,guide,guitars,guru,hair,hamburg,haus,health,healthcare,help,hiphop,hockey,holdings,holiday,homes,horse,hospital,host,hosting,hot,house,how,hu.net,icu,id,im,immo,immobilien,in,in.net,inc,industries,info,ing,ink,institute,insure,international,investments,io,irish,is,it.com,jetzt,jewelry,jp.net,jpn.com,juegos,kaufen,kids,kim,kitchen,kiwi,krd,kyoto,la,land,lat,latino,law,lawyer,lease,legal,lgbt,li,life,lifestyle,lighting,limited,limo,link,live,living,llc,loan,loans,locker,lol,london,love,ltd,ltda,maison,makeup,management,market,marketing,markets,mba,me,me.uk,media,melbourne,meme,memorial,men,menu,mex.com,miami,mobi,mobile,moda,moe,mom,money,monster,mortgage,motorcycles,mov,movie,music,mx,my,nagoya,name,navy,net,net.au,net.im,net.pe,net.ph,net.vc,network,new,news,nexus,ngo,ninja,nl,nom.es,now,nyc,observer,okinawa,one,ong,onl,online,org,org.au,org.es,org.im,org.mx,org.pe,org.ph,org.uk,org.vc,osaka,page,paris,partners,parts,party,pe,pet,ph,phd,photo,photography,photos,pics,pictures,pink,pizza,place,plumbing,plus,poker,porn,press,pro,productions,prof,promo,properties,property,protection,pub,pw,quest,racing,realty,recipes,red,rehab,reise,reisen,rent,rentals,repair,report,republican,rest,restaurant,review,reviews,rip,rocks,rodeo,rsvp,ru.com,run,ryukyu,sa.com,sale,salon,sarl,sbs,school,schule,science,se.net,security,services,sex,sexy,sg,sh,shiksha,shoes,shop,shopping,show,singles,site,ski,skin,so,soccer,social,software,solar,solutions,soy,space,spot,storage,store,stream,studio,study,style,substack,sucks,supplies,supply,support,surf,surgery,sydney,systems,talk,tattoo,tax,taxi,team,tech,technology,tel,tennis,theater,theatre,tickets,tienda,tips,tires,to,today,tokyo,tools,top,tours,town,toys,trade,trading,training,travel,tube,tv,uk,uk.com,uk.net,university,uno,us,us.com,us.org,vacations,vana,vc,vegas,ventures,vet,viajes,video,villas,vin,vip,vision,vodka,vote,voting,voto,voyage,wales,watch,webcam,website,wedding,wiki,win,wine,work,works,world,ws,wtf,xyz,yachts,yoga,yokohama,you,za.com,zip,zone".split(",");
+      var disclosureRowEl = document.getElementById("disclosure-row");
       var disclosureEl = document.getElementById("disclosure");
+      var regSwitcherEl = document.getElementById("reg-switcher");
+      var regSwitchBtn = document.getElementById("reg-switch-btn");
+      var regSwitchLabel = document.getElementById("reg-switch-label");
+      var regSwitchMenu = document.getElementById("reg-switch-menu");
       var host = document.getElementById("q-host");
+
+      var REGISTRAR_KEY = "fwd-registrar";
+      var CF_UNSUPPORTED = {
+        ca: 1, de: 1, fr: 1, es: 1, nl: 1, eu: 1, ch: 1, si: 1,
+        "com.au": 1, "net.au": 1, "org.au": 1, in: 1, "co.in": 1,
+        sg: 1, "com.sg": 1, mx: 1, "com.mx": 1, pe: 1, "com.pe": 1,
+        ph: 1, "com.ph": 1, id: 1, my: 1, ai: 1
+      };
+      var REGISTRARS = [
+        {
+          id: "namecheap",
+          name: "Namecheap",
+          sub: "550+ endings · Default",
+          rel: "sponsored noopener noreferrer",
+          url: function (domain, row) {
+            if (row && row.affiliate_url) return row.affiliate_url;
+            return "https://www.namecheap.com/domains/registration/results/?domain=" + encodeURIComponent(domain);
+          },
+          disclosure: function (apiDisclosure) {
+            return apiDisclosure || "Direct link to Namecheap (opens in a new tab). Searches are never logged.";
+          }
+        },
+        {
+          id: "cloudflare",
+          name: "Cloudflare",
+          sub: "At-cost wholesale",
+          rel: "noopener noreferrer",
+          supports: function (tld) {
+            return !CF_UNSUPPORTED[String(tld || "").replace(/^\./, "")];
+          },
+          url: function (domain) {
+            return "https://domains.cloudflare.com/?domain=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to Cloudflare Registrar (no affiliate). Searches are never logged.";
+          }
+        },
+        {
+          id: "porkbun",
+          name: "Porkbun",
+          sub: "Low renewals",
+          rel: "noopener noreferrer",
+          url: function (domain) {
+            return "https://porkbun.com/checkout/search?q=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to Porkbun (no affiliate). Searches are never logged.";
+          }
+        },
+        {
+          id: "godaddy",
+          name: "GoDaddy",
+          sub: "Popular registrar",
+          rel: "noopener noreferrer",
+          url: function (domain) {
+            return "https://www.godaddy.com/domainsearch/find?domainToCheck=" + encodeURIComponent(domain);
+          },
+          disclosure: function () {
+            return "Direct link to GoDaddy (opens in a new tab). Searches are never logged.";
+          }
+        }
+      ];
+
+      function registrarById(id) {
+        for (var i = 0; i < REGISTRARS.length; i++) {
+          if (REGISTRARS[i].id === id) return REGISTRARS[i];
+        }
+        return REGISTRARS[0];
+      }
+
+      var selectedRegistrar = (function () {
+        try {
+          var saved = localStorage.getItem(REGISTRAR_KEY);
+          if (saved) return registrarById(saved).id;
+        } catch (_) {}
+        return "namecheap";
+      })();
+
+      function setPreferredRegistrar(id) {
+        var next = registrarById(id).id;
+        selectedRegistrar = next;
+        try { localStorage.setItem(REGISTRAR_KEY, next); } catch (_) {}
+        if (regSwitchLabel) regSwitchLabel.textContent = registrarById(next).name;
+      }
+
+      function effectiveRegistrarFor(tld) {
+        var pref = registrarById(selectedRegistrar);
+        if (pref.supports && !pref.supports(tld)) {
+          return { reg: REGISTRARS[0], fallbackFrom: pref };
+        }
+        return { reg: pref, fallbackFrom: null };
+      }
+
+      var openRegMenuEl = null;
+      var openRegBtnEl = null;
+
+      function closeRegMenus() {
+        if (openRegMenuEl) {
+          openRegMenuEl.classList.remove("is-open");
+          openRegMenuEl.setAttribute("aria-hidden", "true");
+        }
+        if (openRegBtnEl) {
+          openRegBtnEl.setAttribute("aria-expanded", "false");
+        }
+        openRegMenuEl = null;
+        openRegBtnEl = null;
+      }
+
+      function toggleRegMenu(btn, menu, populateFn) {
+        var wasOpen = openRegMenuEl === menu;
+        closeMenu();
+        closeRegMenus();
+        if (wasOpen) return;
+        populateFn();
+        menu.classList.add("is-open");
+        menu.setAttribute("aria-hidden", "false");
+        btn.setAttribute("aria-expanded", "true");
+        openRegMenuEl = menu;
+        openRegBtnEl = btn;
+      }
+
+      function buildRegMenuItems(menuEl, domain, tld, hit, openExternal) {
+        menuEl.innerHTML = "";
+        var head = document.createElement("div");
+        head.className = "reg-menu-head";
+        head.textContent = openExternal ? "Register at" : "Preferred registrar";
+        menuEl.appendChild(head);
+
+        REGISTRARS.forEach(function (reg) {
+          var supported = !tld || !reg.supports || reg.supports(tld);
+          var el = document.createElement(openExternal && supported ? "a" : "button");
+          el.className = "reg-option";
+          el.setAttribute("role", "menuitem");
+          el.setAttribute("data-selected", reg.id === selectedRegistrar ? "true" : "false");
+          if (openExternal && supported) {
+            el.href = reg.url(domain, hit);
+            el.target = "_blank";
+            el.rel = reg.rel;
+          } else {
+            el.type = "button";
+            if (openExternal && !supported) el.disabled = true;
+          }
+          var textWrap = document.createElement("span");
+          textWrap.className = "reg-option-text";
+          var nameSpan = document.createElement("span");
+          nameSpan.className = "reg-option-name";
+          nameSpan.textContent = reg.name;
+          var subSpan = document.createElement("span");
+          subSpan.className = "reg-option-sub";
+          subSpan.textContent = supported ? reg.sub : "Doesn’t sell " + tld;
+          textWrap.appendChild(nameSpan);
+          textWrap.appendChild(subSpan);
+
+          var endWrap = document.createElement("span");
+          endWrap.className = "reg-option-end";
+          var check = document.createElement("span");
+          check.className = "reg-option-check";
+          check.setAttribute("aria-hidden", "true");
+          check.textContent = "✓";
+          endWrap.appendChild(check);
+          if (openExternal && supported) {
+            var arr = document.createElement("span");
+            arr.setAttribute("aria-hidden", "true");
+            arr.textContent = "↗";
+            endWrap.appendChild(arr);
+          }
+
+          el.appendChild(textWrap);
+          el.appendChild(endWrap);
+
+          el.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (openExternal && !supported) return;
+            setPreferredRegistrar(reg.id);
+            closeRegMenus();
+            renderAnswers();
+          });
+          menuEl.appendChild(el);
+        });
+      }
+
+      if (regSwitchLabel) regSwitchLabel.textContent = registrarById(selectedRegistrar).name;
+      if (regSwitchBtn) {
+        regSwitchBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleRegMenu(regSwitchBtn, regSwitchMenu, function () {
+            buildRegMenuItems(regSwitchMenu, "", "", null, false);
+          });
+        });
+      }
 
       // Closed shadow contenteditable — no <input>, so no contact/password autofill.
       // delegatesFocus sends clicks and Tab on the host into the editor.
@@ -1714,9 +2193,9 @@
         return next;
       }
 
-      function registerHref(domain, row) {
-        if (row && row.affiliate_url) return row.affiliate_url;
-        return "https://www.namecheap.com/domains/registration/results/?domain=" + encodeURIComponent(domain);
+      function registerHref(domain, row, reg) {
+        var r = reg || registrarById(selectedRegistrar);
+        return r.url(domain, row);
       }
 
       function answerEndings(label, primary) {
@@ -1843,7 +2322,7 @@
           li.appendChild(main);
 
           li.addEventListener("click", function (e) {
-            if (e.target.closest && e.target.closest(".register, .row-action, .answer-meta a")) return;
+            if (e.target.closest && e.target.closest(".register, .register-split, .row-action, .answer-meta a")) return;
             var rowTld = li.dataset.tld;
             if (!rowTld || rowTld === selectedTld) return;
             selectTld(rowTld);
@@ -1929,26 +2408,82 @@
           visitLink.remove();
         }
 
-        // Available row CTA: explicit destination + external arrow
+        // Available row CTA: split pill + registrar popover on hero, single pill on secondary rows
+        var splitWrap = tail.querySelector(".register-split");
         var link = tail.querySelector(".register");
         if (state === "available") {
-          if (!link) {
-            link = document.createElement("a");
-            link.className = "register";
-            link.rel = "sponsored noopener noreferrer";
-            link.target = "_blank";
-            tail.appendChild(link);
-          }
+          var eff = effectiveRegistrarFor(tld);
+          var reg = eff.reg;
+          var href = registerHref(domain, hit, reg);
+          var tip = eff.fallbackFrom
+            ? eff.fallbackFrom.name + " doesn’t sell " + tld + " — opens on " + reg.name
+            : "Register " + domain + " on " + reg.name + " (opens in a new tab)";
+
           if (isPrimary) {
-            link.innerHTML = '<span class="register-full">Register on Namecheap</span><span class="register-short">Namecheap</span><span class="ext-arrow" aria-hidden="true">↗</span>';
+            if (link) link.remove();
+            if (!splitWrap) {
+              splitWrap = document.createElement("div");
+              splitWrap.className = "register-split";
+
+              var mainLink = document.createElement("a");
+              mainLink.className = "register-main";
+              mainLink.target = "_blank";
+
+              var sep = document.createElement("span");
+              sep.className = "register-sep";
+              sep.setAttribute("aria-hidden", "true");
+
+              var moreBtn = document.createElement("button");
+              moreBtn.type = "button";
+              moreBtn.className = "register-more";
+              moreBtn.setAttribute("aria-haspopup", "menu");
+              moreBtn.setAttribute("aria-expanded", "false");
+              moreBtn.setAttribute("aria-label", "Choose registrar");
+              moreBtn.title = "Choose registrar";
+              moreBtn.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+              var regMenu = document.createElement("div");
+              regMenu.className = "reg-menu";
+              regMenu.setAttribute("role", "menu");
+              regMenu.setAttribute("aria-label", "Register at");
+              regMenu.setAttribute("aria-hidden", "true");
+
+              moreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                toggleRegMenu(moreBtn, regMenu, function () {
+                  buildRegMenuItems(regMenu, li.dataset.domain, li.dataset.tld, cacheGet(li.dataset.domain), true);
+                });
+              });
+
+              splitWrap.appendChild(mainLink);
+              splitWrap.appendChild(sep);
+              splitWrap.appendChild(moreBtn);
+              splitWrap.appendChild(regMenu);
+              tail.appendChild(splitWrap);
+            }
+            var mainLinkEl = splitWrap.querySelector(".register-main");
+            mainLinkEl.href = href;
+            mainLinkEl.rel = reg.rel;
+            mainLinkEl.title = tip;
+            mainLinkEl.setAttribute("aria-label", "Register " + domain + " on " + reg.name);
+            mainLinkEl.innerHTML = '<span>' + reg.name + '</span><span class="ext-arrow" aria-hidden="true">↗</span>';
           } else {
-            link.innerHTML = 'Namecheap<span class="ext-arrow" aria-hidden="true">↗</span>';
+            if (splitWrap) splitWrap.remove();
+            if (!link) {
+              link = document.createElement("a");
+              link.className = "register";
+              link.target = "_blank";
+              tail.appendChild(link);
+            }
+            link.href = href;
+            link.rel = reg.rel;
+            link.title = tip;
+            link.setAttribute("aria-label", "Register " + domain + " on " + reg.name);
+            link.innerHTML = reg.name + '<span class="ext-arrow" aria-hidden="true">↗</span>';
           }
-          link.href = registerHref(domain, hit);
-          link.title = "Register " + domain + " on Namecheap (opens in a new tab)";
-          link.setAttribute("aria-label", "Register " + domain + " on Namecheap");
-        } else if (link) {
-          link.remove();
+        } else {
+          if (splitWrap) splitWrap.remove();
+          if (link) link.remove();
         }
 
         return li;
@@ -1960,13 +2495,14 @@
         compose.classList.remove("is-available", "is-taken", "is-checking");
 
         if (!label || !endingReady(ending)) {
+          closeRegMenus();
           primaryListEl.innerHTML = "";
           moreListEl.innerHTML = "";
           moreListEl.hidden = true;
           resultsEl.hidden = true;
           searchEl.classList.remove("has-answers");
           recoveryEl.classList.remove("is-on");
-          disclosureEl.classList.remove("is-on");
+          disclosureRowEl.classList.remove("is-on");
           disclosureEl.textContent = "";
           syncUrl("", "");
           return;
@@ -2028,14 +2564,13 @@
         var allTaken = endings.length > 1 && resolvedCount === endings.length && availableCount === 0;
         recoveryEl.classList.toggle("is-on", allTaken);
 
-        if (disclosure) {
-          disclosureEl.textContent = disclosure;
-          disclosureEl.classList.add("is-on");
-        } else if (availableCount > 0) {
-          disclosureEl.textContent = "Namecheap links open directly in a new tab. Searches are never logged.";
-          disclosureEl.classList.add("is-on");
+        if (availableCount > 0) {
+          var activeReg = registrarById(selectedRegistrar);
+          disclosureEl.textContent = activeReg.disclosure(disclosure);
+          if (regSwitchLabel) regSwitchLabel.textContent = activeReg.name;
+          disclosureRowEl.classList.add("is-on");
         } else {
-          disclosureEl.classList.remove("is-on");
+          disclosureRowEl.classList.remove("is-on");
           disclosureEl.textContent = "";
         }
 
@@ -2325,6 +2860,7 @@
       }
 
       function openMenu() {
+        closeRegMenus();
         menuOpen = true;
         searchEl.classList.add("menu-open");
         tldMenu.classList.add("is-open");
@@ -2425,14 +2961,25 @@
         chooseEnding(menuItems[Number(btn.getAttribute("data-i"))]);
       });
       document.addEventListener("pointerdown", function (e) {
-        if (!menuOpen || tldPop.contains(e.target)) return;
-        closeMenu();
+        if (menuOpen && !tldPop.contains(e.target)) closeMenu();
+        if (openRegMenuEl && !openRegMenuEl.contains(e.target) && (!openRegBtnEl || !openRegBtnEl.contains(e.target))) {
+          closeRegMenus();
+        }
       });
       document.addEventListener("keydown", function (e) {
-        if (e.key === "Escape" && menuOpen) {
-          e.preventDefault();
-          closeMenu();
-          nameInput.focus();
+        if (e.key === "Escape") {
+          if (openRegMenuEl) {
+            e.preventDefault();
+            var returnBtn = openRegBtnEl;
+            closeRegMenus();
+            if (returnBtn) returnBtn.focus();
+            return;
+          }
+          if (menuOpen) {
+            e.preventDefault();
+            closeMenu();
+            nameInput.focus();
+          }
         }
       });
       tldPop.addEventListener("focusout", function (e) {
