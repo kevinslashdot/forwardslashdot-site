@@ -703,6 +703,15 @@
     .tip { padding: 10px 6px 0; font-size: 13px; color: var(--label2); }
 
     /* ---------- Add / change a place ---------- */
+    .adder-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 39;
+      background: rgba(0, 0, 0, 0.45);
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+    }
     .adder {
       display: none;
       margin-top: 16px;
@@ -712,8 +721,26 @@
       box-shadow: var(--shadow);
     }
     .adder.is-open { display: block; }
-    .adder-title { margin-bottom: 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-    .search { position: relative; }
+    .adder-head {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .adder-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+    .adder-close {
+      min-height: 32px;
+      padding: 0 4px;
+      border: 0;
+      background: none;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--blue);
+    }
+    .adder-close:active { opacity: 0.6; }
+    .search { position: relative; flex: none; }
     .search input {
       width: 100%;
       height: 44px;
@@ -727,6 +754,7 @@
     .search input::placeholder { color: var(--label2); }
     .search input:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 40%, transparent); }
     .search input:disabled { opacity: 0.5; }
+    .adder-body { min-height: 0; }
     .results { list-style: none; margin-top: 6px; max-height: 340px; overflow: auto; }
     .option {
       display: flex;
@@ -734,7 +762,7 @@
       justify-content: space-between;
       gap: 12px;
       min-height: 56px;
-      padding: 0 4px;
+      padding: 0 10px;
       border-top: 0.5px solid var(--sep);
       cursor: pointer;
     }
@@ -754,6 +782,35 @@
       font-weight: 590;
     }
     .chip:active { background: var(--fill2); }
+
+    @media (max-width: 640px), (hover: none) and (pointer: coarse) {
+      .adder-backdrop.is-open { display: block; }
+      .adder.is-open {
+        position: fixed;
+        z-index: 40;
+        left: 12px;
+        right: 12px;
+        top: calc(var(--vv-top, 0px) + env(safe-area-inset-top, 0px) + 10px);
+        max-height: calc(var(--vv-h, 100dvh) - env(safe-area-inset-top, 0px) - 20px);
+        margin-top: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--popover);
+        border: 0.5px solid var(--popover-border);
+        -webkit-backdrop-filter: saturate(180%) blur(28px);
+        backdrop-filter: saturate(180%) blur(28px);
+        box-shadow: 0 20px 52px rgba(0, 0, 0, 0.36);
+      }
+      .adder-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+      .adder .results { max-height: none; overflow: visible; }
+    }
 
     /* ---------- Workday ---------- */
     .workday { margin-top: 16px; border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
@@ -1029,14 +1086,20 @@
             <span>Add a city</span>
           </button>
         </div>
+        <div class="adder-backdrop" id="adder-backdrop" aria-hidden="true"></div>
         <div class="adder" id="adder">
-          <p class="adder-title" id="adder-title">Add a city</p>
+          <div class="adder-head">
+            <p class="adder-title" id="adder-title">Add a city</p>
+            <button class="adder-close" id="adder-close" type="button">Cancel</button>
+          </div>
           <div class="search">
             <label class="sr" for="city-search">Add a city</label>
             <input id="city-search" type="text" placeholder="Add a place" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="city-list" autocomplete="off" autocapitalize="off" spellcheck="false" />
-            <ul class="results" id="city-list" role="listbox" hidden></ul>
           </div>
-          <div class="chips" id="chips"></div>
+          <div class="adder-body">
+            <ul class="results" id="city-list" role="listbox" hidden></ul>
+            <div class="chips" id="chips"></div>
+          </div>
         </div>
         <p class="legend">
           <span><i style="background: var(--p-work)"></i>Workday</span>
@@ -2610,12 +2673,29 @@
       options[activeOption].scrollIntoView({ block: "nearest" });
     }
 
+    const adderSheetQuery = window.matchMedia("(max-width: 640px), (hover: none) and (pointer: coarse)");
+
+    function syncVisualViewport() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      document.documentElement.style.setProperty("--vv-top", Math.max(0, Math.round(vv.offsetTop)) + "px");
+      document.documentElement.style.setProperty("--vv-h", Math.round(vv.height) + "px");
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncVisualViewport);
+      window.visualViewport.addEventListener("scroll", syncVisualViewport);
+      syncVisualViewport();
+    }
+
     function closeComposer() {
       state.replaceKey = "";
       document.getElementById("adder").classList.remove("is-open");
+      document.getElementById("adder-backdrop").classList.remove("is-open");
       document.getElementById("adder-title").textContent = "Add a city";
       searchInput.placeholder = "City or time zone";
       searchInput.value = "";
+      if (document.activeElement === searchInput) searchInput.blur();
       const addBtn = document.getElementById("add-city");
       if (addBtn) addBtn.setAttribute("aria-expanded", "false");
       closeList();
@@ -2628,13 +2708,22 @@
       document.getElementById("adder-title").textContent = current ? "Change " + current.city : "Add a city";
       searchInput.placeholder = current ? "Search for a different place" : "Town, city, or time zone";
       searchInput.value = "";
-      document.getElementById("adder").classList.add("is-open");
+      syncVisualViewport();
+      const adder = document.getElementById("adder");
+      adder.classList.add("is-open");
+      document.getElementById("adder-backdrop").classList.add("is-open");
       const addBtn = document.getElementById("add-city");
       if (addBtn) addBtn.setAttribute("aria-expanded", state.replaceKey ? "false" : "true");
       closeList();
       renderChips();
-      searchInput.focus();
-      document.getElementById("adder").scrollIntoView({ block: "nearest" });
+      try { searchInput.focus({ preventScroll: adderSheetQuery.matches }); }
+      catch (_) { searchInput.focus(); }
+      if (adderSheetQuery.matches) {
+        setTimeout(syncVisualViewport, 120);
+        setTimeout(syncVisualViewport, 350);
+      } else {
+        adder.scrollIntoView({ block: "center" });
+      }
     }
 
     let menuKey = "";
@@ -3320,6 +3409,14 @@
       const adder = document.getElementById("adder");
       if (adder.classList.contains("is-open") && !state.replaceKey) closeComposer();
       else openComposer("");
+    });
+    document.getElementById("adder-close").addEventListener("click", function (event) {
+      event.stopPropagation();
+      closeComposer();
+    });
+    document.getElementById("adder-backdrop").addEventListener("click", function (event) {
+      event.stopPropagation();
+      closeComposer();
     });
 
     // A held finger must be able to drag a row without the page scrolling under it.
