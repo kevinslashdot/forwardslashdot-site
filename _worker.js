@@ -1,3 +1,4 @@
+import { handlePanorama, purgeExpiredGuests } from "./panorama/server.js";
 const MODEL = /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Anthropic|Perplexity|Google-Extended|Bytespider|Amazonbot|meta-externalagent|cohere|YouBot|Phind|DuckAssist|CCBot|Applebot-Extended/i;
 const UNFURL = /Slackbot|Twitterbot|facebookexternalhit|Facebot|Discordbot|TelegramBot|WhatsApp|LinkedInBot|Iframely|embedly|Pinterest|vkShare/i;
 const BROWSER = /Mozilla\/|AppleWebKit|Chrome\/|Firefox\/|Safari\//i;
@@ -1432,6 +1433,17 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, "") : url.pathname;
 
+    if (path === "/panorama" || path.startsWith("/panorama/")) {
+      try {
+        const res = await handlePanorama(request, env, ctx);
+        if (res) return res;
+      } catch (err) {
+        console.error("panorama", err);
+        return new Response("Panorama is unavailable right now.", { status: 503, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+      }
+    }
+
+
     if (request.method === "GET" && path === "/domain.png") {
       const q = url.searchParams.get("q") || url.searchParams.get("domain") || "";
       return new Response(await domainCardPng(q), {
@@ -1489,5 +1501,10 @@ export default {
       return personalizedSearch(request, env, url, ctx);
     }
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(event, env, ctx) {
+    const job = purgeExpiredGuests(env, { max: 200 }).catch((err) => console.error("panorama purge failed", err));
+    if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+    else await job;
   }
 };
