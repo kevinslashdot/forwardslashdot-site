@@ -470,8 +470,28 @@
     .track { position: relative; }
     .dials { position: relative; }
 
-    /* Subtle playhead stem confined to the top axis; per-bar markers keep city names and numerals clear. */
-    .head { display: none; }
+    /* The playhead passes behind text; a card-coloured halo keeps numerals clean. */
+    .head {
+      position: absolute;
+      z-index: 1;
+      top: -6px;
+      bottom: 0;
+      left: calc(var(--inset) + (100% - 2 * var(--inset)) * var(--f, 0));
+      width: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .head::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 14px;
+      width: 2px;
+      margin-left: -1px;
+      border-radius: 1px;
+      background: var(--blue);
+    }
+    .track:has(.is-swiped, .is-dragging, .row-face[style*="translate"]) .head { opacity: 0; }
 
     .dial-card {
       position: relative;
@@ -569,7 +589,7 @@
       flex: none;
       padding: 1px 6px;
       border-radius: 6px;
-      background: color-mix(in srgb, var(--blue) 14%, transparent);
+      background: color-mix(in srgb, var(--blue) 14%, var(--card));
       font-size: 11px;
       font-weight: 600;
       line-height: 1.35;
@@ -590,6 +610,10 @@
     .who-time small { margin-left: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--label2); }
     .who-time small:empty { display: none; }
     .wday { display: none; }
+
+    .city-name, .who-time, .sub {
+      text-shadow: 0 0 3px var(--card), 0 0 3px var(--card), 0 0 6px var(--card), 0 0 8px var(--card), 0 0 10px var(--card);
+    }
 
     .row-more {
       position: relative;
@@ -646,19 +670,6 @@
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
     }
-    .band-pin {
-      position: absolute;
-      top: -5px;
-      bottom: -5px;
-      left: calc(var(--f, 0) * 100%);
-      width: 3px;
-      margin-left: -1.5px;
-      border-radius: 2px;
-      background: var(--blue);
-      box-shadow: 0 0 0 1.5px var(--card);
-      pointer-events: none;
-    }
-    .dial-card.is-swiped .band-pin,
     .dial-card.is-swiped .band-span,
     .dial-card.is-swiped .band-span-wrap { opacity: 0; }
 
@@ -1835,9 +1846,7 @@
         const spanWrapBar = document.createElement("div");
         spanWrapBar.className = "band-span-wrap";
         spanWrapBar.hidden = true;
-        const pin = document.createElement("div");
-        pin.className = "band-pin";
-        band.append(edgeOverlay, spanBar, spanWrapBar, pin);
+        band.append(edgeOverlay, spanBar, spanWrapBar);
         hit.append(band);
         paintBand(band, city, instants);
 
