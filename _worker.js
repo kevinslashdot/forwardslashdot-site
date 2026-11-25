@@ -1018,15 +1018,14 @@ function hasDnsAnswer(msg) {
   return !!(msg && Array.isArray(msg.Answer) && msg.Answer.length);
 }
 
-// NS NXDOMAIN means the TLD has no such name. An NS answer means it is delegated.
-// Anything else is inconclusive and the origin RDAP check should decide.
+// An NS or SOA answer means the name is delegated, so it is registered.
+// NXDOMAIN is not availability: redemption, pending delete, and serverHold
+// names have no nameservers and still cannot be registered. Those go to RDAP.
 export function statusFromDns(ns, soa) {
   if (!ns || typeof ns.Status !== "number") return null;
-  if (ns.Status === 3) return "available";
   if (ns.Status === 0 && hasDnsAnswer(ns)) return "registered";
   if (ns.Status !== 0) return null;
   if (!soa || typeof soa.Status !== "number") return null;
-  if (soa.Status === 3) return "available";
   if (soa.Status === 0 && hasDnsAnswer(soa)) return "registered";
   return null;
 }
@@ -1047,7 +1046,6 @@ async function dnsQuery(name, type) {
 
 async function edgeStatus(domain) {
   const ns = await dnsQuery(domain, "NS");
-  if (ns && ns.Status === 3) return "available";
   if (ns && ns.Status === 0 && hasDnsAnswer(ns)) return "registered";
   const soa = ns && ns.Status === 0 ? await dnsQuery(domain, "SOA") : null;
   return statusFromDns(ns, soa);
