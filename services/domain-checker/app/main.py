@@ -331,9 +331,14 @@ async def api_endings(
     if resolved == "UK":
         resolved = "GB"
     endings, source = row_for(resolved, metrics.ending_counts(resolved))
+    headers = (
+        {"Cache-Control": "public, max-age=60"}
+        if explicit and explicit != "XX"
+        else {"Cache-Control": "private, max-age=60", "Vary": "CF-IPCountry"}
+    )
     return JSONResponse(
         {"country": resolved, "endings": endings, "source": source},
-        headers={"Cache-Control": "public, max-age=60"},
+        headers=headers,
     )
 
 

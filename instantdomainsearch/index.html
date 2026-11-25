@@ -9,12 +9,24 @@
   <link rel="canonical" href="https://www.forwardslashdot.com/instantdomainsearch/" />
   <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM reference" />
   <link rel="describedby" href="https://api.forwardslashdot.com/llms.txt" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="forwardslashdot" />
   <meta property="og:title" content="Instant Domain Search — forwardslashdot" />
-  <meta property="og:description" content="Type a name and any ending. Green when it’s free, muted when it’s taken." />
+  <meta property="og:description" content="Live RDAP & DNS availability across 550+ endings. Green when it’s free, muted when it’s taken. No search logging." />
   <meta property="og:url" content="https://www.forwardslashdot.com/instantdomainsearch/" />
+  <meta property="og:image" content="https://www.forwardslashdot.com/domain.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Instant Domain Search by forwardslashdot — live availability across 550+ endings" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Instant Domain Search — forwardslashdot" />
+  <meta name="twitter:description" content="Live RDAP & DNS availability across 550+ endings. No search logging." />
+  <meta name="twitter:image" content="https://www.forwardslashdot.com/domain.png" />
   <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-size='26' font-weight='600' fill='white'%3E/.%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d1d1f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-size='26' font-weight='600' fill='white'%3E/.%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -23,9 +35,49 @@
     "url": "https://www.forwardslashdot.com/instantdomainsearch/",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Any",
-    "description": "Type a name and any ending — .com, .si, .biz, .ai, .io, .co.uk. Green when it’s free.",
+    "description": "Type a name and any ending — .com, .si, .biz, .ai, .io, .co.uk. Live RDAP & DNS checks with no search logging.",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "publisher": { "@type": "Organization", "name": "forwardslashdot", "url": "https://www.forwardslashdot.com/" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Do you log or sell domain searches?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Domain names you type are never logged, stored, or shared with registrars or brokers. Only coarse country-level ending counts are tallied with the domain name discarded."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is domain availability checked?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Checks run live via edge DNS (NS/SOA) and authoritative registry RDAP lookups, so reserved, redemption, or serverHold domains are not falsely shown as available."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which domain endings are supported?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Over 550 public endings including .com, .ai, .io, .dev, .app, .net, .org, .ca, .co.uk, .de, .com.au, and .si. Press . in the search box to filter all endings."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can developers or AI agents query availability via API or MCP?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. A free REST endpoint (GET /api/domain) and Streamable HTTP MCP tool (check_domains) are documented at api.forwardslashdot.com/llms.txt."
+        }
+      }
+    ]
   }
   </script>
   <style>
@@ -151,6 +203,7 @@
 
     .top,
     .search,
+    .faq,
     .dev {
       width: min(36rem, 100%);
     }
@@ -160,6 +213,24 @@
       align-items: center;
       justify-content: space-between;
       min-height: 2.25rem;
+    }
+
+    .top-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.9rem;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .top-nav a {
+      color: var(--label2);
+      transition: color 0.16s ease;
+    }
+
+    .top-nav a:hover {
+      color: var(--label);
+      text-decoration: none;
     }
 
     .brand {
@@ -197,14 +268,48 @@
       color: var(--label2);
     }
 
+    /* ---------- Hero Heading (smoothly collapses once results appear) ---------- */
+    .hero-head {
+      text-align: center;
+      margin-bottom: 1.35rem;
+      max-height: 5.5rem;
+      opacity: 1;
+      overflow: hidden;
+      transition: opacity 0.22s ease, max-height 0.34s var(--spring), margin-bottom 0.34s var(--spring);
+    }
+
+    .hero-head h1 {
+      font-size: clamp(1.38rem, 3.8vw, 1.72rem);
+      font-weight: 650;
+      letter-spacing: -0.036em;
+      line-height: 1.18;
+      color: var(--label);
+    }
+
+    .hero-sub {
+      margin-top: 0.38rem;
+      font-size: 0.86rem;
+      font-weight: 450;
+      letter-spacing: -0.01em;
+      color: var(--label2);
+      line-height: 1.4;
+    }
+
+    .search.has-answers .hero-head {
+      opacity: 0;
+      max-height: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+    }
+
     /* ---------- Search Bar (Spotlight-inspired) ---------- */
     .search {
-      margin-top: min(17vh, 8.25rem);
+      margin-top: min(14vh, 6.75rem);
       transition: margin-top 0.42s var(--spring);
     }
 
     .search.has-answers {
-      margin-top: 2rem;
+      margin-top: 1.75rem;
     }
 
     .compose {
@@ -606,11 +711,103 @@
     }
 
     .answers-more .answer.is-taken {
-      opacity: 0.52;
+      opacity: 1;
     }
 
-    .answers-more .answer.is-taken:hover {
+    .answers-more .answer.is-taken .name-stem,
+    .answers-more .answer.is-taken .name-tld {
+      color: var(--label2);
+    }
+
+    .answers-more .answer.is-taken .name-tld {
+      font-weight: 560;
+    }
+
+    .answers-more .answer.is-taken:hover .name-tld {
+      color: var(--label);
+    }
+
+    .answer-meta {
+      display: none;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.2rem 0.55rem;
+      margin-top: 0.28rem;
+      font-size: 0.74rem;
+      font-weight: 480;
+      letter-spacing: -0.005em;
+      color: var(--label2);
+    }
+
+    .answer.is-primary .answer-meta.is-shown {
+      display: inline-flex;
+    }
+
+    .answer-meta a {
+      color: var(--blue);
+      font-weight: 520;
+    }
+
+    .row-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      min-height: 1.9rem;
+      padding: 0 0.56rem;
+      border: 0;
+      border-radius: 980px;
+      background: transparent;
+      color: var(--label2);
+      font-size: 0.78rem;
+      font-weight: 520;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+      transition: background 0.14s ease, color 0.14s ease, transform 0.16s var(--spring);
+    }
+
+    .row-action:hover {
+      background: var(--fill);
+      color: var(--label);
+      text-decoration: none;
+    }
+
+    .row-action:active {
+      transform: scale(0.95);
+    }
+
+    .row-action:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .row-action.copy-btn {
+      width: 1.9rem;
+      padding: 0;
+    }
+
+    .row-action.copy-btn svg {
+      width: 0.88rem;
+      height: 0.88rem;
+    }
+
+    .row-action.copy-btn.is-copied {
+      color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .register-full {
+      display: inline;
+    }
+
+    .register-short {
+      display: none;
+    }
+
+    .ext-arrow {
+      font-size: 0.82em;
       opacity: 0.78;
+      margin-left: 0.22rem;
     }
 
     .answer-main {
@@ -865,10 +1062,105 @@
       display: block;
     }
 
+    /* ---------- Below-the-Fold Trust & FAQ ---------- */
+    .faq {
+      margin-top: auto;
+      padding-top: 5.5rem;
+    }
+
+    .search.has-answers ~ .faq {
+      padding-top: 3.25rem;
+    }
+
+    .faq-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.7rem;
+      padding: 0 0.25rem;
+    }
+
+    .faq h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--label2);
+    }
+
+    .faq-list {
+      background: var(--card);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .faq-item {
+      position: relative;
+    }
+
+    .faq-item + .faq-item::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 1.15rem;
+      right: 1.15rem;
+      height: 0.5px;
+      background: var(--sep);
+    }
+
+    .faq-item summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      padding: 0.9rem 1.15rem;
+      font-size: 0.9rem;
+      font-weight: 560;
+      letter-spacing: -0.015em;
+      color: var(--label);
+      cursor: pointer;
+      transition: background 0.14s ease;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item summary:hover {
+      background: var(--fill);
+    }
+
+    .faq-item summary:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px var(--focus-border);
+    }
+
+    .faq-chevron {
+      width: 0.72rem;
+      height: 0.72rem;
+      color: var(--label2);
+      flex: none;
+      transition: transform 0.22s var(--spring);
+    }
+
+    .faq-item[open] .faq-chevron {
+      transform: rotate(180deg);
+    }
+
+    .faq-item p {
+      padding: 0 1.15rem 0.95rem;
+      font-size: 0.84rem;
+      line-height: 1.55;
+      color: var(--label2);
+    }
+
     /* ---------- Footer API Section (aligned to 36rem rail, no 100vh void) ---------- */
     .dev {
-      margin-top: auto;
-      padding-top: 3.5rem;
+      margin-top: 2rem;
+      padding-top: 0;
     }
 
     .dev-inner {
@@ -904,7 +1196,7 @@
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 0.45rem 0.55rem;
+      gap: 0.45rem 0.65rem;
       font-size: 0.86rem;
       color: var(--label2);
       line-height: 1.5;
@@ -969,6 +1261,24 @@
       white-space: nowrap;
     }
 
+    .dev-links {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.35rem 1rem;
+      padding-top: 0.35rem;
+      font-size: 0.78rem;
+      color: var(--label2);
+    }
+
+    .dev-links a {
+      color: var(--label2);
+    }
+
+    .dev-links a:hover {
+      color: var(--label);
+    }
+
     /* ---------- Keyframes ---------- */
     @keyframes rise {
       from {
@@ -998,7 +1308,7 @@
       }
 
       .search {
-        margin-top: min(14vh, 5.5rem);
+        margin-top: min(11vh, 4.25rem);
       }
 
       .search.has-answers {
@@ -1030,12 +1340,20 @@
 
       .register {
         min-height: 2.25rem;
-        padding: 0 1rem;
+        padding: 0 0.88rem;
       }
 
       .answer.is-primary .register {
         min-height: 2.4rem;
-        padding: 0 1.1rem;
+        padding: 0 0.98rem;
+      }
+
+      .register-full {
+        display: none;
+      }
+
+      .register-short {
+        display: inline;
       }
 
       .recovery {
@@ -1056,20 +1374,25 @@
       }
     }
   </style>
-  <script defer src="https://analytics.forwardslashdot.com/script.js" data-website-id="42c75d6b-4881-4599-9262-b0810c5c5f44"></script>
 </head>
 <body>
   <main class="stage">
     <header class="top">
-      <a class="brand" href="https://www.forwardslashdot.com/">
+      <a class="brand" href="https://www.forwardslashdot.com/" aria-label="forwardslashdot home" title="Back to forwardslashdot.com">
         <span class="mark" aria-hidden="true">/.</span>
         <span class="brand-name">Domains</span>
       </a>
+      <nav class="top-nav" aria-label="Site navigation">
+        <a href="https://www.forwardslashdot.com/">forwardslashdot</a>
+        <a href="#about">Privacy &amp; FAQ</a>
+      </nav>
     </header>
 
-    <h1 class="sr-only">Instant Domain Search</h1>
-
     <div class="search" id="search" role="search">
+      <div class="hero-head">
+        <h1>Instant Domain Search</h1>
+        <p class="hero-sub">Live RDAP &amp; DNS checks across 550+ endings · No search logging</p>
+      </div>
       <!--
         No <input>: Chrome contact autofill keyed off label "Name" + input.
         Closed-shadow contenteditable only (no sink input — sinks steal focus).
@@ -1081,6 +1404,7 @@
           tabindex="0"
           role="textbox"
           aria-label="Domain name"
+          aria-describedby="hint"
           aria-multiline="false"
         ></span>
 
@@ -1120,14 +1444,14 @@
                 <circle cx="7" cy="7" r="4.6"/>
                 <path d="m10.5 10.5 3 3"/>
               </svg>
-              <input class="tld-search" id="tld-search" type="text" placeholder="Search 500+ endings" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search endings" />
+              <input class="tld-search" id="tld-search" type="text" placeholder="Search 550+ endings" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Search endings" />
             </div>
             <div class="tld-options" id="tld-options" role="listbox" aria-label="Domain endings"></div>
           </div>
         </div>
       </div>
 
-      <p class="hint" id="hint">Type a name, or press <kbd>.</kbd> to search 500+ endings</p>
+      <p class="hint" id="hint">Type a name, or press <kbd>.</kbd> to search 550+ endings</p>
 
       <div class="results" id="results" hidden aria-live="polite">
         <ul class="answers-primary" id="answers-primary"></ul>
@@ -1140,6 +1464,42 @@
       </div>
     </div>
 
+    <section class="faq" id="about" aria-labelledby="faq-heading">
+      <div class="faq-head">
+        <h2 id="faq-heading">How It Works &amp; Privacy</h2>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>
+            <span>Do you log or sell domain searches?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>No. The domain names you type are never logged, stored, or shared with registrars or brokers. Only coarse country-level ending counts (such as <code>.ca</code> or <code>.com</code>) are tallied, with the domain name itself discarded.</p>
+        </details>
+        <details class="faq-item">
+          <summary>
+            <span>How is availability verified?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>Delegated names resolve immediately via DNS (NS/SOA) at the edge. Any name without DNS records is verified live against the authoritative registry RDAP server so reserved, redemption, and <code>serverHold</code> domains aren&rsquo;t falsely shown as available.</p>
+        </details>
+        <details class="faq-item">
+          <summary>
+            <span>Which domain endings are supported?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>Over 550 public endings including <code>.com</code>, <code>.ai</code>, <code>.io</code>, <code>.dev</code>, <code>.app</code>, <code>.ca</code>, <code>.co.uk</code>, <code>.de</code>, <code>.com.au</code>, and <code>.si</code>. Press <kbd>.</kbd> in the search bar or click the ending pill to filter all supported endings.</p>
+        </details>
+        <details class="faq-item">
+          <summary>
+            <span>Where do Register links go?</span>
+            <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </summary>
+          <p>Register links open Namecheap directly with your exact domain pre-filled in a new tab. You can also copy any available domain with one click to register it at Cloudflare Registrar, Porkbun, or any registrar you prefer.</p>
+        </details>
+      </div>
+    </section>
+
     <footer class="dev" aria-labelledby="dev-heading">
       <div class="dev-inner">
         <div class="dev-head">
@@ -1151,7 +1511,12 @@
             <span>GET /api/domain?q=studio.si,cafe.biz</span>
             <span class="code-copy-badge" id="api-copy-badge">Copy</span>
           </button>
-          <span class="dev-mcp"><span>&middot; MCP</span><code class="inline-code">check_domains</code></span>
+          <span class="dev-mcp"><span>MCP</span><code class="inline-code">check_domains</code></span>
+        </div>
+        <div class="dev-links">
+          <a href="https://www.forwardslashdot.com/">forwardslashdot.com</a>
+          <a href="https://www.forwardslashdot.com/worldtimeconverter">World Time Converter</a>
+          <a href="https://www.forwardslashdot.com/llms.txt">llms.txt</a>
         </div>
       </div>
     </footer>
@@ -1160,10 +1525,11 @@
   <script>
     (function () {
       var API = "/api/domain";
-      var TLDS = [".ca", ".com", ".net", ".org", ".io", ".ai"];
-      // The edge answers on the same connection. Wait only while a 1-2 character label is still being typed.
-      var DEBOUNCE_SHORT_MS = 0;
-      var DEBOUNCE_LONG_MS = 40;
+      var TLDS = [".com", ".net", ".org", ".io", ".co", ".ai"];
+      var ENDINGS_LIVE = false;
+      // Short debounce avoids blasting the edge on every keystroke while still feeling instant.
+      var DEBOUNCE_SHORT_MS = 70;
+      var DEBOUNCE_LONG_MS = 120;
       var CACHE_TTL_MS = 10 * 60 * 1000;
       var CACHE_MAX = 200;
 
@@ -1219,7 +1585,7 @@
       field.setAttribute("autocorrect", "off");
       field.setAttribute("autocapitalize", "none");
       field.setAttribute("inputmode", "text");
-      field.setAttribute("enterkeyhint", "done");
+      field.setAttribute("enterkeyhint", "search");
       field.setAttribute("role", "textbox");
       field.setAttribute("aria-multiline", "false");
       field.setAttribute("data-1p-ignore", "true");
@@ -1285,9 +1651,11 @@
       var warmTimer = null;
       var urlTimer = null;
       var abortController = null;
+      var warmAbortController = null;
+      var tldsLoaded = false;
       var requestSeq = 0;
       var lastTypedAt = 0;
-      var cache = new Map(); // domain -> { status, at, domain, affiliate_url, disclosure }
+      var cache = new Map(); // domain -> { status, at, domain, affiliate_url, disclosure, source, rdap_url, cached, timing_ms }
       var primaryNote = "";
 
       function sanitizeLabel(raw) {
@@ -1381,6 +1749,56 @@
         }, 260);
       }
 
+      var COPY_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5"/></svg>';
+      var CHECK_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 8.4 6.5 11.7 12.8 4.8"/></svg>';
+
+      function copyDomainText(text, btn) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(function () {});
+        }
+        btn.classList.add("is-copied");
+        btn.innerHTML = CHECK_ICON_SVG;
+        btn.setAttribute("aria-label", "Copied " + text);
+        clearTimeout(btn._copyTimer);
+        btn._copyTimer = setTimeout(function () {
+          btn.classList.remove("is-copied");
+          btn.innerHTML = COPY_ICON_SVG;
+          btn.setAttribute("aria-label", "Copy " + text);
+        }, 1400);
+      }
+
+      function renderProvenance(metaEl, isPrimary, state, hit) {
+        metaEl.textContent = "";
+        if (!isPrimary || !hit || (state !== "available" && state !== "registered")) {
+          metaEl.classList.remove("is-shown");
+          return;
+        }
+        var parts = [];
+        if (hit.source === "rdap") parts.push("Live RDAP");
+        else if (hit.source === "dns") parts.push("Live DNS");
+        if (hit.cached) parts.push("edge cache");
+        else if (typeof hit.timing_ms === "number" && hit.timing_ms > 0) parts.push(hit.timing_ms + " ms");
+
+        if (!parts.length) {
+          metaEl.classList.remove("is-shown");
+          return;
+        }
+        var textSpan = document.createElement("span");
+        textSpan.textContent = parts.join(" · ");
+        metaEl.appendChild(textSpan);
+
+        if (hit.rdap_url && /^https?:\/\//i.test(hit.rdap_url)) {
+          var rdapLink = document.createElement("a");
+          rdapLink.href = hit.rdap_url;
+          rdapLink.target = "_blank";
+          rdapLink.rel = "noopener noreferrer";
+          rdapLink.textContent = "Registry ↗";
+          rdapLink.setAttribute("aria-label", "View authoritative RDAP record for " + hit.domain);
+          metaEl.appendChild(rdapLink);
+        }
+        metaEl.classList.add("is-shown");
+      }
+
       function buildRow(domain, label, tld, isPrimary, state, note, hit, seen) {
         var li = seen[domain] || document.createElement("li");
         li.dataset.domain = domain;
@@ -1416,12 +1834,16 @@
           subStatus.appendChild(subDot);
           subStatus.appendChild(subText);
 
+          var metaEl = document.createElement("span");
+          metaEl.className = "answer-meta";
+
           main.appendChild(nameBtn);
           main.appendChild(subStatus);
+          main.appendChild(metaEl);
           li.appendChild(main);
 
           li.addEventListener("click", function (e) {
-            if (e.target.closest && e.target.closest(".register")) return;
+            if (e.target.closest && e.target.closest(".register, .row-action, .answer-meta a")) return;
             var rowTld = li.dataset.tld;
             if (!rowTld || rowTld === selectedTld) return;
             selectTld(rowTld);
@@ -1446,6 +1868,7 @@
         else statusLabel = "Checking";
 
         main.querySelector(".answer-substatus .status-text").textContent = statusLabel;
+        renderProvenance(main.querySelector(".answer-meta"), isPrimary, state, hit);
 
         var tail = li.querySelector(".answer-tail");
         if (!tail) {
@@ -1467,6 +1890,46 @@
 
         tail.querySelector(".answer-status .status-text").textContent = statusLabel;
 
+        // Copy domain button for resolved rows
+        var copyBtn = tail.querySelector(".copy-btn");
+        if (state === "available" || state === "registered") {
+          if (!copyBtn) {
+            copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.className = "row-action copy-btn";
+            copyBtn.innerHTML = COPY_ICON_SVG;
+            copyBtn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              copyDomainText(li.dataset.domain, copyBtn);
+            });
+            tail.appendChild(copyBtn);
+          }
+          if (!copyBtn.classList.contains("is-copied")) {
+            copyBtn.setAttribute("aria-label", "Copy " + domain);
+            copyBtn.title = "Copy " + domain;
+          }
+        } else if (copyBtn) {
+          copyBtn.remove();
+        }
+
+        // Taken row action: Visit link
+        var visitLink = tail.querySelector(".visit-link");
+        if (state === "registered") {
+          if (!visitLink) {
+            visitLink = document.createElement("a");
+            visitLink.className = "row-action visit-link";
+            visitLink.target = "_blank";
+            visitLink.rel = "noopener noreferrer";
+            visitLink.innerHTML = 'Visit<span class="ext-arrow" aria-hidden="true">↗</span>';
+            tail.appendChild(visitLink);
+          }
+          visitLink.href = "https://" + domain;
+          visitLink.setAttribute("aria-label", "Visit " + domain + " in a new tab");
+        } else if (visitLink) {
+          visitLink.remove();
+        }
+
+        // Available row CTA: explicit destination + external arrow
         var link = tail.querySelector(".register");
         if (state === "available") {
           if (!link) {
@@ -1474,11 +1937,16 @@
             link.className = "register";
             link.rel = "sponsored noopener noreferrer";
             link.target = "_blank";
-            link.textContent = "Register";
             tail.appendChild(link);
           }
+          if (isPrimary) {
+            link.innerHTML = '<span class="register-full">Register on Namecheap</span><span class="register-short">Namecheap</span><span class="ext-arrow" aria-hidden="true">↗</span>';
+          } else {
+            link.innerHTML = 'Namecheap<span class="ext-arrow" aria-hidden="true">↗</span>';
+          }
           link.href = registerHref(domain, hit);
-          link.setAttribute("aria-label", "Register " + domain);
+          link.title = "Register " + domain + " on Namecheap (opens in a new tab)";
+          link.setAttribute("aria-label", "Register " + domain + " on Namecheap");
         } else if (link) {
           link.remove();
         }
@@ -1563,6 +2031,9 @@
         if (disclosure) {
           disclosureEl.textContent = disclosure;
           disclosureEl.classList.add("is-on");
+        } else if (availableCount > 0) {
+          disclosureEl.textContent = "Namecheap links open directly in a new tab. Searches are never logged.";
+          disclosureEl.classList.add("is-on");
         } else {
           disclosureEl.classList.remove("is-on");
           disclosureEl.textContent = "";
@@ -1630,6 +2101,7 @@
         var ending = readEnding() || selectedTld;
         if (!split.label) {
           if (abortController) abortController.abort();
+          if (warmAbortController) warmAbortController.abort();
           clearTimeout(timer);
           clearTimeout(warmTimer);
           renderAnswers();
@@ -1638,6 +2110,7 @@
 
         if (!endingReady(ending)) {
           if (abortController) abortController.abort();
+          if (warmAbortController) warmAbortController.abort();
           clearTimeout(timer);
           clearTimeout(warmTimer);
           renderAnswers();
@@ -1666,33 +2139,41 @@
 
       function warmOtherTlds(label) {
         clearTimeout(warmTimer);
+        if (warmAbortController) warmAbortController.abort();
         if (label.length < 3) return;
         warmTimer = setTimeout(function () {
           if (normalizeLabel(nameInput.value) !== label) return;
+          warmAbortController = new AbortController();
+          var signal = warmAbortController.signal;
           TLDS.forEach(function (tld) {
             if (tld === selectedTld) return;
             var other = label + tld;
             if (cacheGet(other)) return;
             fetch(
               API + "?q=" + encodeURIComponent(other) + "&area=instant_domain_search&warm=1",
-              { credentials: "omit", cache: "default" }
+              { signal: signal, credentials: "omit", cache: "default" }
             ).then(function (res) {
               if (!res.ok) return null;
               return res.json();
             }).then(function (data) {
+              if (signal.aborted) return;
               var row = data && data.results && data.results[0];
               if (!row) return;
               if (row.status === "available" || row.status === "registered" || row.status === "invalid") {
                 cacheSet(other, row.status, row.domain, {
                   affiliate_url: row.affiliate_url || "",
                   disclosure: row.disclosure || "",
+                  source: row.source || "",
+                  rdap_url: row.rdap_url || "",
+                  cached: !!row.cached,
+                  timing_ms: typeof data.timing_ms === "number" ? data.timing_ms : null,
                   status: row.status
                 });
                 if (normalizeLabel(nameInput.value) === label) renderAnswers();
               }
             }).catch(function () {});
           });
-        }, 160);
+        }, 180);
       }
 
       function runCheck(domain) {
@@ -1736,6 +2217,10 @@
               cacheSet(domain, status, row.domain, {
                 affiliate_url: row.affiliate_url || "",
                 disclosure: row.disclosure || "",
+                source: row.source || "",
+                rdap_url: row.rdap_url || "",
+                cached: !!row.cached,
+                timing_ms: typeof data.timing_ms === "number" ? data.timing_ms : null,
                 status: status
               });
             }
@@ -1848,6 +2333,7 @@
         tldSearch.value = "";
         renderMenu();
         tldSearch.focus();
+        loadSoldEndings();
       }
 
       function closeMenu() {
@@ -1942,10 +2428,41 @@
         if (!menuOpen || tldPop.contains(e.target)) return;
         closeMenu();
       });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && menuOpen) {
+          e.preventDefault();
+          closeMenu();
+          nameInput.focus();
+        }
+      });
       tldPop.addEventListener("focusout", function (e) {
         if (pointerInMenu || justPicked) return;
         if (e.relatedTarget && tldPop.contains(e.relatedTarget)) return;
         closeMenu();
+      });
+
+      function resultRowButtons() {
+        return Array.prototype.slice.call(resultsEl.querySelectorAll(".answer .answer-name"));
+      }
+
+      resultsEl.addEventListener("keydown", function (e) {
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Escape") return;
+        var buttons = resultRowButtons();
+        var current = buttons.indexOf(document.activeElement);
+        if (e.key === "Escape") {
+          e.preventDefault();
+          nameInput.focus();
+          return;
+        }
+        if (current === -1) return;
+        e.preventDefault();
+        if (e.key === "ArrowDown") {
+          var next = buttons[current + 1];
+          if (next) next.focus();
+        } else if (e.key === "ArrowUp") {
+          if (current === 0) nameInput.focus();
+          else buttons[current - 1].focus();
+        }
       });
 
       field.addEventListener("input", scheduleCheck);
@@ -1953,6 +2470,14 @@
         if (e.key === ".") {
           e.preventDefault();
           openMenu();
+          return;
+        }
+        if (e.key === "ArrowDown" && !resultsEl.hidden) {
+          var buttons = resultRowButtons();
+          if (buttons.length) {
+            e.preventDefault();
+            buttons[0].focus();
+          }
           return;
         }
         if (e.key === "Escape" && readField()) {
@@ -2004,6 +2529,15 @@
         try {
           region = new URLSearchParams(window.location.search).get("region") || "";
         } catch (err) {}
+        if (ENDINGS_LIVE && !region) return;
+        var storageKey = "fwd-endings:" + (region ? region.toUpperCase() : "auto");
+        try {
+          var saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+          if (saved && Array.isArray(saved.endings) && Date.now() - saved.at < 300000) {
+            if (!endingChosen && saved.endings.join() !== TLDS.join()) paintTlds(saved.endings);
+            return;
+          }
+        } catch (_) {}
         var url = "/api/endings";
         if (/^[A-Za-z]{2}$/.test(region)) {
           url += "?country=" + encodeURIComponent(region.toUpperCase() === "UK" ? "GB" : region.toUpperCase());
@@ -2013,17 +2547,23 @@
             return res.ok ? res.json() : null;
           })
           .then(function (data) {
-            if (endingChosen || !data || !data.endings) return;
+            if (!data || !data.endings) return;
             var next = data.endings.filter(function (item) {
               return /^\.[a-z0-9-]{2,24}(?:\.[a-z0-9-]{2,24})?$/.test(item);
             }).slice(0, 6);
-            if (next.length < 4 || next.join() === TLDS.join()) return;
+            if (next.length < 4) return;
+            try {
+              sessionStorage.setItem(storageKey, JSON.stringify({ endings: next, at: Date.now() }));
+            } catch (_) {}
+            if (endingChosen || next.join() === TLDS.join()) return;
             paintTlds(next);
           })
           .catch(function () {});
       }
 
       function loadSoldEndings() {
+        if (tldsLoaded) return;
+        tldsLoaded = true;
         fetch("/api/tlds", { credentials: "omit", cache: "default" })
           .then(function (res) { return res.ok ? res.json() : null; })
           .then(function (data) {
@@ -2037,10 +2577,11 @@
             tldSearch.placeholder = "Search " + rounded + "+ endings";
             if (menuOpen) renderMenu();
           })
-          .catch(function () {});
+          .catch(function () {
+            tldsLoaded = false;
+          });
       }
 
-      loadSoldEndings();
       loadRegionalEndings();
       nameInput.focus();
       noteVisit("instant_domain_search");
