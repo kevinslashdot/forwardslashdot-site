@@ -287,6 +287,10 @@
     }
 
     .hero-sub {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.42rem;
       margin-top: 0.38rem;
       font-size: 0.86rem;
       font-weight: 450;
@@ -295,11 +299,46 @@
       line-height: 1.4;
     }
 
+    .info-btn {
+      flex: none;
+      width: 1.15rem;
+      height: 1.15rem;
+      padding: 0;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--label2);
+      font-family: Georgia, "Iowan Old Style", Palatino, serif;
+      font-style: italic;
+      font-size: 0.72rem;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .info-btn:hover,
+    .info-btn[aria-expanded="true"] {
+      background: var(--label);
+      color: var(--bg, #fff);
+      border-color: var(--label);
+    }
+
+    .info-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-border);
+    }
+
     .search.has-answers .hero-head {
-      opacity: 0;
-      max-height: 0;
-      margin-bottom: 0;
-      pointer-events: none;
+      max-height: 2.4rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .search.has-answers .hero-head h1 {
+      display: none;
+    }
+
+    .search.has-answers .hero-sub {
+      margin-top: 0;
     }
 
     /* ---------- Search Bar (Spotlight-inspired) ---------- */
@@ -736,7 +775,7 @@
     }
 
     .answer-meta {
-      display: none;
+      display: none !important;
       align-items: center;
       flex-wrap: wrap;
       gap: 0.2rem 0.55rem;
@@ -1319,8 +1358,13 @@
 
     /* ---------- Below-the-Fold Trust & FAQ ---------- */
     .faq {
+      display: none;
       margin-top: auto;
-      padding-top: 5.5rem;
+      padding-top: 2.25rem;
+    }
+
+    .faq.is-open {
+      display: block;
     }
 
     .search.has-answers ~ .faq {
@@ -1659,14 +1703,17 @@
       </a>
       <nav class="top-nav" aria-label="Site navigation">
         <a href="https://www.forwardslashdot.com/">forwardslashdot</a>
-        <a href="#about">Privacy &amp; FAQ</a>
+        <a href="#about" id="about-nav">Privacy &amp; FAQ</a>
       </nav>
     </header>
 
     <div class="search" id="search" role="search">
       <div class="hero-head">
         <h1>Instant Domain Search</h1>
-        <p class="hero-sub">Live RDAP &amp; DNS checks across 550+ endings · No search logging</p>
+        <p class="hero-sub">
+          <button type="button" class="info-btn" id="about-toggle" aria-expanded="false" aria-controls="about" aria-label="How it works and privacy">i</button>
+          <span>Live RDAP &amp; DNS checks across 550+ endings · No search logging</span>
+        </p>
       </div>
       <!--
         No <input>: Chrome contact autofill keyed off label "Name" + input.
@@ -1843,6 +1890,28 @@
       var regSwitchLabel = document.getElementById("reg-switch-label");
       var regSwitchMenu = document.getElementById("reg-switch-menu");
       var host = document.getElementById("q-host");
+      var aboutEl = document.getElementById("about");
+      var aboutToggle = document.getElementById("about-toggle");
+      var aboutNav = document.getElementById("about-nav");
+
+      function setAboutOpen(open) {
+        if (!aboutEl) return;
+        aboutEl.classList.toggle("is-open", open);
+        if (aboutToggle) aboutToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) aboutEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      if (aboutToggle) {
+        aboutToggle.addEventListener("click", function () {
+          setAboutOpen(!aboutEl.classList.contains("is-open"));
+        });
+      }
+      if (aboutNav) {
+        aboutNav.addEventListener("click", function (e) {
+          e.preventDefault();
+          setAboutOpen(true);
+        });
+      }
 
       var REGISTRAR_KEY = "fwd-registrar";
       var CF_UNSUPPORTED = {
