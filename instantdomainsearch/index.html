@@ -1712,7 +1712,7 @@
         <h1>Instant Domain Search</h1>
         <p class="hero-sub">
           <button type="button" class="info-btn" id="about-toggle" aria-expanded="false" aria-controls="about" aria-label="How it works and privacy">i</button>
-          <span>Live RDAP &amp; DNS checks across 550+ endings · No search logging</span>
+          <span>Live checks across 550+ endings · No search logging</span>
         </p>
       </div>
       <!--
@@ -1826,7 +1826,7 @@
             <span>Where do Register links go?</span>
             <svg class="faq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 4.3 6 8l3.8-3.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </summary>
-          <p>Choose your preferred registrar from the dropdown on any register button — Namecheap, Cloudflare Registrar, Porkbun, or GoDaddy. Your choice is saved locally in your browser, or you can copy any available domain with one click.</p>
+          <p>Choose your preferred registrar from the dropdown on any register button — Namecheap, Porkbun, or GoDaddy. Your choice is saved locally in your browser.</p>
         </details>
       </div>
     </section>
@@ -1914,12 +1914,6 @@
       }
 
       var REGISTRAR_KEY = "fwd-registrar";
-      var CF_UNSUPPORTED = {
-        ca: 1, de: 1, fr: 1, es: 1, nl: 1, eu: 1, ch: 1, si: 1,
-        "com.au": 1, "net.au": 1, "org.au": 1, in: 1, "co.in": 1,
-        sg: 1, "com.sg": 1, mx: 1, "com.mx": 1, pe: 1, "com.pe": 1,
-        ph: 1, "com.ph": 1, id: 1, my: 1, ai: 1
-      };
       var REGISTRARS = [
         {
           id: "namecheap",
@@ -1932,21 +1926,6 @@
           },
           disclosure: function (apiDisclosure) {
             return apiDisclosure || "Direct link to Namecheap (opens in a new tab). Searches are never logged.";
-          }
-        },
-        {
-          id: "cloudflare",
-          name: "Cloudflare",
-          sub: "At-cost wholesale",
-          rel: "noopener noreferrer",
-          supports: function (tld) {
-            return !CF_UNSUPPORTED[String(tld || "").replace(/^\./, "")];
-          },
-          url: function (domain) {
-            return "https://domains.cloudflare.com/?domain=" + encodeURIComponent(domain);
-          },
-          disclosure: function () {
-            return "Direct link to Cloudflare Registrar (no affiliate). Searches are never logged.";
           }
         },
         {
@@ -2297,24 +2276,6 @@
         }, 260);
       }
 
-      var COPY_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M3.5 10.5H3a1.5 1.5 0 0 1-1.5-1.5V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5"/></svg>';
-      var CHECK_ICON_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.2 8.4 6.5 11.7 12.8 4.8"/></svg>';
-
-      function copyDomainText(text, btn) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).catch(function () {});
-        }
-        btn.classList.add("is-copied");
-        btn.innerHTML = CHECK_ICON_SVG;
-        btn.setAttribute("aria-label", "Copied " + text);
-        clearTimeout(btn._copyTimer);
-        btn._copyTimer = setTimeout(function () {
-          btn.classList.remove("is-copied");
-          btn.innerHTML = COPY_ICON_SVG;
-          btn.setAttribute("aria-label", "Copy " + text);
-        }, 1400);
-      }
-
       function renderProvenance(metaEl, isPrimary, state, hit) {
         metaEl.textContent = "";
         if (!isPrimary || !hit || (state !== "available" && state !== "registered")) {
@@ -2438,27 +2399,8 @@
 
         tail.querySelector(".answer-status .status-text").textContent = statusLabel;
 
-        // Copy domain button for resolved rows
-        var copyBtn = tail.querySelector(".copy-btn");
-        if (state === "available" || state === "registered") {
-          if (!copyBtn) {
-            copyBtn = document.createElement("button");
-            copyBtn.type = "button";
-            copyBtn.className = "row-action copy-btn";
-            copyBtn.innerHTML = COPY_ICON_SVG;
-            copyBtn.addEventListener("click", function (e) {
-              e.stopPropagation();
-              copyDomainText(li.dataset.domain, copyBtn);
-            });
-            tail.appendChild(copyBtn);
-          }
-          if (!copyBtn.classList.contains("is-copied")) {
-            copyBtn.setAttribute("aria-label", "Copy " + domain);
-            copyBtn.title = "Copy " + domain;
-          }
-        } else if (copyBtn) {
-          copyBtn.remove();
-        }
+        var staleCopy = tail.querySelector(".copy-btn");
+        if (staleCopy) staleCopy.remove();
 
         // Taken row action: Visit link
         var visitLink = tail.querySelector(".visit-link");
