@@ -411,9 +411,19 @@ async function persistCurrent() {
 }
 
 /* ---------- Studio Dashboard Rendering ---------- */
+let uploadCap = 0;
+
 function maxImageBytes() {
+  if (uploadCap) return uploadCap;
   const caps = currentCaps();
   return Number((account && account.maxImageBytes) || caps.maxImageBytes || caps.bytes) || MAX_IMAGE_BYTES;
+}
+
+function showUploadCap() {
+  const spec = document.querySelector(".dropzone-specs");
+  if (spec) {
+    spec.textContent = `360° photos (2:1) · JPG, PNG or WebP up to ${formatBytes(maxImageBytes())}. Try up to 15 without an account.`;
+  }
 }
 
 let heroPreviewState = "";
@@ -832,7 +842,7 @@ async function ingest(files) {
       skipped.push({ name: file.name, reason: `over ${sizeText}` });
       continue;
     }
-    const check = await validatePanoramaFile(file);
+    const check = await validatePanoramaFile(file, maxBytes);
     if (!check.ok) {
       skipped.push({ name: file.name, reason: reasonOf(check.error) });
       continue;
@@ -1028,7 +1038,7 @@ async function swapSceneImage(file) {
   const collection = currentCollection();
   if (!scene || !collection || !file) return;
 
-  const check = await validatePanoramaFile(file);
+  const check = await validatePanoramaFile(file, maxImageBytes());
   if (!check.ok) { toast(check.error); return; }
 
   try {
@@ -1568,8 +1578,8 @@ async function publishTour(collection) {
   }
   for (const sid of collection.sceneIds) {
     const s = sceneMap.get(sid);
-    if (s && s.blob && s.blob.size > MAX_IMAGE_BYTES) {
-      throw new Error(`${s.title} exceeds the 30 MB image limit.`);
+    if (s && s.blob && s.blob.size > maxImageBytes()) {
+      throw new Error(`${s.title} exceeds the ${formatBytes(maxImageBytes())} image limit.`);
     }
   }
 
@@ -2404,6 +2414,7 @@ async function pullLibrary() {
 async function refreshMe() {
   try {
     const data = await api("/panorama/api/me", {});
+    uploadCap = Number(data.maxImageBytes) || uploadCap;
     account = data.user ? {
       email: data.user.email,
       plan: data.user.plan,
@@ -2415,6 +2426,7 @@ async function refreshMe() {
   } catch (err) {
     account = null;
   }
+  showUploadCap();
   renderHome();
 }
 

@@ -1896,7 +1896,7 @@ export function openPlansSheet(ctx) {
   const node = document.createElement("div");
   const sub = document.createElement("p");
   sub.className = "sub";
-  sub.textContent = "Every plan includes 360° photos up to 30 MB each (JPG, PNG or WebP, 2:1 ratio), VR viewing, hotspots, floor plans, and view counts.";
+  sub.textContent = "Every plan includes 360° photos up to 25 MB each (JPG, PNG or WebP, 2:1 ratio), VR viewing, hotspots, floor plans, and view counts.";
   node.appendChild(sub);
 
   const grid = document.createElement("div");

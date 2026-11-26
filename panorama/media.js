@@ -5,7 +5,7 @@
 
 import { gradeOf, deviceTextureCap, isConstrainedDevice } from "./gl.js";
 
-export const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 export const MAX_PDF_BYTES = 15 * 1024 * 1024;
 export const MAX_PLAN_BYTES = 10 * 1024 * 1024;
 export const TILE_COLS = 4;
@@ -98,28 +98,28 @@ export async function readImageSize(file) {
 }
 
 /**
- * Validates file type, proprietary raw camera format rejection, 30 MB limit, and 2:1 aspect ratio.
+ * Validates file type, proprietary raw camera format rejection, 25 MB limit, and 2:1 aspect ratio.
  */
-export async function validatePanoramaFile(file) {
+export async function validatePanoramaFile(file, maxBytes = MAX_IMAGE_BYTES) {
   const name = file && file.name ? file.name : "File";
   if (!file) return { ok: false, error: "No file selected." };
   if (PROPRIETARY_EXT.test(name)) {
     return {
       ok: false,
-      error: `${name} is a proprietary or raw camera format. Convert/export it as an equirectangular 2:1 JPG, PNG, or WebP (up to 30 MB) first.`
+      error: `${name} is a proprietary or raw camera format. Convert/export it as a 2:1 JPG, PNG, or WebP (up to ${formatBytes(maxBytes)}) first.`
     };
   }
   const mimeOk = file.type ? ALLOWED_MIME.test(file.type) : ALLOWED_EXT.test(name);
   if (!mimeOk) {
     return {
       ok: false,
-      error: `${name} isn't supported. Upload equirectangular 2:1 JPG, PNG, or WebP images (up to 30 MB).`
+      error: `${name} isn't supported. Upload 2:1 JPG, PNG, or WebP images (up to ${formatBytes(maxBytes)}).`
     };
   }
-  if (file.size > MAX_IMAGE_BYTES) {
+  if (file.size > maxBytes) {
     return {
       ok: false,
-      error: `${name} is ${formatBytes(file.size)}. Maximum file size is 30 MB per image.`
+      error: `${name} is ${formatBytes(file.size)}. Maximum file size is ${formatBytes(maxBytes)} per image.`
     };
   }
   if (typeof file.slice === "function") {
